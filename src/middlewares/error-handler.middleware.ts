@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
-import { AppError } from "@/src/errors/AppError";
+import { AppError } from "@/src/errors/app.error";
 import { errorResponse } from "@/src/api/response";
 import { logger } from "@/src/logging/logger";
 
@@ -41,12 +41,8 @@ export function withErrorHandler(handler: RouteHandler): RouteHandler {
 
       // Lỗi nghiệp vụ đã được định nghĩa (AppError)
       if (error instanceof AppError) {
-        if (error.isOperational) {
-          logger.warn({ path: req.nextUrl.pathname, code: error.errorCode }, error.message);
-        } else {
-          logger.error({ path: req.nextUrl.pathname, err: error }, "Non-operational AppError");
-        }
-        return errorResponse(error.message, error.errorCode, error.statusCode);
+        logger.warn({ path: req.nextUrl.pathname, code: error.code }, error.message);
+        return errorResponse(error.message, error.code, error.statusCode);
       }
 
       // Lỗi không mong muốn

@@ -176,7 +176,7 @@ export function BounceChars({
             <span key={`w-${i}`} className="bc-word">
               {wordChars.map((ch, ci) => {
                 const idx = charIndex++;
-                const style: CSSProperties = reduceMotion
+                const style: CSSProperties | undefined = reduceMotion
                   ? undefined
                   : {
                       ["--bc-delay" as string]: `${delayMs + idx * staggerMs}ms`,

@@ -1,28 +1,31 @@
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+
 /**
- * Supabase client placeholder.
- *
- * Để sử dụng Supabase:
- * 1. Cài đặt: npm install @supabase/supabase-js
- * 2. Uncomment code bên dưới
- * 3. Thêm biến môi trường vào .env.local:
- *    NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
- *    NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
- *    SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+ * Client dùng Service Role key - chỉ dùng ở server-side.
+ * Bypass RLS (Row Level Security). Dùng cẩn thận!
+ * `null` khi chưa cấu hình biến môi trường Supabase.
  */
+export const supabaseAdmin =
+  supabaseUrl && supabaseServiceKey
+    ? createClient(supabaseUrl, supabaseServiceKey, { auth: { persistSession: false } })
+    : null;
 
-// import "server-only";
-// import { createClient } from "@supabase/supabase-js";
-// import { env } from "@/lib/env";
-//
-// /**
-//  * Supabase client dùng Service Role key - chỉ dùng ở server-side.
-//  * Bypass RLS (Row Level Security). Dùng cẩn thận!
-//  */
-// export const supabaseAdmin = createClient(
-//   env.NEXT_PUBLIC_SUPABASE_URL,
-//   env.SUPABASE_SERVICE_ROLE_KEY,
-//   { auth: { persistSession: false } }
-// );
+let supabaseClient: SupabaseClient | null = null;
 
-// Placeholder export để tránh lỗi import khi chưa cấu hình
-export const supabaseAdmin = null;
+/**
+ * Client dùng anon key - xác thực JWT của user (xem src/middlewares/authenticate.middlware.ts).
+ * Trả về client với placeholder credentials nếu chưa cấu hình, để tránh crash khi khởi tạo.
+ */
+export const getSupabaseClient = (): SupabaseClient => {
+  if (!supabaseClient) {
+    supabaseClient = createClient(
+      supabaseUrl || "https://placeholder-url.supabase.co",
+      supabaseAnonKey || "placeholder-anon-key"
+    );
+  }
+  return supabaseClient;
+};

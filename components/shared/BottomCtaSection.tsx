@@ -34,13 +34,13 @@ export default function BottomCtaSection() {
         {/* Cụm ảnh xoè quạt (fan) — thay cụm lon sản phẩm nghiêng của reference (placeholder example.jpg) */}
         <div className="cta-fan relative hidden md:block h-[320px]">
           <div className="absolute w-[62%] aspect-[3/4] rounded-3xl overflow-hidden shadow-xl border-4 border-white left-0 top-8 -rotate-[13deg] z-[1]">
-            <Image src="/images/example.jpg" alt="Nutein" fill className="object-cover" />
+            <Image src="/images/example.jpg" alt="Nutein" fill sizes="260px" className="object-cover" />
           </div>
           <div className="absolute w-[62%] aspect-[3/4] rounded-3xl overflow-hidden shadow-xl border-4 border-white left-[15%] top-0 -rotate-[1deg] z-[2]">
-            <Image src="/images/example.jpg" alt="Nutein" fill className="object-cover" />
+            <Image src="/images/example.jpg" alt="Nutein" fill sizes="260px" className="object-cover" />
           </div>
           <div className="absolute w-[62%] aspect-[3/4] rounded-3xl overflow-hidden shadow-xl border-4 border-white left-[30%] top-10 rotate-[12deg] z-[3]">
-            <Image src="/images/example.jpg" alt="Nutein" fill className="object-cover" />
+            <Image src="/images/example.jpg" alt="Nutein" fill sizes="260px" className="object-cover" />
           </div>
         </div>
 

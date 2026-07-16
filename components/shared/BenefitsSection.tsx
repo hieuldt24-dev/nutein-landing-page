@@ -102,7 +102,7 @@ export default function BenefitsSection() {
                 animation: "floatYSlowRotated 7s ease-in-out infinite",
               }}
             >
-              <Image src="/images/example.jpg" alt="Nutein" fill className="object-cover" />
+              <Image src="/images/example.jpg" alt="Nutein" fill sizes="(max-width: 900px) 90vw, 460px" className="object-cover" />
             </div>
 
             <div className="animate-badge-pop absolute top-4 -right-2 md:-right-6 z-[3] bg-surface rounded-3xl border border-[color:var(--color-border)] shadow-lg px-6 py-5 w-[210px] flex flex-col gap-3" style={{ animationDelay: "0.6s" }}>
