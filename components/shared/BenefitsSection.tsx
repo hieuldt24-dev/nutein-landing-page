@@ -1,266 +1,121 @@
 "use client";
 
-import React from "react";
-import { Smile, Shield, Sparkles, Globe } from "lucide-react";
+import { type ReactNode } from "react";
+import Image from "next/image";
+import { Smile, Shield, Sparkles, Globe, Check } from "lucide-react";
+import { SectionHeading } from "@/components/ui/SectionHeading";
+import { Badge } from "@/components/ui/Badge";
+import { RotatingText } from "@/components/ui/RotatingText";
 
-const BENEFITS = [
+interface Benefit {
+  icon: ReactNode;
+  title: string;
+  desc: string;
+}
+
+const BENEFITS: Benefit[] = [
   {
-    icon: <Smile size={24} />,
+    icon: <Smile size={22} strokeWidth={2.2} />,
     title: "Nhẹ bụng, Dễ tiêu hóa",
     desc: "Không chứa Lactose và Gluten - hai tác nhân chính gây chướng bụng. Nhờ đạm peptide siêu nhỏ từ hạt hữu cơ thủy phân, bạn sẽ cảm thấy bụng luôn êm dịu, dễ chịu.",
   },
   {
-    icon: <Shield size={24} />,
+    icon: <Shield size={22} strokeWidth={2.2} />,
     title: "Bảo vệ hệ tim mạch",
     desc: "Hàm lượng Cholesterol bằng 0 cùng nguồn chất béo chưa bão hòa dồi dào từ hạt óc chó giúp làm sạch mạch máu, kiểm soát huyết áp và bảo vệ trái tim khỏe mạnh.",
   },
   {
-    icon: <Sparkles size={24} />,
+    icon: <Sparkles size={22} strokeWidth={2.2} />,
     title: "Trẻ hóa làn da, Giữ vóc dáng",
     desc: "Chứa nhiều chất chống oxy hóa tự nhiên và vitamin E từ rau củ quả giúp nuôi dưỡng làn da sáng khỏe, đồng thời hỗ trợ kiểm soát calo nạp vào cho vóc dáng thon gọn.",
   },
   {
-    icon: <Globe size={24} />,
+    icon: <Globe size={22} strokeWidth={2.2} />,
     title: "Bền vững cho môi trường",
     desc: "Canh tác nguồn đạm thực vật tiêu tốn ít hơn 90% lượng nước và tạo ra lượng khí thải nhà kính cực thấp so với đạm động vật, góp phần bảo vệ hành tinh xanh.",
   },
 ];
 
+const COMMITMENTS = [
+  "Không bổ sung đường hóa học",
+  "Không chứa Gluten & Lactose",
+  "Không biến đổi gen (Non-GMO)",
+  "Không chất bảo quản nhân tạo",
+];
+
 export default function BenefitsSection() {
   return (
-    <section
-      id="benefits"
-      style={{
-        padding: "100px 24px",
-        backgroundColor: "#F6F9F8", // Sage green tint
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
-      <div style={{ maxWidth: 1200, margin: "0 auto", position: "relative", zIndex: 1 }}>
-        <div
-          className="benefits-split"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1.1fr 0.9fr",
-            gap: 60,
-            alignItems: "center",
-          }}
-        >
-          {/* Column 1: Text list of benefits */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 36 }}>
-            <div>
-              <span
-                style={{
-                  fontSize: 12,
-                  fontWeight: 800,
-                  color: "#0A9B78",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.18em",
-                  fontFamily: "var(--font-sans), sans-serif",
-                }}
-              >
-                Giá trị sức khỏe
-              </span>
-              <h2
-                style={{
-                  fontSize: "clamp(28px, 3.8vw, 42px)",
-                  fontWeight: 900,
-                  color: "#080E1A",
-                  fontFamily: "var(--font-display), sans-serif",
-                  marginTop: 10,
-                  marginBottom: 16,
-                  letterSpacing: "-0.03em",
-                  lineHeight: 1.15,
-                }}
-              >
-                Lợi ích vượt trội từ đạm thực vật sạch
-              </h2>
-              <p
-                style={{
-                  fontSize: 15,
-                  color: "#4B5563",
-                  lineHeight: 1.6,
-                  margin: 0,
-                  fontFamily: "var(--font-sans), sans-serif",
-                }}
-              >
-                Khoa học đã chứng minh đạm thực vật hữu cơ là chìa khóa vàng giúp thanh lọc cơ thể nhẹ nhàng, phòng ngừa các bệnh mạn tính và kéo dài tuổi thọ dẻo dai.
-              </p>
-            </div>
+    <section id="benefits" className="relative overflow-hidden bg-primary-soft/40 py-24 px-6">
+      <div className="max-w-[1200px] mx-auto">
+        <div className="benefits-split grid gap-14" style={{ gridTemplateColumns: "1.1fr 0.9fr" }}>
+          {/* Column 1 */}
+          <div className="flex flex-col gap-9">
+            <SectionHeading eyebrow="Giá trị sức khỏe" align="left" className="text-[clamp(36px,5.5vw,72px)] tracking-[-0.03em]">
+              Lợi ích vượt trội<br />từ đạm thực vật sạch
+            </SectionHeading>
+            <p className="text-text-body text-[15px] leading-relaxed -mt-4">
+              Khoa học đã chứng minh đạm thực vật hữu cơ là chìa khóa vàng giúp thanh lọc cơ thể nhẹ nhàng, phòng ngừa các bệnh mạn tính và kéo dài tuổi thọ dẻo dai.
+            </p>
 
-            {/* List of benefits */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+            <div className="flex flex-col gap-7">
               {BENEFITS.map((item, idx) => (
                 <div
                   key={idx}
-                  className="animate-fade-up"
-                  style={{
-                    display: "flex",
-                    gap: 20,
-                    alignItems: "flex-start",
-                    animationDelay: `${idx * 0.12}s`,
-                  }}
+                  className="animate-fade-up flex gap-5 items-start"
+                  style={{ animationDelay: `${idx * 0.12}s` }}
                 >
-                  <div
-                    style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: 14,
-                      backgroundColor: "rgba(10, 155, 120, 0.08)",
-                      color: "#0A9B78",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                    }}
-                  >
+                  <div className="w-12 h-12 rounded-2xl bg-primary-soft text-primary-deep flex items-center justify-center shrink-0">
                     {item.icon}
                   </div>
                   <div>
-                    <h3
-                      style={{
-                        fontSize: 16,
-                        fontWeight: 800,
-                        color: "#080E1A",
-                        fontFamily: "var(--font-display), sans-serif",
-                        margin: "0 0 6px",
-                        letterSpacing: "-0.01em",
-                      }}
-                    >
-                      {item.title}
-                    </h3>
-                    <p
-                      style={{
-                        fontSize: 13.5,
-                        color: "#4B5563",
-                        lineHeight: 1.6,
-                        margin: 0,
-                        fontFamily: "var(--font-sans), sans-serif",
-                      }}
-                    >
-                      {item.desc}
-                    </p>
+                    <h3 className="font-display font-extrabold text-base text-ink tracking-[-0.01em] mb-1.5">{item.title}</h3>
+                    <p className="text-[13.5px] text-text-body leading-relaxed">{item.desc}</p>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Column 2: Visual feature graphic block */}
-          <div
-            className="benefits-visual-col"
-            style={{
-              position: "relative",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            {/* Background design circle */}
+          {/* Column 2 — ảnh sản phẩm bouncing + rotating text + badge cam kết */}
+          <div className="benefits-visual-col relative flex items-center justify-center min-h-[440px]">
             <div
-              style={{
-                position: "absolute",
-                width: "90%",
-                height: "90%",
-                borderRadius: "50%",
-                background: "radial-gradient(circle, rgba(34, 217, 165, 0.08) 0%, transparent 70%)",
-                zIndex: 0,
-                filter: "blur(20px)",
-              }}
+              aria-hidden
+              className="absolute w-[90%] h-[90%] rounded-full blur-[20px] z-0"
+              style={{ background: "radial-gradient(circle, rgba(226,165,80,0.16) 0%, transparent 70%)" }}
             />
 
-            {/* Infographic premium card */}
+            {/* Rotating text — z-[1], nằm sau image, overlap ở góc dưới trái */}
+            <RotatingText
+              radius={84}
+              fontSize={9.5}
+              duration={12}
+              color="rgba(192,134,53,0.85)"
+              className="animate-badge-pop absolute bottom-[12%] -left-10 z-[1]"
+              style={{ animationDelay: "0.4s" }}
+            />
+
+            {/* Main image — z-[2] nổi trên vòng chữ, bouncing */}
             <div
-              className="animate-badge-pop"
+              className="relative z-[2] w-full max-w-[460px] aspect-[4/5] rounded-[32px] overflow-hidden"
               style={{
-                position: "relative",
-                zIndex: 1,
-                backgroundColor: "#FFFFFF",
-                borderRadius: 32,
-                border: "1px solid rgba(10, 155, 120, 0.1)",
-                boxShadow: "0 20px 48px rgba(10, 155, 120, 0.06)",
-                padding: "48px 40px",
-                width: "100%",
-                maxWidth: 400,
-                display: "flex",
-                flexDirection: "column",
-                gap: 24,
-                textAlign: "center",
-                animationDelay: "0.4s",
+                boxShadow: "0 0 0 5px #C08635, 0 24px 72px rgba(0,0,0,0.14)",
+                animation: "floatYSlowRotated 7s ease-in-out infinite",
               }}
             >
-              <div
-                style={{
-                  fontSize: 12,
-                  fontWeight: 800,
-                  color: "#D97706",
-                  backgroundColor: "rgba(234, 179, 8, 0.08)",
-                  padding: "6px 14px",
-                  borderRadius: 99,
-                  alignSelf: "center",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.08em",
-                  fontFamily: "var(--font-sans), sans-serif",
-                }}
-              >
+              <Image src="/images/example.jpg" alt="Nutein" fill className="object-cover" />
+            </div>
+
+            <div className="animate-badge-pop absolute top-4 -right-2 md:-right-6 z-[3] bg-surface rounded-3xl border border-[color:var(--color-border)] shadow-lg px-6 py-5 w-[210px] flex flex-col gap-3" style={{ animationDelay: "0.6s" }}>
+              <Badge color="primary" size="sm" className="self-start uppercase">
                 Cam kết 4 Không
-              </div>
-              <h4
-                style={{
-                  fontSize: 22,
-                  fontWeight: 900,
-                  color: "#080E1A",
-                  fontFamily: "var(--font-display), sans-serif",
-                  margin: 0,
-                  letterSpacing: "-0.02em",
-                }}
-              >
-                An Toàn Cho Sức Khỏe
-              </h4>
-              
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 16,
-                  textAlign: "left",
-                  marginTop: 8,
-                }}
-              >
-                {[
-                  "Không bổ sung đường hóa học",
-                  "Không chứa Gluten & Lactose",
-                  "Không biến đổi gen (Non-GMO)",
-                  "Không chất bảo quản nhân tạo",
-                ].map((item, idx) => (
-                  <div key={idx} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <div
-                      style={{
-                        width: 20,
-                        height: 20,
-                        borderRadius: 99,
-                        backgroundColor: "rgba(10, 155, 120, 0.1)",
-                        color: "#0A9B78",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: 12,
-                        fontWeight: 900,
-                      }}
-                    >
-                      ✓
-                    </div>
-                    <span
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 700,
-                        color: "#374151",
-                        fontFamily: "var(--font-sans), sans-serif",
-                      }}
-                    >
-                      {item}
+              </Badge>
+              <div className="flex flex-col gap-2 text-left">
+                {COMMITMENTS.map((item, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <span className="w-4 h-4 rounded-full bg-primary-soft text-primary-deep flex items-center justify-center shrink-0">
+                      <Check size={10} strokeWidth={3} />
                     </span>
+                    <span className="text-[11.5px] font-bold text-text-body leading-tight">{item}</span>
                   </div>
                 ))}
               </div>
@@ -270,14 +125,14 @@ export default function BenefitsSection() {
       </div>
 
       <style>{`
+        @keyframes floatYSlowRotated {
+          0%, 100% { transform: translateY(0px)   rotate(2deg);  }
+          33%       { transform: translateY(-14px) rotate(3deg);  }
+          66%       { transform: translateY(-7px)  rotate(1deg);  }
+        }
         @media (max-width: 900px) {
-          .benefits-split {
-            grid-template-columns: 1fr !important;
-            gap: 48px !important;
-          }
-          .benefits-visual-col {
-            order: 2;
-          }
+          .benefits-split { grid-template-columns: 1fr !important; gap: 48px !important; }
+          .benefits-visual-col { order: 2; padding: 0 12px; }
         }
       `}</style>
     </section>

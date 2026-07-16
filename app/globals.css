@@ -1,47 +1,68 @@
 @import "tailwindcss";
 
-/* ── Design Tokens ─────────────────────────────────────────────────────────── */
-:root {
-  /* Brand */
-  --color-primary:       #0A9B78;
-  --color-primary-deep:  #077A5F;
-  --color-primary-glow:  #10C48A;
-  --color-accent:        #22D9A5;
+/* ── Design Tokens (Tailwind v4 @theme) ──────────────────────────────────────
+   Toàn bộ token brand Nutein khai báo trong @theme để tự sinh utility class
+   (bg-primary, text-ink, border-sky, shadow-brand, rounded-lg...). Component
+   không được hardcode hex nữa — dùng utility hoặc var(--token-name).
+   Xem docs/frontend-style-overhaul.md mục 2 để biết nguồn gốc bảng màu.       */
+@theme {
+  /* Brand — caramel/nâu logo Nutein (thay xanh lá cũ) */
+  --color-primary:      #E2A55D;
+  --color-primary-deep: #C08635;
+  --color-primary-soft: #FBEEDA;
 
-  /* Neutrals */
-  --color-bg:            #FAFBFC;
+  /* Ink — heading/text đậm (tím-nâu, thay đen thuần) */
+  --color-ink: #351E29;
+
+  /* Neutrals / surface */
+  --color-bg:            #FFFDFD;
   --color-surface:       #FFFFFF;
-  --color-border:        rgba(0, 0, 0, 0.07);
-  --color-border-subtle: rgba(0, 0, 0, 0.04);
+  --color-border:        rgba(53, 30, 41, 0.08);
+  --color-border-subtle: rgba(53, 30, 41, 0.04);
 
   /* Text */
-  --color-text-heading:  #080E1A;
-  --color-text-body:     #374151;
-  --color-text-muted:    #6B7280;
-  --color-text-faint:    #9CA3AF;
+  --color-text-body:  #5A4550;
+  --color-text-muted: #8B7680;
+  --color-text-faint: #B7A8AC;
+
+  /* Bảng màu phụ (sparkle / badge dưỡng chất) */
+  --color-sky:      #D8EFFF;
+  --color-sky-deep: #8ED4FF;
+  --color-lime:     #C4E293;
+  --color-sage:     #AFB9A1;
+  --color-forest:   #477236;
+  --color-gray:     #E0E0E0;
 
   /* Shadows */
-  --shadow-sm:    0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md:    0 4px 16px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
-  --shadow-lg:    0 12px 40px rgba(0,0,0,0.1),  0 4px 12px rgba(0,0,0,0.06);
-  --shadow-xl:    0 24px 64px rgba(0,0,0,0.12), 0 8px 24px rgba(0,0,0,0.06);
-  --shadow-green: 0 16px 48px rgba(10,155,120,0.3), 0 4px 16px rgba(10,155,120,0.15);
-
-  /* Font */
-  --font-sans:    var(--font-mulish), "Inter", system-ui, -apple-system, sans-serif;
-  --font-display: var(--font-quicksand), "Inter", system-ui, -apple-system, sans-serif;
+  --shadow-sm:    0 1px 3px rgba(53,30,41,0.06), 0 1px 2px rgba(53,30,41,0.04);
+  --shadow-md:    0 4px 16px rgba(53,30,41,0.08), 0 2px 6px rgba(53,30,41,0.04);
+  --shadow-lg:    0 12px 40px rgba(53,30,41,0.1),  0 4px 12px rgba(53,30,41,0.06);
+  --shadow-xl:    0 24px 64px rgba(53,30,41,0.12), 0 8px 24px rgba(53,30,41,0.06);
+  --shadow-brand: 0 16px 48px rgba(226,165,80,0.35), 0 4px 16px rgba(226,165,80,0.18);
 
   /* Radius */
-  --radius-sm:  8px;
-  --radius-md:  14px;
-  --radius-lg:  20px;
-  --radius-xl:  28px;
-  --radius-full: 9999px;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+}
+
+/* Font — tham chiếu biến CSS do next/font tạo ra (đặt trên <html>), dùng
+   @theme inline vì đây là biến runtime, không phải giá trị tĩnh.            */
+@theme inline {
+  --font-sans:    var(--font-mulish), "Inter", system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-quicksand), "Inter", system-ui, -apple-system, sans-serif;
 }
 
 /* ── Reset ──────────────────────────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
+/* QUAN TRỌNG: KHÔNG tự khai báo lại `*, *::before, *::after { margin:0; padding:0 }`
+   ở đây. Tailwind v4 preflight (trong @import "tailwindcss") đã reset margin/padding
+   đúng bên trong @layer base rồi. Nếu tự viết thêm 1 bản universal reset trong file
+   này, ở build hiện tại (@tailwindcss/postcss + Turbopack dev) nó sẽ bị biên dịch
+   ra thành CSS "unlayered" (không có @layer bao ngoài) — mà theo spec CSS Cascade
+   Layers, style unlayered LUÔN thắng mọi style layered (bất kể specificity), khiến
+   toàn bộ utility margin/padding của Tailwind (mx-auto, px-*, py-*, gap-*...) bị
+   vô hiệu hoá trên toàn site. Đây chính là nguyên nhân gây lỗi layout đã gặp.      */
 html, body {
   height: 100%;
   scroll-behavior: smooth;
@@ -56,11 +77,13 @@ body {
   line-height: 1.6;
 }
 
+/* CHỈ đặt font-family mặc định ở đây. KHÔNG đặt color/line-height/letter-spacing
+   toàn cục cho h1-h6 — vì selector tag thuần (không @layer) là CSS "unlayered"
+   và theo spec Cascade Layers sẽ LUÔN thắng mọi Tailwind utility (text-white,
+   tracking-*, leading-*...) dù layered utility có specificity cao hơn. Mỗi
+   component phải tự set color/line-height/letter-spacing qua utility class. */
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-display);
-  color: var(--color-text-heading);
-  line-height: 1.12;
-  letter-spacing: -0.03em;
 }
 
 /* ── Animations ─────────────────────────────────────────────────────────────── */
@@ -101,6 +124,11 @@ h1, h2, h3, h4, h5, h6 {
   50%       { opacity: 1;   transform: scale(1.04); }
 }
 
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
 /* ── Animation classes ───────────────────────────────────────────────────────── */
 .animate-float       { animation: floatY 4s ease-in-out infinite; }
 .animate-float-slow  { animation: floatYSlow 6s ease-in-out infinite; }
@@ -108,3 +136,21 @@ h1, h2, h3, h4, h5, h6 {
 .animate-fade-right  { animation: fadeRight 0.75s cubic-bezier(0.22,1,0.36,1) both; }
 .animate-badge-pop   { animation: badgePop 0.5s cubic-bezier(0.34,1.56,0.64,1) both; }
 .animate-pulse-glow  { animation: pulseGlow 3s ease-in-out infinite; }
+.animate-marquee     { animation: marquee 22s linear infinite; }
+
+
+/* Ẩn scrollbar cho track carousel ngang (Intro/Testimonials) — điều hướng qua
+   CarouselArrows, không cần thanh cuộn hệ điều hành hiển thị. */
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── CTA Cluster Button ──────────────────────────────────────────────────────
+   Styles sống trong components/ui/CtaCluster.tsx (inline <style>).
+   Absolute layout: [label][arrow] cạnh sát, hover đổi `left` — không chồng.   */
+
+/* Fill Button → xem components/ui/FillButton.tsx (Tailwind group-hover, không dùng CSS class) */

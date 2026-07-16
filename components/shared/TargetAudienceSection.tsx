@@ -1,237 +1,86 @@
 "use client";
 
-import React from "react";
-import { Briefcase, Heart, Flame, ShieldAlert } from "lucide-react";
+import { type CSSProperties } from "react";
+import { BounceChars, FadeInOnView } from "@/components/ui/BounceChars";
 
-const PERSONAS = [
+interface Persona {
+  title: string;
+  desc: string;
+  color: string;
+}
+
+const PERSONAS: Persona[] = [
   {
-    icon: <Briefcase size={26} />,
     title: "Dân Văn Phòng Bận Rộn",
-    focus: "Tiết kiệm thời gian",
     desc: "Bữa sáng dinh dưỡng trọn vẹn chỉ trong 2 phút pha nhanh. Đảm bảo đủ đạm và năng lượng sạch để duy trì tỉnh táo suốt ngày làm việc mà không thèm ăn vặt.",
-    border: "rgba(10, 155, 120, 0.1)",
-    color: "#0A9B78",
+    color: "#1E4E7A",
   },
   {
-    icon: <Flame size={26} />,
     title: "Người Tập Gym, Yoga & Pilates",
-    focus: "Phục hồi cơ bắp",
     desc: "Nạp đạm tinh khiết chất lượng cao hỗ trợ xây dựng cơ bắp săn chắc, tăng độ bền bỉ khi tập luyện và hồi phục cơ nhanh chóng sau các buổi tập cường độ cao.",
-    border: "rgba(234, 179, 8, 0.1)",
-    color: "#D97706",
+    color: "#C08635",
   },
   {
-    icon: <Heart size={26} />,
     title: "Tín Đồ Ăn Chay & Eat Clean",
-    focus: "100% Thuần thực vật",
     desc: "Nguồn đạm lý tưởng thay thế thịt cá, hoàn toàn từ hạt tự nhiên. Không chứa lactose, không gluten và không chất bảo quản, tuyệt đối an lành cho cơ thể.",
-    border: "rgba(34, 217, 165, 0.1)",
-    color: "#077A5F",
+    color: "#477236",
   },
   {
-    icon: <ShieldAlert size={26} />,
     title: "Gia Đình & Người Lớn Tuổi",
-    focus: "Dinh dưỡng dễ tiêu hóa",
     desc: "Nhờ công nghệ thủy phân enzyme thực vật, sản phẩm cực kỳ dễ hấp thu, nhẹ bụng. Thích hợp bổ sung dưỡng chất thiết yếu hàng ngày cho ông bà và cha mẹ.",
-    border: "rgba(59, 130, 246, 0.1)",
-    color: "#2563EB",
+    color: "#5A4550",
   },
 ];
 
 export default function TargetAudienceSection() {
   return (
-    <section
-      id="target-audience"
-      style={{
-        padding: "100px 24px",
-        backgroundColor: "#FFFFFF",
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
-      {/* Decorative ambient lighting dots */}
-      <div
-        style={{
-          position: "absolute",
-          top: "15%",
-          left: "-10%",
-          width: 320,
-          height: 320,
-          borderRadius: 9999,
-          backgroundColor: "rgba(234, 179, 8, 0.04)",
-          filter: "blur(60px)",
-          pointerEvents: "none",
-          zIndex: 0,
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          bottom: "10%",
-          right: "-10%",
-          width: 320,
-          height: 320,
-          borderRadius: 9999,
-          backgroundColor: "rgba(10, 155, 120, 0.04)",
-          filter: "blur(60px)",
-          pointerEvents: "none",
-          zIndex: 0,
-        }}
-      />
-
-      <div style={{ maxWidth: 1200, margin: "0 auto", position: "relative", zIndex: 1 }}>
-        
-        {/* Section Title */}
-        <div style={{ textAlign: "center", marginBottom: 60 }}>
-          <span
-            style={{
-              fontSize: 12,
-              fontWeight: 800,
-              color: "#0A9B78",
-              textTransform: "uppercase",
-              letterSpacing: "0.18em",
-              fontFamily: "var(--font-sans), sans-serif",
-            }}
-          >
+    <section id="target-audience" className="relative">
+      {/* Khối màu full-bleed (thay ảnh lifestyle chưa có) + heading trắng đè lên */}
+      <div className="relative bg-gradient-to-br from-ink via-[#4A2E3D] to-primary-deep pt-24 pb-48 md:pb-64 px-6 overflow-hidden">
+        <div
+          aria-hidden
+          className="absolute inset-0 opacity-40"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 20% 30%, rgba(226,165,80,0.35) 0%, transparent 45%), radial-gradient(circle at 80% 70%, rgba(196,226,147,0.18) 0%, transparent 45%)",
+          }}
+        />
+        <div className="relative z-[1] max-w-[720px] mx-auto text-center">
+          <FadeInOnView className="text-xs font-extrabold uppercase tracking-[0.18em] text-primary-soft">
             Phân nhóm đối tượng
-          </span>
-          <h2
-            style={{
-              fontSize: "clamp(28px, 3.5vw, 40px)",
-              fontWeight: 900,
-              color: "#080E1A",
-              fontFamily: "var(--font-display), sans-serif",
-              marginTop: 10,
-              marginBottom: 16,
-              letterSpacing: "-0.03em",
-            }}
-          >
-            Protein Nutein dành cho ai?
+          </FadeInOnView>
+          <h2 className="font-display font-black uppercase text-white text-[clamp(38px,6.5vw,84px)] leading-[0.98] tracking-[-0.03em] mt-3 mb-4">
+            <BounceChars>Protein Nutein dành cho ai?</BounceChars>
           </h2>
-          <p
-            style={{
-              fontSize: 16,
-              color: "#6B7280",
-              maxWidth: 600,
-              margin: "0 auto",
-              lineHeight: 1.6,
-              fontFamily: "var(--font-sans), sans-serif",
-            }}
-          >
+          <p className="text-white/75 text-base leading-relaxed">
             Nutein cung cấp nguồn đạm thực vật sạch, lành và dễ tiêu hóa, đáp ứng nhu cầu dinh dưỡng đa dạng của mọi thành viên.
           </p>
         </div>
+      </div>
 
-        {/* Audience Card Grid */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-            gap: 30,
-          }}
-        >
+      {/* Card đè lên mép dưới khối màu (margin âm) */}
+      <div className="relative z-[2] max-w-[1200px] mx-auto px-6 -mt-36 md:-mt-44 pb-24">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {PERSONAS.map((item, idx) => (
             <div
               key={idx}
-              className="audience-card animate-fade-up"
+              className="animate-fade-up flex flex-col justify-between gap-8 p-8 rounded-[40px] min-h-[260px] bg-surface"
               style={{
-                backgroundColor: "#FFFFFF",
-                border: `1px solid ${item.border}`,
-                borderRadius: 24,
-                padding: "36px 32px",
-                boxShadow: "0 4px 20px rgba(0, 0, 0, 0.015)",
-                transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
-                display: "flex",
-                flexDirection: "column",
-                gap: 18,
-                position: "relative",
-                overflow: "hidden",
                 animationDelay: `${idx * 0.12}s`,
-              }}
+                borderTop:    "3px solid var(--color-primary-deep)",
+                borderLeft:   "3px solid var(--color-primary-deep)",
+                borderRight:  "3px solid var(--color-primary-deep)",
+                borderBottom: "10px solid var(--color-primary-deep)",
+              } as CSSProperties}
             >
-              {/* Subtle top visual corner accent */}
-              <div
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  height: 4,
-                  backgroundColor: item.color,
-                  opacity: 0.8,
-                }}
-              />
-
-              {/* Icon & Title Row */}
-              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                <div
-                  style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 14,
-                    backgroundColor: "rgba(8, 14, 26, 0.03)",
-                    color: item.color,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  {item.icon}
-                </div>
-                <div>
-                  <h3
-                    style={{
-                      fontSize: 17,
-                      fontWeight: 800,
-                      color: "#080E1A",
-                      fontFamily: "var(--font-display), sans-serif",
-                      margin: 0,
-                      letterSpacing: "-0.01em",
-                    }}
-                  >
-                    {item.title}
-                  </h3>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 700,
-                      color: item.color,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.04em",
-                      fontFamily: "var(--font-sans), sans-serif",
-                      display: "block",
-                      marginTop: 2,
-                    }}
-                  >
-                    {item.focus}
-                  </span>
-                </div>
-              </div>
-
-              {/* Description */}
-              <p
-                style={{
-                  fontSize: 14,
-                  color: "#4B5563",
-                  lineHeight: 1.65,
-                  margin: 0,
-                  fontFamily: "var(--font-sans), sans-serif",
-                }}
-              >
-                {item.desc}
-              </p>
+              <h3 className="font-display font-extrabold text-[clamp(18px,2.2vw,24px)] text-ink tracking-[-0.03em] leading-tight">
+                {item.title}
+              </h3>
+              <p className="text-[13.5px] text-text-body leading-relaxed">{item.desc}</p>
             </div>
           ))}
         </div>
       </div>
-
-      <style>{`
-        .audience-card:hover {
-          transform: translateY(-6px);
-          box-shadow: 0 24px 48px rgba(8, 14, 26, 0.08) !important;
-          border-color: rgba(10, 155, 120, 0.2) !important;
-        }
-      `}</style>
     </section>
   );
 }

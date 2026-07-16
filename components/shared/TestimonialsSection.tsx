@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
-import { Star } from "lucide-react";
+import { type CSSProperties } from "react";
+import { SectionHeading } from "@/components/ui/SectionHeading";
+import { StarRating } from "@/components/ui/StarRating";
 
 const REVIEWS = [
   {
@@ -32,180 +33,49 @@ const REVIEWS = [
 
 export default function TestimonialsSection() {
   return (
-    <section
-      id="testimonials"
-      style={{
-        padding: "100px 24px",
-        backgroundColor: "#FFFFFF",
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
-      <div style={{ maxWidth: 1200, margin: "0 auto", position: "relative", zIndex: 1 }}>
-        
-        {/* Section Title */}
-        <div style={{ textAlign: "center", marginBottom: 60 }}>
-          <span
-            style={{
-              fontSize: 12,
-              fontWeight: 800,
-              color: "#0A9B78",
-              textTransform: "uppercase",
-              letterSpacing: "0.18em",
-              fontFamily: "var(--font-sans), sans-serif",
-            }}
-          >
-            Đánh giá khách hàng
-          </span>
-          <h2
-            style={{
-              fontSize: "clamp(28px, 3.5vw, 40px)",
-              fontWeight: 900,
-              color: "#080E1A",
-              fontFamily: "var(--font-display), sans-serif",
-              marginTop: 10,
-              marginBottom: 16,
-              letterSpacing: "-0.03em",
-            }}
-          >
-            Khách hàng nói gì về Nutein?
-          </h2>
-          <p
-            style={{
-              fontSize: 16,
-              color: "#6B7280",
-              maxWidth: 600,
-              margin: "0 auto",
-              lineHeight: 1.6,
-              fontFamily: "var(--font-sans), sans-serif",
-            }}
-          >
-            Hơn 50,000+ khách hàng đã tin tưởng và thay đổi thói quen dinh dưỡng cùng Nutein để hướng tới cuộc sống khỏe mạnh mỗi ngày.
-          </p>
-        </div>
+    <section id="testimonials" className="relative overflow-hidden bg-surface py-24">
+      <div className="max-w-[1200px] mx-auto px-6">
+        <SectionHeading eyebrow="Đánh giá khách hàng" align="left" className="text-[clamp(44px,6.5vw,88px)] tracking-[-0.04em] mb-4">
+          Khách hàng nói gì<br />về Nutein?
+        </SectionHeading>
+        <p className="text-text-muted text-base max-w-[600px] mb-8 leading-relaxed">
+          Hơn 50,000+ khách hàng đã tin tưởng và thay đổi thói quen dinh dưỡng cùng Nutein để hướng tới cuộc sống khỏe mạnh mỗi ngày.
+        </p>
 
-        {/* Testimonials Grid */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-            gap: 30,
-          }}
-        >
+        <div className="scrollbar-hide flex gap-6 overflow-x-auto snap-x snap-mandatory pb-4 md:grid md:grid-cols-3 md:overflow-visible">
           {REVIEWS.map((review, idx) => (
             <div
               key={idx}
-              className="testimonial-card animate-fade-up"
               suppressHydrationWarning
+              className="animate-fade-up flex flex-col gap-5 p-8 rounded-[40px] bg-surface w-[300px] md:w-auto shrink-0 snap-start"
               style={{
-                backgroundColor: "#FFFFFF",
-                border: "1px solid rgba(0, 0, 0, 0.05)",
-                borderRadius: 24,
-                padding: "36px 32px",
-                boxShadow: "0 4px 20px rgba(0, 0, 0, 0.015)",
-                transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
-                display: "flex",
-                flexDirection: "column",
-                gap: 20,
                 animationDelay: `${idx * 0.15}s`,
-              }}
+                border: "2px solid var(--color-ink)",
+              } as CSSProperties}
             >
-              {/* Stars & Top visual */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ display: "flex", gap: 3 }}>
-                  {Array.from({ length: review.rating }).map((_, i) => (
-                    <Star key={i} size={15} fill="#F59E0B" stroke="#F59E0B" />
-                  ))}
-                </div>
-                <span
-                  style={{
-                    fontSize: 48,
-                    fontWeight: 900,
-                    color: "rgba(10, 155, 120, 0.08)",
-                    lineHeight: 0.1,
-                    fontFamily: "Georgia, serif",
-                    transform: "translateY(12px)",
-                  }}
-                >
-                  “
-                </span>
+              <div className="flex items-center justify-between">
+                <StarRating rating={review.rating} size={15} />
+                <span className="font-display text-primary/25 text-5xl leading-none select-none">&ldquo;</span>
               </div>
 
-              {/* Comment text */}
-              <p
-                style={{
-                  fontSize: 14.5,
-                  color: "#4B5563",
-                  lineHeight: 1.7,
-                  margin: 0,
-                  fontStyle: "italic",
-                  fontFamily: "var(--font-sans), sans-serif",
-                  flexGrow: 1,
-                }}
-              >
-                {review.comment}
-              </p>
+              <p className="text-[14.5px] text-text-body leading-relaxed italic grow">{review.comment}</p>
 
-              {/* Divider */}
-              <div style={{ height: 1, backgroundColor: "rgba(0,0,0,0.05)" }} />
-
-              {/* User Info Row */}
-              <div style={{ display: "flex", alignItems: "center", gap: 14 }} suppressHydrationWarning>
-                {/* Initials Avatar */}
+              <div className="pt-4 border-t border-[color:var(--color-border)] flex items-center gap-3.5" suppressHydrationWarning>
                 <div
                   suppressHydrationWarning
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 14,
-                    backgroundColor: "rgba(10, 155, 120, 0.08)",
-                    color: "#0A9B78",
-                    fontWeight: 800,
-                    fontSize: 15,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontFamily: "var(--font-display), sans-serif",
-                  }}
+                  className="w-11 h-11 rounded-2xl bg-primary-soft text-primary-deep font-display font-extrabold text-[15px] flex items-center justify-center shrink-0"
                 >
                   {review.avatar}
                 </div>
                 <div suppressHydrationWarning>
-                  <h4
-                    style={{
-                      fontSize: 15,
-                      fontWeight: 800,
-                      color: "#080E1A",
-                      fontFamily: "var(--font-display), sans-serif",
-                      margin: 0,
-                    }}
-                  >
-                    {review.name}
-                  </h4>
-                  <p
-                    style={{
-                      fontSize: 12,
-                      color: "#6B7280",
-                      margin: "2px 0 0",
-                      fontFamily: "var(--font-sans), sans-serif",
-                    }}
-                  >
-                    {review.age} • {review.role}
-                  </p>
+                  <h4 className="font-display font-extrabold text-[15px] text-ink">{review.name}</h4>
+                  <p className="text-xs text-text-muted mt-0.5">{review.age} • {review.role}</p>
                 </div>
               </div>
             </div>
           ))}
         </div>
       </div>
-
-      <style>{`
-        .testimonial-card:hover {
-          transform: translateY(-6px);
-          box-shadow: 0 24px 48px rgba(8, 14, 26, 0.06) !important;
-          border-color: rgba(10, 155, 120, 0.18) !important;
-        }
-      `}</style>
     </section>
   );
 }

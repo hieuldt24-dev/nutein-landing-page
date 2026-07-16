@@ -27,6 +27,9 @@ export const metadata: Metadata = {
     locale: "vi_VN",
     type: "website",
   },
+  icons: {
+    icon: "/images/favicon-color-3232-10x_2.svg",
+  },
 };
 
 import { SWRProvider } from "@/components/providers/SWRProvider";
