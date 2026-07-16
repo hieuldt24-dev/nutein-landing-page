@@ -13,6 +13,8 @@ Tài liệu này ghi nhận mục tiêu dự án, cấu trúc sitemap, chi tiế
 | **Mục tiêu chính** | (1) Truyền tải thương hiệu → (2) Thuyết phục mua hàng → (3) Tối ưu chuyển đổi & giữ chân khách hàng |
 | **Nhóm trang** | 10 trang chính + Footer toàn site |
 
+> ⚠️ **Ràng buộc quan trọng cho mọi trang liên quan sản phẩm/giỏ hàng/đơn hàng/wishlist:** Nutein chỉ bán **1 sản phẩm chủ lực** (single-SKU), không phải catalog nhiều sản phẩm. Một số mục dưới đây (Cart, Wishlist) dùng câu chữ generic kiểu e-commerce đa sản phẩm ("danh sách sản phẩm", "sản phẩm yêu thích") — đã được đánh dấu ⚠️ tại từng vị trí kèm giải thích đúng. Không implement listing/catalog/search cho "sản phẩm" (chỉ blog/recipe mới cần listing). Chi tiết state/shape dữ liệu xem `docs/state-management.md` mục 7.
+
 ---
 
 ## 2. Danh Sách Các Trang & Đường Dẫn (Next.js App Router Mapping)
@@ -35,7 +37,7 @@ Dưới đây là danh sách chi tiết các trang sẽ được tạo trong c�
 | 12 | ✅ | **Đăng nhập** (Login) | - (Popup Modal) | `components/shared/AuthModal.tsx` | Đã xong (Tích hợp dạng Popup chặn tương tác trang nền) |
 | 13 | ✅ | **Đăng ký** (Register) | - (Popup Modal) | `components/shared/AuthModal.tsx` | Đã xong (Tích hợp dạng Popup chặn tương tác trang nền) |
 | 14 | ⏳ | **Lịch sử đơn hàng** (Orders) | `/account/orders` | `app/account/orders/page.tsx` | Client Component (Theo dõi đơn hàng qua SWR/DB) |
-| 15 | ⏳ | **Sản phẩm yêu thích** (Wishlist) | `/account/wishlist` | `app/account/wishlist/page.tsx`| Client Component (Lấy từ localStorage/DB) |
+| 15 | ⏳ | **Sản phẩm yêu thích** (Wishlist) | `/account/wishlist` | `app/account/wishlist/page.tsx`| Client Component (Lấy từ localStorage/DB) ⚠️ Cần xác nhận lại với client: site chỉ có 1 sản phẩm chủ lực (mục 1) nên "wishlist sản phẩm" chưa rõ nghĩa — có thể ý client là lưu công thức/blog yêu thích (xem mục 3.5) chứ không phải sản phẩm. Không code route này theo hướng multi-product wishlist khi chưa xác nhận. |
 
 ---
 
@@ -72,6 +74,7 @@ Dưới đây là danh sách chi tiết các trang sẽ được tạo trong c�
   * Mã giảm giá (voucher).
   * Tạm tính, phí vận chuyển ước tính, tổng thanh toán.
   * CTA: Đi đến Thanh toán.
+  * ⚠️ **Cần lưu ý khi triển khai:** mục 1 của tài liệu này ghi rõ Nutein là "E-commerce 1 sản phẩm chủ lực" (single-SKU), nên "Danh sách sản phẩm" ở trên thực chất là **1 dòng hàng duy nhất** (sản phẩm Nutein) + số lượng chỉnh được — không phải giỏ hàng nhiều sản phẩm khác nhau như e-commerce đa mặt hàng thông thường. Nếu có gói/combo (hộp 1/3/6 hũ...), đó là **variant** của cùng 1 sản phẩm. Xem `docs/state-management.md` mục 7 để biết shape state cụ thể.
 
 ### 3.4 Thanh Toán (Checkout)
 * **Mục tiêu:** Tối ưu trải nghiệm điền thông tin, tăng tỷ lệ chuyển đổi.
@@ -114,7 +117,7 @@ Dưới đây là danh sách chi tiết các trang sẽ được tạo trong c�
   * Đăng ký / Đăng nhập / Quên mật khẩu.
   * Thông tin cá nhân, Số điện thoại, Sổ địa chỉ nhận hàng.
   * Lịch sử đơn hàng, Theo dõi trạng thái đơn hàng (Đang xử lý, Đang giao, Thành công).
-  * Danh sách yêu thích (Wishlist).
+  * Danh sách yêu thích (Wishlist). ⚠️ Xem cảnh báo ở mục 2, dòng 15 — cần xác nhận lại phạm vi thực tế của tính năng này trước khi triển khai.
 
 ### 3.10 Xác Nhận Đặt Hàng Thành Công (Order Success)
 * **Mục tiêu:** Xác nhận đơn hàng, gửi lời cảm ơn và giữ chân người dùng tiếp tục đọc blog/công thức.
