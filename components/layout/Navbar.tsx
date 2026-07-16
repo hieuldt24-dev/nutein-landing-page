@@ -1,187 +1,92 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState } from "react";
 import { useSWRConfig } from "swr";
+import { ShoppingBag, User, ChevronDown } from "lucide-react";
+import { FillButton } from "@/components/ui/FillButton";
 
 const NAV_LINKS = [
-  { label: "Sản phẩm", href: "#san-pham" },
-  { label: "Về chúng tôi", href: "#ve-chung-toi" },
-  { label: "Kiến thức", href: "#kien-thuc" },
-  { label: "Liên hệ", href: "#lien-he" },
+  { label: "Sản phẩm", href: "#san-pham", caret: false },
+  { label: "Về chúng tôi", href: "#ve-chung-toi", caret: false },
+  { label: "Kiến thức", href: "#kien-thuc", caret: false },
+  { label: "Liên hệ", href: "#lien-he", caret: false },
 ];
 
+/**
+ * Navbar nổi trong suốt tuyệt đối (`position: absolute`) trong phạm vi Hero —
+ * đúng hành vi đo được trên reference (không phải `fixed` dính khi cuộn qua
+ * các section khác). Component cha (`app/page.tsx`) đặt Navbar + HeroSection
+ * trong 1 wrapper `relative` để absolute này định vị đúng theo Hero.
+ */
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { mutate } = useSWRConfig();
   const setAuthOpen = (val: boolean) => mutate("auth-modal", val, { revalidate: false });
 
   return (
-    <header
-      id="navbar"
-      style={{
-        position: "sticky",
-        top: 0,
-        zIndex: 50,
-        backgroundColor: "rgba(246,249,248,0.82)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-        borderBottom: "1px solid rgba(0,0,0,0.06)",
-        boxShadow: "0 1px 0 rgba(0,0,0,0.04)",
-      }}
-    >
-      <nav
-        style={{
-          maxWidth: 1200,
-          margin: "0 auto",
-          padding: "0 40px",
-          height: 68,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        {/* Logo */}
-        <Link
-          href="/"
-          id="nav-logo"
-          style={{
-            fontSize: 20,
-            fontWeight: 800,
-            color: "#080E1A",
-            textDecoration: "none",
-            letterSpacing: "-0.04em",
-            flexShrink: 0,
-          }}
-        >
-          Nutein
+    <header id="navbar" className="absolute top-0 left-0 right-0 z-30">
+      <nav className="max-w-[1200px] mx-auto px-6 md:px-10 h-[84px] flex items-center justify-between">
+        <Link href="/" id="nav-logo" className="shrink-0 flex items-center">
+          <Image
+            src="/images/logo-horizontal-2x_1.svg"
+            alt="Nutein"
+            width={132}
+            height={36}
+            priority
+            className="h-8 w-auto"
+          />
         </Link>
 
-        {/* Desktop nav links */}
-        <ul
-          style={{ display: "flex", listStyle: "none", gap: 4, alignItems: "center" }}
-          className="hidden md:flex"
-        >
+        <ul className="hidden md:flex items-center gap-1 list-none">
           {NAV_LINKS.map((link) => (
             <li key={link.href}>
               <Link
                 href={link.href}
-                style={{
-                  fontSize: 14,
-                  fontWeight: 500,
-                  color: "#374151",
-                  textDecoration: "none",
-                  padding: "6px 12px",
-                  borderRadius: 8,
-                  transition: "color 0.15s ease, background-color 0.15s ease",
-                  display: "block",
-                }}
-                onMouseEnter={e => {
-                  const el = e.currentTarget as HTMLElement;
-                  el.style.color = "#080E1A";
-                  el.style.backgroundColor = "rgba(0,0,0,0.05)";
-                }}
-                onMouseLeave={e => {
-                  const el = e.currentTarget as HTMLElement;
-                  el.style.color = "#374151";
-                  el.style.backgroundColor = "transparent";
-                }}
+                className="flex items-center gap-1 text-sm font-semibold text-ink px-3 py-1.5 rounded-lg transition-colors hover:bg-white/50"
               >
                 {link.label}
+                {link.caret && <ChevronDown size={14} strokeWidth={2.5} className="opacity-60" />}
               </Link>
             </li>
           ))}
         </ul>
 
-        {/* Actions */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-          <button
-            id="nav-cart"
-            aria-label="Giỏ hàng"
-            style={{
-              background: "none", border: "none", cursor: "pointer",
-              padding: 8, color: "#374151", display: "flex", alignItems: "center",
-              borderRadius: 8, transition: "background-color 0.15s ease",
-            }}
-            className="hidden md:flex"
-            onMouseEnter={e => (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.06)")}
-            onMouseLeave={e => (e.currentTarget.style.backgroundColor = "transparent")}
+        <div className="flex items-center gap-2 shrink-0">
+          <FillButton
+            variant="ink"
+            className="hidden md:inline-flex pl-3.5 pr-4 py-2 text-[13px] font-bold shadow-sm"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
-              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
-            </svg>
-          </button>
+            <ShoppingBag size={16} strokeWidth={2.2} />
+            Giỏ hàng
+          </FillButton>
 
-          <button
-            id="nav-user"
-            aria-label="Tài khoản"
+          <FillButton
+            variant="ink"
             onClick={() => setAuthOpen(true)}
-            style={{
-              background: "none", border: "none", cursor: "pointer",
-              padding: 8, color: "#374151", display: "flex", alignItems: "center",
-              borderRadius: 8, transition: "background-color 0.15s ease",
-            }}
-            className="hidden md:flex"
-            onMouseEnter={e => (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.06)")}
-            onMouseLeave={e => (e.currentTarget.style.backgroundColor = "transparent")}
+            className="hidden md:inline-flex justify-center p-2.5 shadow-sm"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
-          </button>
+            <User size={16} strokeWidth={2.2} />
+          </FillButton>
 
-          <Link
-            href="#san-pham"
-            id="nav-cta"
-            style={{
-              background: "linear-gradient(135deg, #0A9B78 0%, #077A5F 100%)",
-              color: "#ffffff",
-              padding: "9px 20px",
-              borderRadius: 9999,
-              fontSize: 14,
-              fontWeight: 700,
-              textDecoration: "none",
-              letterSpacing: "-0.01em",
-              transition: "transform 0.18s ease, box-shadow 0.18s ease",
-              boxShadow: "0 4px 16px rgba(10,155,120,0.3)",
-            }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)";
-              (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 24px rgba(10,155,120,0.4)";
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
-              (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 16px rgba(10,155,120,0.3)";
-            }}
-          >
-            Mua ngay
-          </Link>
-
-          {/* Mobile burger */}
           <button
             id="nav-burger"
             aria-label="Mở menu"
             onClick={() => setMenuOpen(!menuOpen)}
-            style={{
-              background: "none", border: "none", cursor: "pointer",
-              padding: 8, color: "#080E1A",
-              flexDirection: "column", gap: 5,
-            }}
-            className="flex md:hidden"
+            className="flex md:hidden flex-col gap-[5px] p-2 text-ink"
           >
-            {[0,1,2].map(i => (
+            {[0, 1, 2].map((i) => (
               <span
                 key={i}
+                className="block w-5 h-0.5 bg-current rounded-sm transition-transform duration-200"
                 style={{
-                  display: "block", width: 20, height: 2,
-                  backgroundColor: "currentColor", borderRadius: 2,
-                  transition: "transform 0.2s, opacity 0.2s",
                   transform: menuOpen
-                    ? i === 0 ? "rotate(45deg) translateY(7px)"
-                    : i === 2 ? "rotate(-45deg) translateY(-7px)"
-                    : "none"
+                    ? i === 0
+                      ? "rotate(45deg) translateY(7px)"
+                      : i === 2
+                        ? "rotate(-45deg) translateY(-7px)"
+                        : "none"
                     : "none",
                   opacity: menuOpen && i === 1 ? 0 : 1,
                 }}
@@ -191,29 +96,14 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* Mobile menu */}
       {menuOpen && (
-        <div
-          style={{
-            borderTop: "1px solid rgba(0,0,0,0.06)",
-            backgroundColor: "rgba(245,250,248,0.97)",
-            padding: "12px 24px 20px",
-            display: "flex",
-            flexDirection: "column",
-            gap: 2,
-          }}
-          className="md:hidden"
-        >
-          {NAV_LINKS.map(link => (
+        <div className="md:hidden border-t border-[color:var(--color-border)] bg-bg/97 backdrop-blur-xl px-6 py-3 flex flex-col gap-0.5">
+          {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               onClick={() => setMenuOpen(false)}
-              style={{
-                fontSize: 15, fontWeight: 500, color: "#374151",
-                textDecoration: "none", padding: "10px 8px",
-                borderRadius: 8, borderBottom: "1px solid rgba(0,0,0,0.05)",
-              }}
+              className="text-[15px] font-medium text-text-body px-2 py-2.5 rounded-lg border-b border-[color:var(--color-border-subtle)]"
             >
               {link.label}
             </Link>
@@ -223,19 +113,9 @@ export default function Navbar() {
               setMenuOpen(false);
               setAuthOpen(true);
             }}
-            style={{
-              fontSize: 15, fontWeight: 500, color: "#374151",
-              background: "none", border: "none", textAlign: "left",
-              padding: "10px 8px", cursor: "pointer",
-              borderRadius: 8, borderBottom: "1px solid rgba(0,0,0,0.05)",
-              display: "flex", alignItems: "center", gap: 8,
-              width: "100%",
-            }}
+            className="flex items-center gap-2 w-full text-left text-[15px] font-medium text-text-body px-2 py-2.5 rounded-lg border-b border-[color:var(--color-border-subtle)]"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 2 }}>
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
+            <User size={18} strokeWidth={2} />
             Tài khoản
           </button>
         </div>
