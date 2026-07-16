@@ -1,183 +1,89 @@
 "use client";
 
-import React from "react";
-import Link from "next/link";
-import { MessageSquare, ShoppingCart } from "lucide-react";
+import Image from "next/image";
+import { MessageSquare, ShoppingCart, Leaf, ShieldCheck, Sprout } from "lucide-react";
 import { toast } from "sonner";
+import { FillButton } from "@/components/ui/FillButton";
+
+const MILESTONES = [
+  { icon: <Leaf size={18} strokeWidth={2.2} />, label: "100% Protein Thực Vật" },
+  { icon: <ShieldCheck size={18} strokeWidth={2.2} />, label: "Non-GMO" },
+  { icon: <Sprout size={18} strokeWidth={2.2} />, label: "Organic" },
+];
 
 export default function BottomCtaSection() {
   return (
     <section
       id="bottom-cta"
-      style={{
-        padding: "80px 24px 100px",
-        backgroundColor: "#FFFFFF",
-        position: "relative",
-        overflow: "hidden",
-      }}
+      className="relative overflow-hidden"
+      style={{ background: "linear-gradient(135deg, #8A5A1E 0%, #E2A550 100%)" }}
     >
-      <div style={{ maxWidth: 1200, margin: "0 auto", position: "relative" }} suppressHydrationWarning>
-        
-        {/* Main CTA banner container */}
-        <div
-          className="cta-banner"
-          suppressHydrationWarning
-          style={{
-            background: "linear-gradient(135deg, #055C47 0%, #0A9B78 100%)",
-            borderRadius: 36,
-            padding: "80px 60px",
-            textAlign: "center",
-            position: "relative",
-            overflow: "hidden",
-            boxShadow: "0 24px 64px rgba(10, 155, 120, 0.22)",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 32,
-          }}
-        >
-          {/* Animated decorative shapes inside banner */}
-          <div
-            suppressHydrationWarning
-            style={{
-              position: "absolute",
-              top: "-20%",
-              left: "-10%",
-              width: 300,
-              height: 300,
-              borderRadius: 9999,
-              background: "radial-gradient(circle, rgba(34, 217, 165, 0.18) 0%, transparent 70%)",
-              pointerEvents: "none",
-            }}
-          />
-          <div
-            suppressHydrationWarning
-            style={{
-              position: "absolute",
-              bottom: "-20%",
-              right: "-10%",
-              width: 300,
-              height: 300,
-              borderRadius: 9999,
-              background: "radial-gradient(circle, rgba(234, 179, 8, 0.15) 0%, transparent 70%)",
-              pointerEvents: "none",
-            }}
-          />
+      <div
+        aria-hidden
+        className="absolute -top-[20%] -left-[10%] w-[340px] h-[340px] rounded-full pointer-events-none"
+        style={{ background: "radial-gradient(circle, rgba(196,226,147,0.28) 0%, transparent 70%)" }}
+      />
+      <div
+        aria-hidden
+        className="absolute -bottom-[20%] -right-[10%] w-[340px] h-[340px] rounded-full pointer-events-none"
+        style={{ background: "radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%)" }}
+      />
 
-          {/* Heading content */}
-          <div style={{ position: "relative", zIndex: 1, maxWidth: 640 }} suppressHydrationWarning>
-            <h2
-              style={{
-                fontSize: "clamp(26px, 3.8vw, 40px)",
-                fontWeight: 900,
-                color: "#FFFFFF",
-                fontFamily: "var(--font-display), sans-serif",
-                margin: 0,
-                letterSpacing: "-0.03em",
-                lineHeight: 1.15,
-              }}
-            >
-              Sẵn sàng nạp nguồn năng lượng sạch từ thực vật?
-            </h2>
-            <p
-              style={{
-                fontSize: "clamp(14px, 1.8vw, 16px)",
-                color: "rgba(255, 255, 255, 0.85)",
-                lineHeight: 1.6,
-                marginTop: 16,
-                marginBottom: 0,
-                fontFamily: "var(--font-sans), sans-serif",
-              }}
-            >
-              Gia nhập lối sống lành mạnh cùng hàng ngàn khách hàng tin dùng Nutein để chăm sóc sức khỏe chủ động mỗi ngày.
-            </p>
+      <div className="relative z-[1] max-w-[1200px] mx-auto px-6 py-20 md:py-28 grid grid-cols-1 md:grid-cols-[0.8fr_1.2fr] gap-12 md:gap-16 items-center">
+        {/* Cụm ảnh xoè quạt (fan) — thay cụm lon sản phẩm nghiêng của reference (placeholder example.jpg) */}
+        <div className="cta-fan relative hidden md:block h-[320px]">
+          <div className="absolute w-[62%] aspect-[3/4] rounded-3xl overflow-hidden shadow-xl border-4 border-white left-0 top-8 -rotate-[13deg] z-[1]">
+            <Image src="/images/example.jpg" alt="Nutein" fill className="object-cover" />
           </div>
+          <div className="absolute w-[62%] aspect-[3/4] rounded-3xl overflow-hidden shadow-xl border-4 border-white left-[15%] top-0 -rotate-[1deg] z-[2]">
+            <Image src="/images/example.jpg" alt="Nutein" fill className="object-cover" />
+          </div>
+          <div className="absolute w-[62%] aspect-[3/4] rounded-3xl overflow-hidden shadow-xl border-4 border-white left-[30%] top-10 rotate-[12deg] z-[3]">
+            <Image src="/images/example.jpg" alt="Nutein" fill className="object-cover" />
+          </div>
+        </div>
 
-          {/* Action Buttons */}
-          <div
-            suppressHydrationWarning
-            style={{
-              position: "relative",
-              zIndex: 1,
-              display: "flex",
-              gap: 16,
-              flexWrap: "wrap",
-              justifyContent: "center",
-            }}
-          >
-            <Link
-              href="#san-pham"
-              style={{
-                backgroundColor: "#FFFFFF",
-                color: "#055C47",
-                padding: "16px 36px",
-                borderRadius: 9999,
-                fontSize: 15,
-                fontWeight: 800,
-                textDecoration: "none",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                boxShadow: "0 10px 25px rgba(0, 0, 0, 0.1)",
-                transition: "all 0.2s ease-in-out",
-                fontFamily: "var(--font-sans), sans-serif",
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow = "0 12px 30px rgba(0, 0, 0, 0.15)";
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 10px 25px rgba(0, 0, 0, 0.1)";
-              }}
-            >
+        <div className="cta-copy relative text-center md:text-left">
+          <h2 className="font-display font-black text-white text-[clamp(30px,4.5vw,52px)] leading-[1.05] tracking-[-0.03em]">
+            Sẵn sàng nạp nguồn năng lượng sạch từ thực vật?
+          </h2>
+          <p className="text-white/85 text-[15px] md:text-base leading-relaxed mt-4 max-w-[440px] mx-auto md:mx-0">
+            Gia nhập lối sống lành mạnh cùng hàng ngàn khách hàng tin dùng Nutein để chăm sóc sức khỏe chủ động mỗi ngày.
+          </p>
+
+          <div className="flex gap-4 flex-wrap justify-center md:justify-start mt-8">
+            <FillButton href="#san-pham" variant="white" className="px-7 py-3.5 text-base font-bold shadow-lg">
               <ShoppingCart size={18} />
               Mua Ngay Sản Phẩm
-            </Link>
+            </FillButton>
 
-            <button
+            <FillButton
+              variant="outline-white"
               onClick={() => toast.info("Hệ thống tư vấn viên đang được kết nối.")}
-              style={{
-                backgroundColor: "transparent",
-                color: "#FFFFFF",
-                padding: "14px 32px",
-                borderRadius: 9999,
-                fontSize: 15,
-                fontWeight: 700,
-                border: "1.5px solid rgba(255, 255, 255, 0.4)",
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                transition: "all 0.2s ease-in-out",
-                fontFamily: "var(--font-sans), sans-serif",
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.borderColor = "#FFFFFF";
-                e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.08)";
-                e.currentTarget.style.transform = "translateY(-1px)";
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.4)";
-                e.currentTarget.style.backgroundColor = "transparent";
-                e.currentTarget.style.transform = "translateY(0)";
-              }}
+              className="px-7 py-3.5 text-base font-bold"
             >
               <MessageSquare size={18} />
               Tư vấn trực tiếp
-            </button>
+            </FillButton>
+          </div>
+
+          {/* 3 dòng cam kết — thay cụm milestone "spend $X" của reference bằng USP có thật, không bịa số liệu */}
+          <div className="flex flex-col gap-4 mt-10 items-center md:items-start">
+            {MILESTONES.map((item, idx) => (
+              <div key={idx} className="flex items-center gap-3">
+                <span className="w-10 h-10 rounded-full border border-white/40 text-white flex items-center justify-center shrink-0">
+                  {item.icon}
+                </span>
+                <span className="text-white font-bold text-sm">{item.label}</span>
+                <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#8A5A1E] bg-white rounded-full px-2.5 py-1">
+                  Đã kiểm định
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      <style>{`
-        @media (max-width: 600px) {
-          .cta-banner {
-            padding: 48px 24px !important;
-            border-radius: 28px !important;
-          }
-        }
-      `}</style>
     </section>
   );
 }

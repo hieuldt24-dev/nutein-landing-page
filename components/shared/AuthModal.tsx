@@ -161,11 +161,11 @@ export default function AuthModal() {
         }
         
         .input-group:focus-within .input-icon {
-          color: #0A9B78 !important;
+          color: #E2A550 !important;
         }
         .input-group:focus-within input {
-          border-color: #0A9B78 !important;
-          box-shadow: 0 0 0 4px rgba(10, 155, 120, 0.12) !important;
+          border-color: #E2A550 !important;
+          box-shadow: 0 0 0 4px rgba(226, 165, 80, 0.16) !important;
         }
         
         /* Custom scrollbar inside modal card */
@@ -202,7 +202,7 @@ export default function AuthModal() {
           width: 320,
           height: 320,
           borderRadius: 999,
-          backgroundColor: "rgba(10, 155, 120, 0.22)",
+          backgroundColor: "rgba(226, 165, 80, 0.28)",
           filter: "blur(70px)",
           top: "15%",
           left: "20%",
@@ -217,7 +217,7 @@ export default function AuthModal() {
           width: 320,
           height: 320,
           borderRadius: 999,
-          backgroundColor: "rgba(234, 179, 8, 0.15)",
+          backgroundColor: "rgba(196, 226, 147, 0.22)",
           filter: "blur(70px)",
           bottom: "15%",
           right: "20%",
@@ -239,7 +239,7 @@ export default function AuthModal() {
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
           borderRadius: 28,
-          boxShadow: "0 25px 50px -12px rgba(8, 14, 26, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.6) inset, 0 0 0 1px rgba(10, 155, 120, 0.08)",
+          boxShadow: "0 25px 50px -12px rgba(53, 30, 41, 0.28), 0 0 0 1px rgba(255, 255, 255, 0.6) inset, 0 0 0 1px rgba(226, 165, 80, 0.12)",
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
@@ -251,7 +251,7 @@ export default function AuthModal() {
         <div
           style={{
             height: 6,
-            background: "linear-gradient(90deg, #0A9B78 0%, #EA3E2B 50%, #EAB308 100%)",
+            background: "linear-gradient(90deg, #E2A550 0%, #C4E293 50%, #D8EFFF 100%)",
             width: "100%",
           }}
         />
@@ -263,12 +263,12 @@ export default function AuthModal() {
             position: "absolute",
             top: 20,
             right: 20,
-            background: "rgba(8, 14, 26, 0.04)",
+            background: "rgba(53, 30, 41, 0.05)",
             border: "none",
             borderRadius: 999,
             padding: 8,
             cursor: "pointer",
-            color: "#4B5563",
+            color: "#5A4550",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -276,13 +276,13 @@ export default function AuthModal() {
             zIndex: 50,
           }}
           onMouseEnter={e => {
-            e.currentTarget.style.backgroundColor = "rgba(8, 14, 26, 0.08)";
-            e.currentTarget.style.color = "#080E1A";
+            e.currentTarget.style.backgroundColor = "rgba(53, 30, 41, 0.09)";
+            e.currentTarget.style.color = "#351E29";
             e.currentTarget.style.transform = "rotate(90deg)";
           }}
           onMouseLeave={e => {
-            e.currentTarget.style.backgroundColor = "rgba(8, 14, 26, 0.04)";
-            e.currentTarget.style.color = "#4B5563";
+            e.currentTarget.style.backgroundColor = "rgba(53, 30, 41, 0.05)";
+            e.currentTarget.style.color = "#5A4550";
             e.currentTarget.style.transform = "rotate(0deg)";
           }}
           aria-label="Đóng popup"
@@ -300,12 +300,12 @@ export default function AuthModal() {
               width: 44,
               height: 44,
               borderRadius: 14,
-              background: "linear-gradient(135deg, #0A9B78 0%, #066F56 100%)",
+              background: "linear-gradient(135deg, #E2A550 0%, #C08635 100%)",
               color: "#ffffff",
               fontSize: 20,
               fontWeight: 900,
               marginBottom: 12,
-              boxShadow: "0 8px 16px rgba(10, 155, 120, 0.25)",
+              boxShadow: "0 8px 16px rgba(226, 165, 80, 0.32)",
               fontFamily: "var(--font-quicksand), sans-serif",
             }}
           >
@@ -316,7 +316,7 @@ export default function AuthModal() {
               fontSize: 22,
               fontWeight: 800,
               fontFamily: "var(--font-quicksand), sans-serif",
-              color: "#080E1A",
+              color: "#351E29",
               letterSpacing: "-0.02em",
               margin: 0,
             }}
@@ -324,7 +324,7 @@ export default function AuthModal() {
             {activeTab === "login" ? "Chào mừng bạn trở lại" : "Khởi đầu sống lành mạnh"}
           </h2>
           {activeTab === "login" && (
-            <p style={{ fontSize: 13, color: "#6B7280", marginTop: 4, marginBottom: 0 }}>
+            <p style={{ fontSize: 13, color: "#8B7680", marginTop: 4, marginBottom: 0 }}>
               Đăng nhập để tích điểm và theo dõi đơn hàng
             </p>
           )}
@@ -370,7 +370,7 @@ export default function AuthModal() {
               fontSize: 14,
               fontWeight: 700,
               fontFamily: "var(--font-quicksand), sans-serif",
-              color: activeTab === "login" ? "#0A9B78" : "#6B7280",
+              color: activeTab === "login" ? "#C08635" : "#8B7680",
               cursor: isSubmittingForm ? "not-allowed" : "pointer",
               transition: "color 0.2s ease",
             }}
@@ -390,7 +390,7 @@ export default function AuthModal() {
               fontSize: 14,
               fontWeight: 700,
               fontFamily: "var(--font-quicksand), sans-serif",
-              color: activeTab === "register" ? "#0A9B78" : "#6B7280",
+              color: activeTab === "register" ? "#C08635" : "#8B7680",
               cursor: isSubmittingForm ? "not-allowed" : "pointer",
               transition: "color 0.2s ease",
             }}
@@ -424,7 +424,7 @@ export default function AuthModal() {
                 
                 {/* Email */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <label style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>Email</label>
+                  <label style={{ fontSize: 13, fontWeight: 700, color: "#5A4550" }}>Email</label>
                   <div className="input-group" style={{ position: "relative" }}>
                     <Mail
                       className="input-icon"
@@ -434,7 +434,7 @@ export default function AuthModal() {
                         left: 14,
                         top: "50%",
                         transform: "translateY(-50%)",
-                        color: "#9CA3AF",
+                        color: "#B7A8AC",
                         transition: "color 0.2s ease",
                       }}
                     />
@@ -463,7 +463,7 @@ export default function AuthModal() {
 
                 {/* Mật khẩu */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <label style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>Mật khẩu</label>
+                  <label style={{ fontSize: 13, fontWeight: 700, color: "#5A4550" }}>Mật khẩu</label>
                   <div className="input-group" style={{ position: "relative" }}>
                     <Lock
                       className="input-icon"
@@ -473,7 +473,7 @@ export default function AuthModal() {
                         left: 14,
                         top: "50%",
                         transform: "translateY(-50%)",
-                        color: "#9CA3AF",
+                        color: "#B7A8AC",
                         transition: "color 0.2s ease",
                       }}
                     />
@@ -506,7 +506,7 @@ export default function AuthModal() {
                         border: "none",
                         padding: 0,
                         cursor: "pointer",
-                        color: "#9CA3AF",
+                        color: "#B7A8AC",
                         display: "flex",
                         alignItems: "center",
                       }}
@@ -521,13 +521,13 @@ export default function AuthModal() {
 
                 {/* Extra Options */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 13 }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: 8, color: "#4B5563", cursor: "pointer" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, color: "#5A4550", cursor: "pointer" }}>
                     <input
                       type="checkbox"
                       disabled={isSubmittingForm}
                       {...registerLogin("rememberMe")}
                       style={{
-                        accentColor: "#0A9B78",
+                        accentColor: "#E2A550",
                         width: 15,
                         height: 15,
                         cursor: "pointer",
@@ -542,7 +542,7 @@ export default function AuthModal() {
                       background: "none",
                       border: "none",
                       padding: 0,
-                      color: "#0A9B78",
+                      color: "#C08635",
                       fontWeight: 700,
                       cursor: "pointer",
                     }}
@@ -560,8 +560,8 @@ export default function AuthModal() {
                     padding: 13,
                     borderRadius: 12,
                     background: isSubmittingForm
-                      ? "#9CA3AF"
-                      : "linear-gradient(135deg, #0A9B78 0%, #066F56 100%)",
+                      ? "#B7A8AC"
+                      : "linear-gradient(135deg, #E2A550 0%, #C08635 100%)",
                     color: "#ffffff",
                     fontSize: 14,
                     fontWeight: 700,
@@ -571,19 +571,19 @@ export default function AuthModal() {
                     alignItems: "center",
                     justifyContent: "center",
                     gap: 8,
-                    boxShadow: "0 8px 20px rgba(10, 155, 120, 0.2)",
+                    boxShadow: "0 8px 20px rgba(226, 165, 80, 0.28)",
                     transition: "all 0.2s ease",
                   }}
                   onMouseEnter={e => {
                     if (!isSubmittingForm) {
                       e.currentTarget.style.transform = "translateY(-1px)";
-                      e.currentTarget.style.boxShadow = "0 10px 24px rgba(10, 155, 120, 0.35)";
+                      e.currentTarget.style.boxShadow = "0 10px 24px rgba(226, 165, 80, 0.42)";
                     }
                   }}
                   onMouseLeave={e => {
                     if (!isSubmittingForm) {
                       e.currentTarget.style.transform = "translateY(0)";
-                      e.currentTarget.style.boxShadow = "0 8px 20px rgba(10, 155, 120, 0.2)";
+                      e.currentTarget.style.boxShadow = "0 8px 20px rgba(226, 165, 80, 0.28)";
                     }
                   }}
                 >
@@ -601,7 +601,7 @@ export default function AuthModal() {
                 <div style={{ marginTop: 6 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "12px 0 16px" }}>
                     <div style={{ flex: 1, height: 1, backgroundColor: "#E5E7EB" }} />
-                    <span style={{ fontSize: 11, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    <span style={{ fontSize: 11, color: "#B7A8AC", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                       Hoặc tiếp tục với
                     </span>
                     <div style={{ flex: 1, height: 1, backgroundColor: "#E5E7EB" }} />
@@ -625,7 +625,7 @@ export default function AuthModal() {
                         cursor: "pointer",
                         fontSize: 13,
                         fontWeight: 700,
-                        color: "#374151",
+                        color: "#5A4550",
                         transition: "all 0.2s ease",
                       }}
                       onMouseEnter={e => {
@@ -662,7 +662,7 @@ export default function AuthModal() {
                         cursor: "pointer",
                         fontSize: 13,
                         fontWeight: 700,
-                        color: "#374151",
+                        color: "#5A4550",
                         transition: "all 0.2s ease",
                       }}
                       onMouseEnter={e => {
@@ -691,7 +691,7 @@ export default function AuthModal() {
                 
                 {/* Họ tên */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <label style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>Họ và tên</label>
+                  <label style={{ fontSize: 13, fontWeight: 700, color: "#5A4550" }}>Họ và tên</label>
                   <div className="input-group" style={{ position: "relative" }}>
                     <User
                       className="input-icon"
@@ -701,7 +701,7 @@ export default function AuthModal() {
                         left: 14,
                         top: "50%",
                         transform: "translateY(-50%)",
-                        color: "#9CA3AF",
+                        color: "#B7A8AC",
                         transition: "color 0.2s ease",
                       }}
                     />
@@ -730,7 +730,7 @@ export default function AuthModal() {
 
                 {/* Email */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <label style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>Email</label>
+                  <label style={{ fontSize: 13, fontWeight: 700, color: "#5A4550" }}>Email</label>
                   <div className="input-group" style={{ position: "relative" }}>
                     <Mail
                       className="input-icon"
@@ -740,7 +740,7 @@ export default function AuthModal() {
                         left: 14,
                         top: "50%",
                         transform: "translateY(-50%)",
-                        color: "#9CA3AF",
+                        color: "#B7A8AC",
                         transition: "color 0.2s ease",
                       }}
                     />
@@ -769,7 +769,7 @@ export default function AuthModal() {
 
                 {/* Mật khẩu */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <label style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>Mật khẩu</label>
+                  <label style={{ fontSize: 13, fontWeight: 700, color: "#5A4550" }}>Mật khẩu</label>
                   <div className="input-group" style={{ position: "relative" }}>
                     <Lock
                       className="input-icon"
@@ -779,7 +779,7 @@ export default function AuthModal() {
                         left: 14,
                         top: "50%",
                         transform: "translateY(-50%)",
-                        color: "#9CA3AF",
+                        color: "#B7A8AC",
                         transition: "color 0.2s ease",
                       }}
                     />
@@ -812,7 +812,7 @@ export default function AuthModal() {
                         border: "none",
                         padding: 0,
                         cursor: "pointer",
-                        color: "#9CA3AF",
+                        color: "#B7A8AC",
                         display: "flex",
                         alignItems: "center",
                       }}
@@ -827,7 +827,7 @@ export default function AuthModal() {
 
                 {/* Xác nhận mật khẩu */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <label style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>Xác nhận mật khẩu</label>
+                  <label style={{ fontSize: 13, fontWeight: 700, color: "#5A4550" }}>Xác nhận mật khẩu</label>
                   <div className="input-group" style={{ position: "relative" }}>
                     <Lock
                       className="input-icon"
@@ -837,7 +837,7 @@ export default function AuthModal() {
                         left: 14,
                         top: "50%",
                         transform: "translateY(-50%)",
-                        color: "#9CA3AF",
+                        color: "#B7A8AC",
                         transition: "color 0.2s ease",
                       }}
                     />
@@ -872,7 +872,7 @@ export default function AuthModal() {
                       alignItems: "flex-start",
                       gap: 8,
                       fontSize: 12,
-                      color: "#4B5563",
+                      color: "#5A4550",
                       cursor: "pointer",
                       lineHeight: "1.4",
                     }}
@@ -882,7 +882,7 @@ export default function AuthModal() {
                       disabled={isSubmittingForm}
                       {...registerSignUp("agreeTerms")}
                       style={{
-                        accentColor: "#0A9B78",
+                        accentColor: "#E2A550",
                         width: 16,
                         height: 16,
                         cursor: "pointer",
@@ -897,7 +897,7 @@ export default function AuthModal() {
                           e.preventDefault();
                           toast.info("Điều khoản dịch vụ đang được cập nhật.");
                         }}
-                        style={{ color: "#0A9B78", fontWeight: 700, textDecoration: "none" }}
+                        style={{ color: "#C08635", fontWeight: 700, textDecoration: "none" }}
                       >
                         Điều khoản dịch vụ
                       </a>{" "}
@@ -908,7 +908,7 @@ export default function AuthModal() {
                           e.preventDefault();
                           toast.info("Chính sách bảo mật đang được cập nhật.");
                         }}
-                        style={{ color: "#0A9B78", fontWeight: 700, textDecoration: "none" }}
+                        style={{ color: "#C08635", fontWeight: 700, textDecoration: "none" }}
                       >
                         Chính sách bảo mật
                       </a>
@@ -930,8 +930,8 @@ export default function AuthModal() {
                     padding: 13,
                     borderRadius: 12,
                     background: isSubmittingForm
-                      ? "#9CA3AF"
-                      : "linear-gradient(135deg, #0A9B78 0%, #066F56 100%)",
+                      ? "#B7A8AC"
+                      : "linear-gradient(135deg, #E2A550 0%, #C08635 100%)",
                     color: "#ffffff",
                     fontSize: 14,
                     fontWeight: 700,
@@ -941,19 +941,19 @@ export default function AuthModal() {
                     alignItems: "center",
                     justifyContent: "center",
                     gap: 8,
-                    boxShadow: "0 8px 20px rgba(10, 155, 120, 0.2)",
+                    boxShadow: "0 8px 20px rgba(226, 165, 80, 0.28)",
                     transition: "all 0.2s ease",
                   }}
                   onMouseEnter={e => {
                     if (!isSubmittingForm) {
                       e.currentTarget.style.transform = "translateY(-1px)";
-                      e.currentTarget.style.boxShadow = "0 10px 24px rgba(10, 155, 120, 0.35)";
+                      e.currentTarget.style.boxShadow = "0 10px 24px rgba(226, 165, 80, 0.42)";
                     }
                   }}
                   onMouseLeave={e => {
                     if (!isSubmittingForm) {
                       e.currentTarget.style.transform = "translateY(0)";
-                      e.currentTarget.style.boxShadow = "0 8px 20px rgba(10, 155, 120, 0.2)";
+                      e.currentTarget.style.boxShadow = "0 8px 20px rgba(226, 165, 80, 0.28)";
                     }
                   }}
                 >
