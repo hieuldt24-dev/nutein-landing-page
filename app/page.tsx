@@ -25,7 +25,7 @@ export default function Home() {
         <Navbar />
         <HeroSection />
       </div>
-      <div className="bg-primary-deep py-2.5">
+      <div className="bg-primary-deep py-3.5 md:py-4">
         <MarqueeTicker items={USP_TICKER} />
       </div>
       <main>
