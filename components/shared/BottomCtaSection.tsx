@@ -4,6 +4,7 @@ import Image from "next/image";
 import { MessageSquare, ShoppingCart, Leaf, ShieldCheck, Sprout } from "lucide-react";
 import { toast } from "sonner";
 import { FillButton } from "@/components/ui/FillButton";
+import { BounceChars } from "@/components/ui/BounceChars";
 
 const MILESTONES = [
   { icon: <Leaf size={18} strokeWidth={2.2} />, label: "100% Protein Thực Vật" },
@@ -45,7 +46,7 @@ export default function BottomCtaSection() {
 
         <div className="cta-copy relative text-center md:text-left">
           <h2 className="font-display font-black text-white text-[clamp(30px,4.5vw,52px)] leading-[1.05] tracking-[-0.03em]">
-            Sẵn sàng nạp nguồn năng lượng sạch từ thực vật?
+            <BounceChars>Sẵn sàng nạp nguồn năng lượng sạch từ thực vật?</BounceChars>
           </h2>
           <p className="text-white/85 text-[15px] md:text-base leading-relaxed mt-4 max-w-[440px] mx-auto md:mx-0">
             Gia nhập lối sống lành mạnh cùng hàng ngàn khách hàng tin dùng Nutein để chăm sóc sức khỏe chủ động mỗi ngày.

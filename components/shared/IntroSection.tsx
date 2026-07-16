@@ -58,7 +58,7 @@ export default function IntroSection() {
       />
 
       <div className="relative z-[1] max-w-[1200px] mx-auto">
-        <SectionHeading eyebrow="Thành phần dinh dưỡng" variant="outline" align="left" className="text-[clamp(32px,5vw,68px)] tracking-[-0.03em] mb-4">
+        <SectionHeading eyebrow="Thành phần dinh dưỡng" align="left" className="text-[clamp(44px,6.5vw,88px)] tracking-[-0.04em] mb-4">
           Một ly Protein<br />Nutein có gì?
         </SectionHeading>
         <p className="text-text-muted text-base max-w-[600px] mb-8 leading-relaxed">

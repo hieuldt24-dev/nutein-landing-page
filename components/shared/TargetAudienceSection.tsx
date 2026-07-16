@@ -1,6 +1,7 @@
 "use client";
 
 import { type CSSProperties } from "react";
+import { BounceChars, FadeInOnView } from "@/components/ui/BounceChars";
 
 interface Persona {
   title: string;
@@ -45,9 +46,11 @@ export default function TargetAudienceSection() {
           }}
         />
         <div className="relative z-[1] max-w-[720px] mx-auto text-center">
-          <span className="text-xs font-extrabold uppercase tracking-[0.18em] text-primary-soft">Phân nhóm đối tượng</span>
+          <FadeInOnView className="text-xs font-extrabold uppercase tracking-[0.18em] text-primary-soft">
+            Phân nhóm đối tượng
+          </FadeInOnView>
           <h2 className="font-display font-black uppercase text-white text-[clamp(38px,6.5vw,84px)] leading-[0.98] tracking-[-0.03em] mt-3 mb-4">
-            Protein Nutein dành cho ai?
+            <BounceChars>Protein Nutein dành cho ai?</BounceChars>
           </h2>
           <p className="text-white/75 text-base leading-relaxed">
             Nutein cung cấp nguồn đạm thực vật sạch, lành và dễ tiêu hóa, đáp ứng nhu cầu dinh dưỡng đa dạng của mọi thành viên.

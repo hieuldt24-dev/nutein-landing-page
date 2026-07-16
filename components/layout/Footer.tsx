@@ -5,8 +5,7 @@ import Image from "next/image";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
-import { CloudFrame } from "@/components/ui/CloudFrame";
-
+import { BounceChars } from "@/components/ui/BounceChars";
 // lucide-react đã bỏ các icon logo thương hiệu (Facebook, Instagram...) vì lý do
 // bản quyền — dùng SVG inline tối giản thay thế.
 function FacebookIcon({ size = 16 }: { size?: number }) {
@@ -60,33 +59,13 @@ export default function Footer() {
     <footer id="footer" className="bg-ink relative overflow-hidden">
       {/* Newsletter heading block */}
       <div className="relative max-w-[1200px] mx-auto px-6 py-24 md:py-32 border-b border-white/10 overflow-hidden">
-        <CloudFrame
-          className="hidden lg:block absolute top-4 right-4 w-[130px] -rotate-[14deg] opacity-90"
-          lobes={6}
-          amplitude={0.09}
-          borderColor="rgba(192,134,53,0.7)"
-        >
-          <Image src="/images/example.jpg" alt="Nutein" fill className="object-cover" />
-        </CloudFrame>
-        <CloudFrame
-          className="hidden lg:block absolute bottom-6 right-36 w-[84px] rotate-[20deg] opacity-80"
-          lobes={5}
-          borderColor="rgba(192,134,53,0.6)"
-        >
-          <Image src="/images/example.jpg" alt="Nutein" fill className="object-cover" />
-        </CloudFrame>
-        <CloudFrame
-          className="hidden xl:block absolute top-1/2 right-16 w-[56px] -rotate-[6deg] opacity-70"
-          lobes={5}
-          amplitude={0.06}
-          borderColor="rgba(192,134,53,0.5)"
-        >
-          <Image src="/images/example.jpg" alt="Nutein" fill className="object-cover" />
-        </CloudFrame>
-
         <div className="relative z-[1] flex flex-col md:flex-row md:items-end md:justify-between gap-10">
           <h2 className="text-white font-black uppercase text-[clamp(48px,8vw,104px)] leading-[0.94] tracking-[-0.035em] max-w-[720px]">
-            Không bỏ lỡ<br />ưu đãi từ Nutein
+            <BounceChars>
+              Không bỏ lỡ
+              <br />
+              ưu đãi từ Nutein
+            </BounceChars>
           </h2>
 
           <form onSubmit={handleSubscribe} className="w-full max-w-[420px] flex flex-col gap-3">

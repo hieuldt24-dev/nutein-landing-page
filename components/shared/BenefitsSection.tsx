@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Smile, Shield, Sparkles, Globe, Check } from "lucide-react";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { Badge } from "@/components/ui/Badge";
-import { CloudFrame } from "@/components/ui/CloudFrame";
+import { RotatingText } from "@/components/ui/RotatingText";
 
 interface Benefit {
   icon: ReactNode;
@@ -76,29 +76,36 @@ export default function BenefitsSection() {
             </div>
           </div>
 
-          {/* Column 2 — cụm ảnh lifestyle + badge cam kết nổi đè góc (thay infographic card cũ) */}
+          {/* Column 2 — ảnh sản phẩm bouncing + rotating text + badge cam kết */}
           <div className="benefits-visual-col relative flex items-center justify-center min-h-[440px]">
             <div
               aria-hidden
               className="absolute w-[90%] h-[90%] rounded-full blur-[20px] z-0"
               style={{ background: "radial-gradient(circle, rgba(226,165,80,0.16) 0%, transparent 70%)" }}
             />
-            <div className="relative z-[1] w-full max-w-[380px] aspect-[4/5] rounded-[32px] overflow-hidden rotate-2"
-              style={{ boxShadow: "0 0 0 5px #C08635, 0 20px 60px rgba(0,0,0,0.12)" }}>
+
+            {/* Rotating text — z-[1], nằm sau image, overlap ở góc dưới trái */}
+            <RotatingText
+              radius={84}
+              fontSize={9.5}
+              duration={12}
+              color="rgba(192,134,53,0.85)"
+              className="animate-badge-pop absolute bottom-[12%] -left-10 z-[1]"
+              style={{ animationDelay: "0.4s" }}
+            />
+
+            {/* Main image — z-[2] nổi trên vòng chữ, bouncing */}
+            <div
+              className="relative z-[2] w-full max-w-[460px] aspect-[4/5] rounded-[32px] overflow-hidden"
+              style={{
+                boxShadow: "0 0 0 5px #C08635, 0 24px 72px rgba(0,0,0,0.14)",
+                animation: "floatYSlowRotated 7s ease-in-out infinite",
+              }}
+            >
               <Image src="/images/example.jpg" alt="Nutein" fill className="object-cover" />
             </div>
 
-            <CloudFrame
-              className="animate-badge-pop absolute -bottom-10 -left-6 md:-left-10 w-[52%] -rotate-[9deg]"
-              lobes={6}
-              amplitude={0.09}
-              borderColor="#C08635"
-              style={{ animationDelay: "0.4s" }}
-            >
-              <Image src="/images/example.jpg" alt="Nutein" fill className="object-cover" />
-            </CloudFrame>
-
-            <div className="animate-badge-pop absolute top-4 -right-2 md:-right-6 z-[2] bg-surface rounded-3xl border border-[color:var(--color-border)] shadow-lg px-6 py-5 w-[210px] flex flex-col gap-3" style={{ animationDelay: "0.6s" }}>
+            <div className="animate-badge-pop absolute top-4 -right-2 md:-right-6 z-[3] bg-surface rounded-3xl border border-[color:var(--color-border)] shadow-lg px-6 py-5 w-[210px] flex flex-col gap-3" style={{ animationDelay: "0.6s" }}>
               <Badge color="primary" size="sm" className="self-start uppercase">
                 Cam kết 4 Không
               </Badge>
@@ -118,6 +125,11 @@ export default function BenefitsSection() {
       </div>
 
       <style>{`
+        @keyframes floatYSlowRotated {
+          0%, 100% { transform: translateY(0px)   rotate(2deg);  }
+          33%       { transform: translateY(-14px) rotate(3deg);  }
+          66%       { transform: translateY(-7px)  rotate(1deg);  }
+        }
         @media (max-width: 900px) {
           .benefits-split { grid-template-columns: 1fr !important; gap: 48px !important; }
           .benefits-visual-col { order: 2; padding: 0 12px; }

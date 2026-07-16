@@ -7,7 +7,7 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
 import { Badge } from "@/components/ui/Badge";
 import { CtaCluster } from "@/components/ui/CtaCluster";
 import { StarRating } from "@/components/ui/StarRating";
-import { CloudFrame } from "@/components/ui/CloudFrame";
+import { RotatingText } from "@/components/ui/RotatingText";
 
 interface Difference {
   icon: ReactNode;
@@ -47,34 +47,47 @@ export default function DifferentiatorsSection() {
       />
 
       <div className="relative z-[1] max-w-[1200px] mx-auto">
-        <SectionHeading eyebrow="Triết lý phát triển" variant="outline" className="text-[clamp(40px,6.5vw,92px)] tracking-[-0.03em] mb-16">
+        <SectionHeading eyebrow="Triết lý phát triển" className="text-[clamp(40px,6.5vw,92px)] tracking-[-0.03em] mb-16">
           Vì sao Protein Nutein<br />khác biệt?
         </SectionHeading>
 
         {/* Cụm ảnh khung mây/bông hoa (cloud) — đúng motif collage của reference */}
         <div className="diff-brand grid gap-10 md:gap-16 items-center mb-20" style={{ gridTemplateColumns: "0.9fr 1.1fr" }}>
-          <div className="diff-frame-cluster relative h-[300px] md:h-[380px]">
-            <CloudFrame
-              className="absolute w-[58%] top-0 left-[2%] -rotate-[10deg] z-[1]"
-              lobes={6} amplitude={0.09}
-              borderColor="#C08635"
+          {/* Product image + rotating text ring ở góc sau */}
+          <div className="diff-frame-cluster relative h-[360px] md:h-[500px] flex items-center justify-center overflow-visible">
+            {/* Ambient glow */}
+            <div
+              aria-hidden
+              className="absolute w-[70%] h-[70%] rounded-full blur-[40px] z-0"
+              style={{ background: "radial-gradient(circle, rgba(226,165,80,0.28) 0%, transparent 70%)" }}
+            />
+
+            {/* Rotating text ring — z-[1], góc dưới phải, nằm sau ảnh */}
+            <RotatingText
+              radius={130}
+              fontSize={10.5}
+              duration={18}
+              color="rgba(192,134,53,0.75)"
+              className="absolute bottom-[-16px] right-[-20px] z-[1]"
+            />
+
+            {/* Product visual — z-[2] để nổi trên vòng chữ */}
+            <div
+              className="relative w-[84%] aspect-square z-[2] animate-float-slow"
             >
-              <Image src="/images/example.jpg" alt="Nutein" fill className="object-cover" />
-            </CloudFrame>
-            <CloudFrame
-              className="absolute w-[46%] bottom-0 right-0 rotate-[9deg] z-[2]"
-              lobes={5} amplitude={0.1}
-              borderColor="#C08635"
-            >
-              <Image src="/images/example.jpg" alt="Nutein" fill className="object-cover" />
-            </CloudFrame>
-            <CloudFrame
-              className="hidden md:block absolute w-[26%] top-[38%] left-[36%] -rotate-3 z-[3]"
-              lobes={5} amplitude={0.07}
-              borderColor="#C08635"
-            >
-              <Image src="/images/example.jpg" alt="Nutein" fill className="object-cover" />
-            </CloudFrame>
+              <Image
+                src="/images/herosection.png"
+                alt="Nutein Protein thực vật"
+                fill
+                sizes="(max-width: 900px) 55vw, 300px"
+                className="object-contain"
+                style={{
+                  mixBlendMode: "multiply",
+                  filter: "drop-shadow(0 20px 48px rgba(192,134,53,0.3))",
+                  transform: "scale(1.08)",
+                }}
+              />
+            </div>
           </div>
           <div>
             <p className="font-display text-xl md:text-2xl text-ink leading-snug tracking-[-0.01em] mb-6">
@@ -82,10 +95,12 @@ export default function DifferentiatorsSection() {
             </p>
             <div className="flex items-center gap-4 flex-wrap">
               <CtaCluster label="Về chúng tôi" href="#ve-chung-toi" size={44} iconSize={18} />
-              <span className="inline-flex items-center gap-2">
-                <StarRating rating={4.9} />
-                <span className="text-xs font-bold text-text-muted underline underline-offset-2">50,000+ đánh giá</span>
-              </span>
+              <StarRating
+                rating={4.9}
+                label="50,000+ đánh giá"
+                size={24}
+                interactive
+              />
             </div>
           </div>
         </div>

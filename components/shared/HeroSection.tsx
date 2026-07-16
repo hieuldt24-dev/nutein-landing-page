@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { CtaCluster } from "@/components/ui/CtaCluster";
+import { BounceChars } from "@/components/ui/BounceChars";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Sub-components
@@ -61,17 +62,20 @@ export default function HeroSection() {
     >
       <MeshBg />
 
-      {/* Oversized headline — editorial style, uppercase */}
-      <h1 className="hero-headline relative z-[2] mt-6 text-center font-black uppercase text-ink leading-[0.9] tracking-[-0.06em] whitespace-nowrap">
-        Nạp năng lượng
+      {/* Oversized headline — bounce per-char kiểu Joy Rush */}
+      <h1 className="hero-headline relative z-[2] mt-0 text-center font-black uppercase text-ink leading-[0.9] tracking-[-0.06em] whitespace-nowrap">
+        <BounceChars staggerMs={26}>Nạp năng lượng</BounceChars>
       </h1>
-      <h1 className="hero-headline hero-headline--accent relative z-[2] -mt-[0.08em] text-center font-black uppercase leading-[0.9] tracking-[-0.06em] whitespace-nowrap text-primary-deep">
-        100% Protein thực vật
+      <h1 className="hero-headline hero-headline--accent relative z-[2] -mt-[0.08em] mb-2 text-center font-black uppercase leading-[0.9] tracking-[-0.06em] whitespace-nowrap text-primary-deep">
+        <BounceChars staggerMs={26} delayMs={340}>
+          100% Protein thực vật
+        </BounceChars>
       </h1>
 
-      {/* Product visual */}
-      <div className="hero-visual relative z-[2] w-full max-w-[520px] aspect-square -mt-[3%] mb-1 flex items-center justify-center">
+      {/* Product visual + CTA: khoảng thở giữa headline / ảnh / nút */}
+      <div className="hero-visual relative z-[2] w-full max-w-[520px] aspect-square -mt-[6%] mb-2 flex flex-col items-center justify-center">
         <div
+          aria-hidden
           className="absolute w-[74%] h-[74%] rounded-full blur-[22px] z-0"
           style={{
             background:
@@ -98,11 +102,22 @@ export default function HeroSection() {
             }}
           />
         </div>
-      </div>
 
-      {/* CTA Cluster — JoyRush style: text pill + circle arrow, swap on hover */}
-      <div className="relative z-[2] mt-5 animate-fade-up" style={{ animationDelay: "0.25s" }}>
-        <CtaCluster label="Mua ngay" href="#san-pham" size={52} />
+        {/* CTA — xuống nhẹ so với mép ảnh, tránh dính sát */}
+        <div
+          className="relative z-[3] -mt-[6%] animate-fade-up"
+          style={{ animationDelay: "0.25s" }}
+        >
+          <CtaCluster
+            label="Mua ngay"
+            href="#san-pham"
+            size={70}
+            fontSize={20}
+            fontWeight={900}
+            labelPaddingX="2.4rem"
+            iconSize={26}
+          />
+        </div>
       </div>
 
       {/* Mobile Sticky CTA Bar */}
@@ -151,7 +166,7 @@ export default function HeroSection() {
         @media (max-width: 900px) {
           .hero-headline { white-space: normal !important; font-size: clamp(32px, 9vw, 56px) !important; }
           .hero-headline--accent { white-space: normal !important; font-size: clamp(28px, 8vw, 48px) !important; }
-          .hero-visual { max-width: 380px !important; margin-top: -2% !important; }
+          .hero-visual { max-width: 380px !important; margin-top: -4% !important; }
         }
         @media (max-width: 480px) {
           .hero-visual { max-width: 300px !important; }
