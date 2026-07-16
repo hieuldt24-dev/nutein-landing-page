@@ -7,7 +7,7 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
 import { Badge } from "@/components/ui/Badge";
 import { CtaCluster } from "@/components/ui/CtaCluster";
 import { StarRating } from "@/components/ui/StarRating";
-import { RotatingText } from "@/components/ui/RotatingText";
+import { CloudFrame } from "@/components/ui/CloudFrame";
 
 interface Difference {
   icon: ReactNode;
@@ -53,8 +53,8 @@ export default function DifferentiatorsSection() {
 
         {/* Cụm ảnh khung mây/bông hoa (cloud) — đúng motif collage của reference */}
         <div className="diff-brand grid gap-10 md:gap-16 items-center mb-20" style={{ gridTemplateColumns: "0.9fr 1.1fr" }}>
-          {/* Product image + rotating text ring ở góc sau */}
-          <div className="diff-frame-cluster relative h-[360px] md:h-[500px] flex items-center justify-center overflow-visible">
+          {/* Cụm ảnh khung mây/bông hoa (cloud) — collage nhiều ảnh chồng lớp */}
+          <div className="diff-frame-cluster relative h-[300px] md:h-[380px]">
             {/* Ambient glow */}
             <div
               aria-hidden
@@ -62,32 +62,30 @@ export default function DifferentiatorsSection() {
               style={{ background: "radial-gradient(circle, rgba(226,165,80,0.28) 0%, transparent 70%)" }}
             />
 
-            {/* Rotating text ring — z-[1], góc dưới phải, nằm sau ảnh */}
-            <RotatingText
-              radius={130}
-              fontSize={10.5}
-              duration={18}
-              color="rgba(192,134,53,0.75)"
-              className="absolute bottom-[-16px] right-[-20px] z-[1]"
-            />
-
-            {/* Product visual — z-[2] để nổi trên vòng chữ */}
-            <div
-              className="relative w-[84%] aspect-square z-[2] animate-float-slow"
+            <CloudFrame
+              className="absolute w-[58%] top-0 left-[2%] -rotate-[10deg] z-[1]"
+              lobes={6}
+              amplitude={0.09}
+              borderColor="#C08635"
             >
-              <Image
-                src="/images/herosection.png"
-                alt="Nutein Protein thực vật"
-                fill
-                sizes="(max-width: 900px) 55vw, 300px"
-                className="object-contain"
-                style={{
-                  mixBlendMode: "multiply",
-                  filter: "drop-shadow(0 20px 48px rgba(192,134,53,0.3))",
-                  transform: "scale(1.08)",
-                }}
-              />
-            </div>
+              <Image src="/images/example.jpg" alt="Nutein" fill sizes="(max-width: 900px) 45vw, 320px" className="object-cover" />
+            </CloudFrame>
+            <CloudFrame
+              className="absolute w-[46%] bottom-0 right-0 rotate-[9deg] z-[2]"
+              lobes={5}
+              amplitude={0.1}
+              borderColor="#C08635"
+            >
+              <Image src="/images/example.jpg" alt="Nutein" fill sizes="(max-width: 900px) 35vw, 260px" className="object-cover" />
+            </CloudFrame>
+            <CloudFrame
+              className="hidden md:block absolute w-[26%] top-[38%] left-[36%] -rotate-3 z-[3]"
+              lobes={5}
+              amplitude={0.07}
+              borderColor="#C08635"
+            >
+              <Image src="/images/example.jpg" alt="Nutein" fill sizes="140px" className="object-cover" />
+            </CloudFrame>
           </div>
           <div>
             <p className="font-display text-xl md:text-2xl text-ink leading-snug tracking-[-0.01em] mb-6">

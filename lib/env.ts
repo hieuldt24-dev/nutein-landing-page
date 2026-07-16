@@ -14,10 +14,22 @@ const envSchema = z.object({
   // Logging
   LOG_LEVEL: z.enum(["info", "debug", "error", "warn"]).default("info"),
 
-  // Supabase (optional - uncomment khi dùng Supabase)
-  // NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
-  // NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
-  // SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  // Supabase
+  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+
+  // Cloudinary (tuỳ chọn - dùng khi upload ảnh sản phẩm/blog)
+  CLOUDINARY_CLOUD_NAME: z.string().optional(),
+  CLOUDINARY_API_KEY: z.string().optional(),
+  CLOUDINARY_API_SECRET: z.string().optional(),
+
+  // SePay (tuỳ chọn - thanh toán chuyển khoản qua QR + webhook đối soát)
+  SEPAY_API_TOKEN: z.string().optional(),
+  SEPAY_WEBHOOK_API_KEY: z.string().optional(),
+  SEPAY_BANK_ACCOUNT_NUMBER: z.string().optional(),
+  SEPAY_BANK_CODE: z.string().optional(),
+  SEPAY_ACCOUNT_NAME: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
