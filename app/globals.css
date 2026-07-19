@@ -129,6 +129,28 @@ h1, h2, h3, h4, h5, h6 {
   to   { transform: translateX(-50%); }
 }
 
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* Dùng cho panel trượt từ mép phải màn hình (CartDrawer) — khác `fadeRight`
+   (chỉ dịch 32px) vì panel cần đi hết quãng off-canvas → visible. */
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+@keyframes slideOutRight {
+  from { transform: translateX(0); }
+  to   { transform: translateX(100%); }
+}
+
 /* ── Animation classes ───────────────────────────────────────────────────────── */
 .animate-float       { animation: floatY 4s ease-in-out infinite; }
 .animate-float-slow  { animation: floatYSlow 6s ease-in-out infinite; }
@@ -137,6 +159,10 @@ h1, h2, h3, h4, h5, h6 {
 .animate-badge-pop   { animation: badgePop 0.5s cubic-bezier(0.34,1.56,0.64,1) both; }
 .animate-pulse-glow  { animation: pulseGlow 3s ease-in-out infinite; }
 .animate-marquee     { animation: marquee 22s linear infinite; }
+.animate-fade-in        { animation: fadeIn 0.25s ease-out both; }
+.animate-fade-out       { animation: fadeOut 0.3s ease-in both; }
+.animate-slide-in-right  { animation: slideInRight 0.38s cubic-bezier(0.16,1,0.3,1) both; }
+.animate-slide-out-right { animation: slideOutRight 0.38s cubic-bezier(0.645,0.045,0.355,1) both; }
 
 
 /* Ẩn scrollbar cho track carousel ngang (Intro/Testimonials) — điều hướng qua
@@ -149,8 +175,404 @@ h1, h2, h3, h4, h5, h6 {
   display: none;
 }
 
-/* ── CTA Cluster Button ──────────────────────────────────────────────────────
-   Styles sống trong components/ui/CtaCluster.tsx (inline <style>).
-   Absolute layout: [label][arrow] cạnh sát, hover đổi `left` — không chồng.   */
+/* ── BounceChars (heading per-char) — 1 bản CSS, không inject mỗi instance ── */
+@keyframes bc-bounce-in {
+  0% {
+    opacity: 0;
+    transform: translateY(0.55em) scale(0.45);
+  }
+  55% {
+    opacity: 1;
+    transform: translateY(-0.1em) scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.bounce-chars .bc-char {
+  display: inline-block;
+  position: relative;
+  opacity: 0;
+  transform: translateY(0.55em) scale(0.45);
+}
+
+.bounce-chars.is-active .bc-char {
+  animation: bc-bounce-in 0.7s cubic-bezier(0.34, 1.45, 0.64, 1) both;
+  animation-delay: var(--bc-delay, 0ms);
+}
+
+.bounce-chars .bc-word {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bounce-chars .bc-char {
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
+  }
+}
+
+/* ── CTA Cluster — absolute [label][arrow], hover đổi `left` ─────────────── */
+.cta-cluster {
+  --label-w: 120px;
+  --cta-size: 52px;
+  --cta-border: var(--color-ink);
+  --cta-fill: var(--color-ink);
+  --cta-light: var(--color-bg);
+  position: relative;
+  display: inline-block;
+  height: var(--cta-size);
+  width: calc(var(--label-w) + var(--cta-size));
+  isolation: isolate;
+  text-decoration: none;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+.cta-cluster__label,
+.cta-cluster__arrow {
+  position: absolute;
+  top: 0;
+  border: 2px solid var(--cta-border);
+  border-radius: 999px;
+  height: var(--cta-size);
+  box-sizing: border-box;
+  transition: left 0.45s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.cta-cluster__label {
+  left: 0;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--cta-pad-x, 1.5rem);
+  color: var(--cta-border);
+  font-size: var(--cta-font-size, 14px);
+  font-weight: var(--cta-font-weight, 700);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  background: var(--color-bg);
+}
+
+.cta-cluster__arrow {
+  left: var(--label-w);
+  z-index: 1;
+  width: var(--cta-size);
+  color: var(--cta-border);
+  background: var(--color-bg);
+  overflow: hidden;
+}
+
+.cta-cluster__arrow::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--cta-fill);
+  transform: scale(0);
+  transition: transform 0.35s cubic-bezier(0.165, 0.84, 0.44, 1);
+  z-index: 0;
+}
+
+.cta-cluster__icon-default,
+.cta-cluster__icon-hover {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+}
+
+.cta-cluster__icon-default {
+  transform: translate(-50%, -50%);
+  transition:
+    transform 0.3s cubic-bezier(0.55, 0.055, 0.675, 0.19),
+    opacity 0.3s cubic-bezier(0.55, 0.055, 0.675, 0.19);
+}
+
+.cta-cluster__icon-hover {
+  color: var(--cta-light);
+  opacity: 0;
+  transform: translate(calc(-50% - 50%), calc(-50% + 50%));
+  transition:
+    transform 0.4s cubic-bezier(0.215, 0.61, 0.355, 1),
+    opacity 0.4s cubic-bezier(0.215, 0.61, 0.355, 1);
+}
+
+.cta-cluster:hover .cta-cluster__label {
+  left: var(--cta-size);
+}
+
+.cta-cluster:hover .cta-cluster__arrow {
+  left: 0;
+}
+
+.cta-cluster:hover .cta-cluster__arrow::before {
+  transform: scale(1);
+}
+
+.cta-cluster:hover .cta-cluster__icon-default {
+  opacity: 0;
+  transform: translate(calc(-50% + 50%), calc(-50% - 50%));
+}
+
+.cta-cluster:hover .cta-cluster__icon-hover {
+  opacity: 1;
+  transform: translate(-50%, -50%);
+}
+
+/* ── Hero (headline + ambient motion) ─────────────────────────────────────── */
+/* Biên độ float riêng cho visual Hero (khác .animate-float-slow). */
+@keyframes heroFloatYSlow {
+  0%,
+  100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  33% {
+    transform: translateY(-14px) rotate(1deg);
+  }
+  66% {
+    transform: translateY(-7px) rotate(-1deg);
+  }
+}
+
+@keyframes ambientPulse {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    transform: translate(30px, -30px) scale(1.08);
+  }
+}
+
+@keyframes pulseCircle {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.hero-headline {
+  font-size: clamp(44px, 8.6vw, 116px);
+}
+
+.hero-headline--accent {
+  font-size: clamp(38px, 7.6vw, 100px);
+}
+
+@media (max-width: 900px) {
+  .hero-headline {
+    white-space: normal !important;
+    font-size: clamp(32px, 9vw, 56px) !important;
+  }
+  .hero-headline--accent {
+    white-space: normal !important;
+    font-size: clamp(28px, 8vw, 48px) !important;
+  }
+  .hero-visual {
+    max-width: 380px !important;
+    margin-top: -4% !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-visual {
+    max-width: 300px !important;
+  }
+}
+
+/* ── RotatingText ─────────────────────────────────────────────────────────── */
+@keyframes rt-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── StarRating ───────────────────────────────────────────────────────────── */
+.star-rating__stars {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.star-rating__star {
+  position: relative;
+  width: var(--star-size, 22px);
+  height: var(--star-size, 22px);
+  flex-shrink: 0;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.star-rating__star svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.star-rating__star-empty,
+.star-rating__star-full {
+  position: absolute;
+  inset: 0;
+}
+
+.star-rating__star-empty {
+  color: color-mix(in srgb, var(--color-primary) 22%, white);
+}
+
+.star-rating__star-full {
+  color: var(--color-primary);
+  overflow: hidden;
+  width: calc(var(--fill) * 100%);
+}
+
+.star-rating__star-full svg {
+  width: var(--star-size, 22px);
+  max-width: none;
+}
+
+.star-rating__label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.star-rating__label-text {
+  font-size: 0.875rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.1;
+  text-transform: uppercase;
+  color: var(--color-ink);
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.star-rating__underline {
+  display: block;
+  width: 100%;
+  height: 2px;
+  margin-top: 2px;
+  background: var(--color-ink);
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.star-rating--interactive {
+  cursor: pointer;
+}
+
+.star-rating--interactive:hover .star-rating__star:nth-child(1) {
+  transform: translate(-0.2rem, 0.55rem);
+}
+
+.star-rating--interactive:hover .star-rating__star:nth-child(2) {
+  transform: translate(-0.1rem, -0.55rem);
+}
+
+.star-rating--interactive:hover .star-rating__star:nth-child(3) {
+  transform: translate(-0.2rem, 0.7rem);
+}
+
+.star-rating--interactive:hover .star-rating__star:nth-child(4) {
+  transform: translateY(-0.2rem);
+}
+
+.star-rating--interactive:hover .star-rating__star:nth-child(5) {
+  transform: translate(0.3rem, 0.55rem);
+}
+
+.star-rating--interactive:hover .star-rating__label-text {
+  transform: translateY(-0.4rem) rotate(4deg);
+}
+
+.star-rating--interactive:hover .star-rating__underline {
+  transform: translateY(0.65rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .star-rating__star,
+  .star-rating__label-text,
+  .star-rating__underline {
+    transition: none !important;
+  }
+  .star-rating--interactive:hover .star-rating__star,
+  .star-rating--interactive:hover .star-rating__label-text,
+  .star-rating--interactive:hover .star-rating__underline {
+    transform: none !important;
+  }
+}
+
+/* ── Section responsive helpers (tránh inject <style> mỗi section) ────────── */
+@keyframes floatYSlowRotated {
+  0%,
+  100% {
+    transform: translateY(0px) rotate(2deg);
+  }
+  33% {
+    transform: translateY(-14px) rotate(3deg);
+  }
+  66% {
+    transform: translateY(-7px) rotate(1deg);
+  }
+}
+
+/* About process scroll cards — nghiêng nhẹ như JR FUNCTIONALS. */
+.about-process-card {
+  transform: rotate(var(--r, 0deg));
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (hover: hover) {
+  .about-process-card:hover {
+    transform: rotate(0deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .about-process-card {
+    transform: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .benefits-split {
+    grid-template-columns: 1fr !important;
+    gap: 48px !important;
+  }
+  .benefits-visual-col {
+    order: 2;
+    padding: 0 12px;
+  }
+  .diff-brand {
+    grid-template-columns: 1fr !important;
+  }
+  .diff-frame-cluster {
+    max-width: 320px;
+    margin: 0 auto;
+  }
+  .diff-row {
+    grid-template-columns: 40px 52px 1fr !important;
+    row-gap: 10px !important;
+  }
+}
 
 /* Fill Button → xem components/ui/FillButton.tsx (Tailwind group-hover, không dùng CSS class) */

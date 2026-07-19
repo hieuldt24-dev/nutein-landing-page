@@ -1,10 +1,12 @@
 "use client";
 
 import Image from "next/image";
+import type { MouseEvent } from "react";
 import { MessageSquare, ShoppingCart, Leaf, ShieldCheck, Sprout } from "lucide-react";
 import { toast } from "sonner";
 import { FillButton } from "@/components/ui/FillButton";
 import { BounceChars } from "@/components/ui/BounceChars";
+import { useAddToCart } from "@/lib/useAddToCart";
 
 const MILESTONES = [
   { icon: <Leaf size={18} strokeWidth={2.2} />, label: "100% Protein Thực Vật" },
@@ -13,6 +15,13 @@ const MILESTONES = [
 ];
 
 export default function BottomCtaSection() {
+  const addToCart = useAddToCart();
+
+  const handleBuyNow = (e: MouseEvent) => {
+    e.preventDefault();
+    addToCart();
+  };
+
   return (
     <section
       id="bottom-cta"
@@ -53,7 +62,12 @@ export default function BottomCtaSection() {
           </p>
 
           <div className="flex gap-4 flex-wrap justify-center md:justify-start mt-8">
-            <FillButton href="#san-pham" variant="white" className="px-7 py-3.5 text-base font-bold shadow-lg">
+            <FillButton
+              href="/#san-pham"
+              onClick={handleBuyNow}
+              variant="white"
+              className="px-7 py-3.5 text-base font-bold shadow-lg"
+            >
               <ShoppingCart size={18} />
               Mua Ngay Sản Phẩm
             </FillButton>

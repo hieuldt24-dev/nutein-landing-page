@@ -1,0 +1,33 @@
+---
+description: Soft limit độ dài file (~300 dòng) và cách tách component/module
+globs: "**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# File size & split (Nutein)
+
+`nextjs-architecture-guide.md` vẫn là **source of truth kiến trúc** — không sửa file đó khi thêm convention này. Rule này bổ sung hướng dẫn maintainability trên codebase hiện tại.
+
+## Soft limit
+
+- **Ưu tiên** mỗi file hand-written `.ts` / `.tsx` **dưới ~300 dòng**.
+- **Bắt buộc cân nhắc tách** khi file **> ~400 dòng** và có ≥ 2 responsibility rõ (nhiều section UI, nhiều form block, logic + JSX lớn).
+- Không cắt lung tung chỉ để “đủ số dòng” — tách theo **một việc / một section**.
+
+## Ngoại lệ (không ép &lt; 300)
+
+- Generated / lockfile / schema dump lớn.
+- `constants.ts` copy dài có chủ đích.
+- Test fixture / snapshot.
+
+## Cách tách (UI)
+
+- Page / form compose mỏng; section con trong cùng feature folder (vd. `components/checkout/CheckoutContactSection.tsx`).
+- Primitive lặp ≥ 2 lần → `components/ui/`.
+- Business logic → `features/*/services/` hoặc pure helper — không nhét thêm vào component đang phình.
+
+## Checklist khi đụng file dài
+
+1. File có đang > 300–400 dòng không?
+2. Có thể tách theo section / hook / constants mà không làm khó đọc không?
+3. `page.tsx` / `route.ts` vẫn mỏng theo `docs/source-code-architecture-guide.md` không?

@@ -1,46 +1,78 @@
 "use client";
 
-import { type ReactNode, type CSSProperties, useState } from "react";
+import { type ReactNode, type CSSProperties, type MouseEvent, useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
-type Variant = "ink" | "white" | "outline-white";
+type Variant = "ink" | "ink-solid" | "cream" | "white" | "outline-white";
 
 interface FillButtonProps {
   children: ReactNode;
   href?: string;
-  onClick?: () => void;
+  /** Khi truyền kèm `href`, gọi handler này thay vì điều hướng (dùng `e.preventDefault()` trong handler nếu cần chặn điều hướng). */
+  onClick?: (e: MouseEvent<HTMLElement>) => void;
   variant?: Variant;
   className?: string;
+  type?: "button" | "submit" | "reset";
+  disabled?: boolean;
+  "aria-label"?: string;
+  "aria-expanded"?: boolean;
 }
 
+/** Dùng longhand border* — tránh conflict với `borderColor` khi hover (React warning). */
 const BASE: Record<Variant, CSSProperties> = {
   ink: {
     background: "rgba(255,255,255,0.92)",
-    border: "1.5px solid var(--color-ink)",
+    borderWidth: 1.5,
+    borderStyle: "solid",
+    borderColor: "var(--color-ink)",
     color: "var(--color-ink)",
     backdropFilter: "blur(8px)",
   },
+  /** Ngược `ink`: nền tối sẵn, hover fill sáng (dùng cho CTA trong CartDrawer). */
+  "ink-solid": {
+    background: "var(--color-ink)",
+    borderWidth: 1.5,
+    borderStyle: "solid",
+    borderColor: "var(--color-ink)",
+    color: "var(--color-bg)",
+  },
+  /** Nền kem → hover fill primary (FAB Cart…). */
+  cream: {
+    background: "var(--color-bg)",
+    borderWidth: 1.5,
+    borderStyle: "solid",
+    borderColor: "var(--color-ink)",
+    color: "var(--color-ink)",
+  },
   white: {
     background: "white",
-    border: "2px solid white",
+    borderWidth: 2,
+    borderStyle: "solid",
+    borderColor: "white",
     color: "var(--color-primary-deep)",
   },
   "outline-white": {
     background: "transparent",
-    border: "2px solid rgba(255,255,255,0.55)",
+    borderWidth: 2,
+    borderStyle: "solid",
+    borderColor: "rgba(255,255,255,0.55)",
     color: "white",
   },
 };
 
 const HOVERED: Record<Variant, CSSProperties> = {
   ink: { color: "var(--color-bg)" },
+  "ink-solid": { color: "var(--color-ink)" },
+  cream: { color: "var(--color-bg)", borderColor: "var(--color-primary)" },
   white: { color: "white", borderColor: "var(--color-primary-deep)" },
   "outline-white": { color: "var(--color-primary-deep)", borderColor: "white" },
 };
 
 const FILL_BG: Record<Variant, string> = {
   ink: "var(--color-ink)",
+  "ink-solid": "var(--color-bg)",
+  cream: "var(--color-primary)",
   white: "var(--color-primary-deep)",
   "outline-white": "rgba(255,255,255,0.90)",
 };
@@ -51,12 +83,17 @@ export function FillButton({
   onClick,
   variant = "ink",
   className,
+  type = "button",
+  disabled = false,
+  "aria-label": ariaLabel,
+  "aria-expanded": ariaExpanded,
 }: FillButtonProps) {
   const [hovered, setHovered] = useState(false);
+  const showHover = hovered && !disabled;
 
   const rootStyle: CSSProperties = {
     ...BASE[variant],
-    ...(hovered ? HOVERED[variant] : {}),
+    ...(showHover ? HOVERED[variant] : {}),
     transition: "color 300ms ease, border-color 300ms ease",
   };
 
@@ -64,7 +101,7 @@ export function FillButton({
     position: "absolute",
     inset: 0,
     background: FILL_BG[variant],
-    clipPath: hovered
+    clipPath: showHover
       ? "circle(150% at 50% 50%)"
       : "circle(0% at 50% 50%)",
     transition: "clip-path 400ms cubic-bezier(0.165, 0.84, 0.44, 1)",
@@ -84,20 +121,38 @@ export function FillButton({
   );
 
   const base = cn(
-    "relative overflow-hidden rounded-full inline-flex items-center",
+    "relative inline-flex cursor-pointer items-center overflow-hidden rounded-full",
+    disabled && "pointer-events-none cursor-not-allowed opacity-50",
     className
   );
 
   if (href) {
     return (
-      <Link href={href} className={base} style={rootStyle} {...events}>
+      <Link
+        href={href}
+        onClick={onClick}
+        className={base}
+        style={rootStyle}
+        aria-label={ariaLabel}
+        aria-expanded={ariaExpanded}
+        {...events}
+      >
         {inner}
       </Link>
     );
   }
 
   return (
-    <button onClick={onClick} className={base} style={rootStyle} {...events}>
+    <button
+      type={type}
+      disabled={disabled}
+      onClick={onClick}
+      className={base}
+      style={rootStyle}
+      aria-label={ariaLabel}
+      aria-expanded={ariaExpanded}
+      {...events}
+    >
       {inner}
     </button>
   );

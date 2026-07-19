@@ -34,6 +34,7 @@ export const metadata: Metadata = {
 
 import { SWRProvider } from "@/components/providers/SWRProvider";
 import AuthModal from "@/components/shared/AuthModal";
+import CartDrawer from "@/components/shared/CartDrawer";
 import { Toaster } from "sonner";
 
 export default function RootLayout({
@@ -42,11 +43,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="vi" className={`${quicksand.variable} ${mulish.variable} h-full antialiased`} suppressHydrationWarning>
+    <html
+      lang="vi"
+      data-scroll-behavior="smooth"
+      className={`${quicksand.variable} ${mulish.variable} h-full antialiased`}
+      suppressHydrationWarning
+    >
       <body className="min-h-full flex flex-col font-sans" suppressHydrationWarning>
         <SWRProvider>
           {children}
           <AuthModal />
+          <CartDrawer />
           <Toaster position="top-center" richColors />
         </SWRProvider>
       </body>

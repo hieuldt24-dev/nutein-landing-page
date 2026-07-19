@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import type { MouseEvent } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { CtaCluster } from "@/components/ui/CtaCluster";
 import { BounceChars } from "@/components/ui/BounceChars";
+import { useAddToCart } from "@/lib/useAddToCart";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Sub-components
@@ -46,13 +46,12 @@ function MeshBg() {
 // Main
 // ─────────────────────────────────────────────────────────────────────────────
 export default function HeroSection() {
-  const [showStickyCta, setShowStickyCta] = useState(false);
+  const addToCart = useAddToCart();
 
-  useEffect(() => {
-    const handleScroll = () => setShowStickyCta(window.scrollY > 620);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  const handleBuyNow = (e: MouseEvent) => {
+    e.preventDefault();
+    addToCart();
+  };
 
   return (
     <section
@@ -86,7 +85,7 @@ export default function HeroSection() {
 
         <div
           className="relative w-full h-full z-[1]"
-          style={{ animation: "floatYSlow 7s ease-in-out infinite" }}
+          style={{ animation: "heroFloatYSlow 7s ease-in-out infinite" }}
         >
           <Image
             src="/images/herosection.png"
@@ -110,7 +109,8 @@ export default function HeroSection() {
         >
           <CtaCluster
             label="Mua ngay"
-            href="#san-pham"
+            href="/#san-pham"
+            onClick={handleBuyNow}
             size={70}
             fontSize={20}
             fontWeight={900}
@@ -119,59 +119,7 @@ export default function HeroSection() {
           />
         </div>
       </div>
-
-      {/* Mobile Sticky CTA Bar */}
-      {showStickyCta && (
-        <div
-          className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-[color:var(--color-border)] px-6 py-3 z-[100] flex items-center justify-between shadow-[0_-4px_24px_rgba(53,30,41,0.08)]"
-          style={{ animation: "slideUp 0.3s cubic-bezier(0.16,1,0.3,1) both" }}
-        >
-          <div>
-            <div className="text-sm font-black text-ink tracking-[-0.02em] font-display">Nutein Protein</div>
-            <div className="text-[11px] text-primary-deep font-bold">100% Thực vật tinh khiết</div>
-          </div>
-          <Link
-            href="#san-pham"
-            className="bg-gradient-to-br from-primary to-primary-deep text-white px-6 py-2.5 rounded-full text-[13px] font-extrabold shadow-brand"
-          >
-            Mua ngay
-          </Link>
-        </div>
-      )}
-
-      <style>{`
-        .hero-headline {
-          font-size: clamp(44px, 8.6vw, 116px);
-        }
-        .hero-headline--accent {
-          font-size: clamp(38px, 7.6vw, 100px);
-        }
-        @keyframes floatYSlow {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          33%       { transform: translateY(-14px) rotate(1deg); }
-          66%       { transform: translateY(-7px) rotate(-1deg); }
-        }
-        @keyframes ambientPulse {
-          0% { transform: translate(0, 0) scale(1); }
-          100% { transform: translate(30px, -30px) scale(1.08); }
-        }
-        @keyframes pulseCircle {
-          0%, 100% { transform: scale(1); opacity: 0.8; }
-          50% { transform: scale(1.1); opacity: 1; }
-        }
-        @keyframes slideUp {
-          from { transform: translateY(100%); }
-          to   { transform: translateY(0); }
-        }
-        @media (max-width: 900px) {
-          .hero-headline { white-space: normal !important; font-size: clamp(32px, 9vw, 56px) !important; }
-          .hero-headline--accent { white-space: normal !important; font-size: clamp(28px, 8vw, 48px) !important; }
-          .hero-visual { max-width: 380px !important; margin-top: -4% !important; }
-        }
-        @media (max-width: 480px) {
-          .hero-visual { max-width: 300px !important; }
-        }
-      `}</style>
     </section>
   );
 }
+
