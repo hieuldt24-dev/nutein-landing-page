@@ -27,7 +27,7 @@ export function CarouselArrows({ targetRef, className, scrollStep = 300 }: Carou
         type="button"
         onClick={() => scrollBy(-1)}
         aria-label="Xem mục trước"
-        className="w-11 h-11 rounded-full border-[1.5px] border-ink text-ink flex items-center justify-center transition-colors duration-200 hover:bg-ink hover:text-white"
+        className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border-[1.5px] border-ink text-ink transition-colors duration-200 hover:bg-ink hover:text-white"
       >
         <ArrowLeft size={18} strokeWidth={2.2} />
       </button>
@@ -35,7 +35,7 @@ export function CarouselArrows({ targetRef, className, scrollStep = 300 }: Carou
         type="button"
         onClick={() => scrollBy(1)}
         aria-label="Xem mục tiếp theo"
-        className="w-11 h-11 rounded-full border-[1.5px] border-ink text-ink flex items-center justify-center transition-colors duration-200 hover:bg-ink hover:text-white"
+        className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border-[1.5px] border-ink text-ink transition-colors duration-200 hover:bg-ink hover:text-white"
       >
         <ArrowRight size={18} strokeWidth={2.2} />
       </button>

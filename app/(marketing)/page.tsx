@@ -1,5 +1,3 @@
-import Navbar from "@/components/layout/Navbar";
-import Footer from "@/components/layout/Footer";
 import HeroSection from "@/components/shared/HeroSection";
 import IntroSection from "@/components/shared/IntroSection";
 import DifferentiatorsSection from "@/components/shared/DifferentiatorsSection";
@@ -22,7 +20,6 @@ export default function Home() {
   return (
     <>
       <div className="relative">
-        <Navbar />
         <HeroSection />
       </div>
       <div className="bg-primary-deep py-3.5 md:py-4">
@@ -36,7 +33,6 @@ export default function Home() {
         <TestimonialsSection />
         <BottomCtaSection />
       </main>
-      <Footer />
     </>
   );
 }

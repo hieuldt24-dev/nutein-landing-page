@@ -1,0 +1,50 @@
+import type { VoucherTier } from "./types";
+
+/** SWR-as-store key (không phải URL thật) cho quantity trong giỏ — xem state-management.md mục 3. */
+export const CART_QUANTITY_SWR_KEY = "cart-quantity";
+/** SWR-as-store key — cart đang mutate (add/qty/remove), dùng overlay loading. */
+export const CART_UPDATING_SWR_KEY = "cart-updating";
+/** localStorage key để persist quantity qua reload, trước khi có backend cart thật. */
+export const CART_QUANTITY_STORAGE_KEY = "nutein:cart-quantity";
+/** SWR-as-store key cho trạng thái mở/đóng CartDrawer. */
+export const CART_DRAWER_SWR_KEY = "cart-drawer-open";
+
+export const MIN_CART_QUANTITY = 0;
+export const MAX_CART_QUANTITY = 20;
+
+/**
+ * Delay giả lập latency mạng khi mutate qua local repository.
+ * Khi gắn API thật: bỏ delay trong repository/service, giữ nguyên flow async + loading UI.
+ */
+export const CART_LOCAL_LATENCY_MS = 280;
+
+/** Nutein chưa có bảng phí ship — hiển thị copy chờ tính ở bước checkout. */
+export const SHIPPING_FEE_NOTE = "Tính phí khi thanh toán";
+
+/**
+ * Tiêu đề CartDrawer — cố ý KHÔNG đếm theo dạng "X sản phẩm trong giỏ"
+ * (ngôn ngữ multi-product của Joy Rush). Nutein single-SKU chỉ có 1 dòng
+ * hàng duy nhất, số lượng đã hiển thị rõ ở QuantityStepper trên line item
+ * nên không cần lặp lại ở header — tránh gây hiểu lầm "nhiều sản phẩm".
+ */
+export const CART_DRAWER_TITLE = "Giỏ hàng của bạn";
+
+/** Empty state — chữ lớn giữa drawer, không kèm icon (tham chiếu Joy Rush). */
+export const CART_EMPTY_HEADING = "Giỏ hàng của bạn đang trống";
+export const CART_CONTINUE_SHOPPING_LABEL = "Tiếp tục mua sắm";
+export const CART_CHECKOUT_LABEL = "Tiến hành thanh toán";
+
+/** Thời lượng slide in/out của CartDrawer (khớp keyframe trong globals.css). */
+export const CART_DRAWER_ANIMATION_MS = 380;
+
+/**
+ * Các mốc ưu đãi theo tổng tiền, tham khảo cấu trúc bar của Joy Rush.
+ * Ngưỡng tăng dần — mốc cuối dùng làm mẫu số tính % progress bar.
+ */
+export const VOUCHER_TIERS: VoucherTier[] = [
+  { id: "discount-5", thresholdVnd: 500_000, label: "Giảm 5%", kind: "discount", discountPercent: 5 },
+  { id: "free-shipping", thresholdVnd: 750_000, label: "Miễn phí vận chuyển", kind: "free_shipping" },
+  { id: "discount-10", thresholdVnd: 1_000_000, label: "Giảm 10%", kind: "discount", discountPercent: 10 },
+  { id: "discount-15", thresholdVnd: 1_250_000, label: "Giảm 15%", kind: "discount", discountPercent: 15 },
+  { id: "discount-25", thresholdVnd: 1_500_000, label: "Giảm 25%", kind: "discount", discountPercent: 25 },
+];

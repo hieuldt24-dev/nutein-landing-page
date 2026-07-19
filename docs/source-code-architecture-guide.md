@@ -305,7 +305,7 @@ Theo đúng [nextjs-architecture-guide.md](../nextjs-architecture-guide.md):
 
 Khi AI coding agent chỉnh sửa project này, bắt buộc tuân thủ:
 
-- Đọc tài liệu này + [nextjs-architecture-guide.md](../nextjs-architecture-guide.md) trước khi thêm route/feature mới.
+- Đọc tài liệu này + [nextjs-architecture-guide.md](../nextjs-architecture-guide.md) trước khi thêm route/feature mới. **`nextjs-architecture-guide.md` là source of truth kiến trúc gốc — không sửa file đó** trừ khi owner dự án chủ động cập nhật quy hoạch.
 - Giữ `app/**/page.tsx` và `app/**/route.ts` mỏng — logic thật nằm ở `features/*/services/`.
 - Không viết business logic hoặc query DB trực tiếp trong component/route.
 - Mọi API route mới phải bọc `withErrorHandler`, validate bằng Zod, trả response qua `src/api/response.ts`.
@@ -315,6 +315,7 @@ Khi AI coding agent chỉnh sửa project này, bắt buộc tuân thủ:
 - Thêm/cập nhật test (Vitest hoặc RTL) khi thêm logic nghiệp vụ hoặc component có state quan trọng.
 - Nếu di chuyển/đổi tên file, cập nhật toàn bộ import liên quan và tài liệu nếu cấu trúc thay đổi.
 - Ưu tiên thay đổi nhỏ, đúng scope; nếu cần refactor lớn, tách thành nhiều bước rõ ràng và nêu rõ trong phản hồi.
+- **Độ dài file (soft):** ưu tiên file hand-written `.ts`/`.tsx` **&lt; ~300 dòng**; bắt buộc cân nhắc tách khi **&gt; ~400 dòng** và có ≥ 2 responsibility. Tách theo section/hook/module — không cắt máy móc. Chi tiết agent: `.cursor/rules/file-size-and-split.mdc`.
 
 ## 14. Common mistakes to avoid
 
