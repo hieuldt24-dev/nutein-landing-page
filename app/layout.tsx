@@ -33,6 +33,7 @@ export const metadata: Metadata = {
 };
 
 import { SWRProvider } from "@/components/providers/SWRProvider";
+import { AuthProvider } from "@/components/providers/AuthProvider";
 import AuthModal from "@/components/shared/AuthModal";
 import CartDrawer from "@/components/shared/CartDrawer";
 import { Toaster } from "sonner";
@@ -51,10 +52,12 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col font-sans" suppressHydrationWarning>
         <SWRProvider>
-          {children}
-          <AuthModal />
-          <CartDrawer />
-          <Toaster position="top-center" richColors />
+          <AuthProvider>
+            {children}
+            <AuthModal />
+            <CartDrawer />
+            <Toaster position="top-center" richColors />
+          </AuthProvider>
         </SWRProvider>
       </body>
     </html>

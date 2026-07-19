@@ -1,6 +1,8 @@
 /**
- * Session user phía client — mock trước khi có auth API / Supabase session.
- * Shape giữ ổn định để checkout prefill + Navbar sau này.
+ * Session user phía client — map từ Supabase Auth `User` (xem
+ * features/auth/services/auth.repository.ts#toAuthUser). Shape giữ ổn định
+ * để checkout prefill + Navbar dùng chung, không phụ thuộc trực tiếp
+ * @supabase/supabase-js ở tầng UI.
  */
 export interface AuthUser {
   email: string;

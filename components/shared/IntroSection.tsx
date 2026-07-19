@@ -66,9 +66,9 @@ export default function IntroSection() {
           align="left"
           className="mb-4 text-[clamp(44px,6.5vw,88px)] tracking-[-0.04em]"
         >
-          Một ly Protein
-          <br />
-          Nutein có gì?
+          {/* "\n" thay vì <br /> — IntroSection là Server Component, xem
+              comment trong BounceChars.tsx#toSegments để biết lý do. */}
+          Một ly Protein{"\n"}Nutein có gì?
         </SectionHeading>
         <p className="mb-8 max-w-[600px] text-base leading-relaxed text-text-muted">
           Khám phá nguồn dinh dưỡng thực vật dồi dào từ nguyên liệu thật, đem đến giải pháp bổ sung
