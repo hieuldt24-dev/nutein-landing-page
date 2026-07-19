@@ -12,5 +12,6 @@ This project keeps its architecture/style/state rulebook in `docs/`. Before maki
 - Editing any UI/component, CSS, Tailwind classes, colors, spacing, or anything under `components/` → read [docs/frontend-style-system-guide.md](docs/frontend-style-system-guide.md) first. If the task is specifically about the ongoing visual rebrand (Nutein color/token migration, drinkjoyrush.com-inspired sections), also read [docs/frontend-style-overhaul.md](docs/frontend-style-overhaul.md).
 - Adding/modifying state (`useState`, SWR, forms, cart/checkout state, anything cross-component) → read [docs/state-management.md](docs/state-management.md) first.
 - Adding/modifying any loading/skeleton/spinner/async-submit behavior → read [docs/loading-agent-guide.md](docs/loading-agent-guide.md) first.
+- File length / splitting large components → follow soft limit in [docs/source-code-architecture-guide.md](docs/source-code-architecture-guide.md) §13 and `.cursor/rules/file-size-and-split.mdc` (prefer &lt; ~300 lines; split by responsibility). Do **not** edit `nextjs-architecture-guide.md` unless the project owner updates architecture SoT.
 
 These docs are project-specific and override generic Next.js/React conventions from training data when they conflict.
