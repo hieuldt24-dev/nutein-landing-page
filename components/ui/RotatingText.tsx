@@ -22,8 +22,7 @@ const DEFAULT_TEXT = "NUTEIN ✦ ACTIVE PROTEIN POWDER ✦";
 
 /**
  * Dòng chữ xoay tròn liên tục dựa trên SVG textPath.
- * Không dùng pseudo-element hay CSS class toàn cục — toàn bộ animation
- * được drive bởi inline style duy nhất.
+ * Animation dùng keyframe `rt-spin` chung trong globals.css.
  */
 export function RotatingText({
   text = DEFAULT_TEXT,
@@ -54,46 +53,38 @@ export function RotatingText({
   ].join(" ");
 
   return (
-    <>
-      <style>{`
-        @keyframes rt-spin-${uid} {
-          from { transform: rotate(0deg); }
-          to   { transform: rotate(360deg); }
-        }
-      `}</style>
-      <div
-        aria-hidden
-        className={cn("pointer-events-none select-none shrink-0", className)}
-        style={{
-          width: size,
-          height: size,
-          animation: `rt-spin-${uid} ${duration}s linear infinite`,
-          ...style,
-        }}
+    <div
+      aria-hidden
+      className={cn("pointer-events-none select-none shrink-0", className)}
+      style={{
+        width: size,
+        height: size,
+        animation: `rt-spin ${duration}s linear infinite`,
+        ...style,
+      }}
+    >
+      <svg
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+        focusable="false"
+        overflow="visible"
       >
-        <svg
-          width={size}
-          height={size}
-          viewBox={`0 0 ${size} ${size}`}
-          focusable="false"
-          overflow="visible"
+        <defs>
+          <path id={`rt-path-${uid}`} d={circlePath} />
+        </defs>
+        <text
+          fontSize={fontSize}
+          fontWeight="800"
+          letterSpacing="2.8"
+          fill={color}
+          fontFamily="inherit"
         >
-          <defs>
-            <path id={`rt-path-${uid}`} d={circlePath} />
-          </defs>
-          <text
-            fontSize={fontSize}
-            fontWeight="800"
-            letterSpacing="2.8"
-            fill={color}
-            fontFamily="inherit"
-          >
-            <textPath href={`#rt-path-${uid}`} startOffset="0%">
-              {repeatedText}
-            </textPath>
-          </text>
-        </svg>
-      </div>
-    </>
+          <textPath href={`#rt-path-${uid}`} startOffset="0%">
+            {repeatedText}
+          </textPath>
+        </text>
+      </svg>
+    </div>
   );
 }

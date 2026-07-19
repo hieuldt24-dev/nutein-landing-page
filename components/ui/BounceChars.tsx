@@ -122,45 +122,6 @@ export function BounceChars({
       ref={rootRef as never}
       className={cn("bounce-chars", active && "is-active", className)}
     >
-      <style>{`
-        .bounce-chars .bc-char {
-          display: inline-block;
-          position: relative;
-          will-change: transform, opacity;
-          opacity: 0;
-          transform: translateY(0.55em) scale(0.45);
-        }
-        .bounce-chars.is-active .bc-char {
-          animation: bc-bounce-in 0.7s cubic-bezier(0.34, 1.45, 0.64, 1) both;
-          animation-delay: var(--bc-delay, 0ms);
-        }
-        .bounce-chars .bc-word {
-          display: inline-block;
-          white-space: nowrap;
-        }
-        @keyframes bc-bounce-in {
-          0% {
-            opacity: 0;
-            transform: translateY(0.55em) scale(0.45);
-          }
-          55% {
-            opacity: 1;
-            transform: translateY(-0.1em) scale(1.1);
-          }
-          100% {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .bounce-chars .bc-char {
-            opacity: 1 !important;
-            transform: none !important;
-            animation: none !important;
-          }
-        }
-      `}</style>
-
       <span className="sr-only">{label}</span>
       <span aria-hidden="true">
         {segments.map((seg, i) => {
