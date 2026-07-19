@@ -94,7 +94,7 @@ export default function DifferentiatorsSection() {
               &ldquo;Chúng tôi tin rằng cơ thể bạn xứng đáng nhận được nguồn dinh dưỡng lành mạnh nhất. Không chỉ cung cấp năng lượng sạch, Nutein là lời cam kết bền vững cho sức khỏe của bạn và hệ sinh thái thiên nhiên.&rdquo;
             </p>
             <div className="flex items-center gap-4 flex-wrap">
-              <CtaCluster label="Về chúng tôi" href="#ve-chung-toi" size={44} iconSize={18} />
+              <CtaCluster label="Về chúng tôi" href="/about" size={44} iconSize={18} />
               <StarRating
                 rating={4.9}
                 label="50,000+ đánh giá"
@@ -131,16 +131,6 @@ export default function DifferentiatorsSection() {
         </div>
       </div>
 
-      <style>{`
-        @media (max-width: 900px) {
-          .diff-brand { grid-template-columns: 1fr !important; }
-          .diff-frame-cluster { max-width: 320px; margin: 0 auto; }
-          .diff-row {
-            grid-template-columns: 40px 52px 1fr !important;
-            row-gap: 10px !important;
-          }
-        }
-      `}</style>
     </section>
   );
 }

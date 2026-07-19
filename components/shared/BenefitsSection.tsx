@@ -45,7 +45,7 @@ const COMMITMENTS = [
 
 export default function BenefitsSection() {
   return (
-    <section id="benefits" className="relative overflow-hidden bg-primary-soft/40 py-24 px-6">
+    <section id="kien-thuc" className="relative overflow-hidden bg-primary-soft/40 py-24 px-6">
       <div className="max-w-[1200px] mx-auto">
         <div className="benefits-split grid gap-14" style={{ gridTemplateColumns: "1.1fr 0.9fr" }}>
           {/* Column 1 */}
@@ -124,17 +124,6 @@ export default function BenefitsSection() {
         </div>
       </div>
 
-      <style>{`
-        @keyframes floatYSlowRotated {
-          0%, 100% { transform: translateY(0px)   rotate(2deg);  }
-          33%       { transform: translateY(-14px) rotate(3deg);  }
-          66%       { transform: translateY(-7px)  rotate(1deg);  }
-        }
-        @media (max-width: 900px) {
-          .benefits-split { grid-template-columns: 1fr !important; gap: 48px !important; }
-          .benefits-visual-col { order: 2; padding: 0 12px; }
-        }
-      `}</style>
     </section>
   );
 }

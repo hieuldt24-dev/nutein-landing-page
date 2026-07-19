@@ -83,12 +83,15 @@ export function MarqueeTicker({
     let offset = 0;
     let last = performance.now();
     let raf = 0;
+    let alive = true;
     /** 0 = tốc độ base; tiến tới ~1 khi scroll → nhân với scrollBoost */
     let boost = 0;
     let lastScrollY = window.scrollY;
     let lastScrollT = performance.now();
 
     const tick = (now: number) => {
+      if (!alive) return;
+
       const dt = Math.min((now - last) / 1000, 0.064);
       last = now;
 
@@ -98,11 +101,19 @@ export function MarqueeTicker({
       const currentSpeed = speed * (1 + boost * (scrollBoost - 1));
       offset -= currentSpeed * dt;
 
+      // offsetWidth === 0 (layout chưa sẵn / đang unmount) → vòng while cũ treo main thread
       let first = track.firstElementChild as HTMLElement | null;
-      while (first && -offset >= first.offsetWidth) {
+      let moves = 0;
+      while (
+        first &&
+        first.offsetWidth > 0 &&
+        -offset >= first.offsetWidth &&
+        moves < track.childElementCount
+      ) {
         offset += first.offsetWidth;
         track.appendChild(first);
         first = track.firstElementChild as HTMLElement | null;
+        moves++;
       }
 
       track.style.transform = `translate3d(${offset}px, 0, 0)`;
@@ -126,6 +137,7 @@ export function MarqueeTicker({
     window.addEventListener("scroll", onScroll, { passive: true });
 
     const onResize = () => {
+      if (!alive) return;
       offset = 0;
       boost = 0;
       track.style.transform = "translate3d(0,0,0)";
@@ -135,6 +147,7 @@ export function MarqueeTicker({
     ro.observe(viewport);
 
     return () => {
+      alive = false;
       cancelAnimationFrame(raf);
       ro.disconnect();
       window.removeEventListener("scroll", onScroll);

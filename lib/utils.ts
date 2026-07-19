@@ -49,3 +49,15 @@ export function capitalize(str: string): string {
 export function isEmptyObject(obj: Record<string, unknown>): boolean {
   return Object.keys(obj).length === 0;
 }
+
+/**
+ * Format số tiền theo VND, locale Việt Nam.
+ * Ví dụ: formatCurrencyVnd(249000) => "249.000 ₫"
+ */
+export function formatCurrencyVnd(amount: number): string {
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
