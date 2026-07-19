@@ -28,10 +28,10 @@ function InstagramIcon({ size = 16 }: { size?: number }) {
 
 const QUICK_LINKS = [
   { label: "Trang chủ", href: "/" },
-  { label: "Sản phẩm", href: "#san-pham" },
-  { label: "Khám phá", href: "#kien-thuc" },
-  { label: "Về Nutein", href: "#ve-chung-toi" },
-  { label: "Liên hệ", href: "#lien-he" },
+  { label: "Sản phẩm", href: "/#san-pham" },
+  { label: "Khám phá", href: "/#kien-thuc" },
+  { label: "Về Nutein", href: "/about" },
+  { label: "Liên hệ", href: "/#lien-he" },
 ];
 
 const POLICY_LINKS = [
@@ -56,7 +56,7 @@ export default function Footer() {
   };
 
   return (
-    <footer id="footer" className="bg-ink relative overflow-hidden">
+    <footer id="lien-he" className="bg-ink relative overflow-hidden">
       {/* Newsletter heading block */}
       <div className="relative max-w-[1200px] mx-auto px-6 py-24 md:py-32 border-b border-white/10 overflow-hidden">
         <div className="relative z-[1] flex flex-col md:flex-row md:items-end md:justify-between gap-10">
