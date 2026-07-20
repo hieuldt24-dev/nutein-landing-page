@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { MapPin, Pencil, Star, Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import { notify } from "@/lib/toast";
 import type { UpsertAddressInput } from "@/features/account/schemas/address.schema";
 import type { ShippingAddress } from "@/features/account/types";
 import { AccountAddressForm } from "@/components/account/AccountAddressForm";
@@ -108,7 +108,7 @@ export function AccountAddressList() {
                         title="Đặt mặc định"
                         onClick={() => {
                           void setDefaultAddress(addr.id).catch((err) =>
-                            toast.error(
+                            notify.error(
                               err instanceof Error ? err.message : "Không đặt được mặc định"
                             )
                           );
@@ -136,9 +136,9 @@ export function AccountAddressList() {
                       title="Xoá"
                       onClick={() => {
                         void removeAddress(addr.id)
-                          .then(() => toast.success("Đã xoá địa chỉ."))
+                          .then(() => notify.success("Đã xoá địa chỉ."))
                           .catch((err) =>
-                            toast.error(
+                            notify.error(
                               err instanceof Error ? err.message : "Xoá thất bại"
                             )
                           );

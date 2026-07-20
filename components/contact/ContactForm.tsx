@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { notify } from "@/lib/toast";
 import {
   CONTACT_SUBJECTS,
   MAX_MESSAGE_LENGTH,
@@ -81,10 +81,10 @@ export function ContactForm() {
     setIsSubmitting(true);
     try {
       const result = await postContact(values);
-      toast.success(result.message);
+      notify.success(result.message);
       reset();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Gửi liên hệ thất bại");
+      notify.error(err instanceof Error ? err.message : "Gửi liên hệ thất bại");
     } finally {
       setIsSubmitting(false);
     }

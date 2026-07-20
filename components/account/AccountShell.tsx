@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/lib/useAuthStore";
+import { notify } from "@/lib/toast";
 
 const TABS = [
   { href: "/account", label: "Hồ sơ", match: (path: string) => path === "/account" },
@@ -31,6 +32,7 @@ export function AccountShell({ children, title, description }: AccountShellProps
 
   const handleLogout = async () => {
     await signOut();
+    notify.success("Đã đăng xuất.");
     router.push("/");
   };
 

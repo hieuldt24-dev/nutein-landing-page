@@ -7,7 +7,7 @@ import useSWR, { useSWRConfig } from "swr";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { toast } from "sonner";
+import { notify } from "@/lib/toast";
 import { Eye, EyeOff, Loader2, X } from "lucide-react";
 import { FillButton } from "@/components/ui/FillButton";
 import { useAuthStore } from "@/lib/useAuthStore";
@@ -142,8 +142,9 @@ export default function AuthModal() {
       await signIn({ email: data.email });
       resetLoginForm();
       setIsOpen(false);
+      notify.success("Đăng nhập thành công.");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Đăng nhập thất bại");
+      notify.error(err instanceof Error ? err.message : "Đăng nhập thất bại");
     } finally {
       setIsSubmittingForm(false);
     }
@@ -157,9 +158,10 @@ export default function AuthModal() {
       await signIn({ email: data.email, fullName: data.fullName });
       resetSignUpForm();
       setIsOpen(false);
+      notify.success("Đăng ký thành công.");
       router.push("/account");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Đăng ký thất bại");
+      notify.error(err instanceof Error ? err.message : "Đăng ký thất bại");
     } finally {
       setIsSubmittingForm(false);
     }
@@ -168,6 +170,7 @@ export default function AuthModal() {
   const onLogoutFromModal = async () => {
     await signOut();
     setIsOpen(false);
+    notify.success("Đã đăng xuất.");
   };
 
   return (
@@ -325,8 +328,8 @@ export default function AuthModal() {
                 </label>
                 <button
                   type="button"
-                  onClick={() => toast.info("Tính năng khôi phục mật khẩu đang được phát triển.")}
-                  className="cursor-pointer font-bold text-primary-deep hover:text-primary"
+                  disabled
+                  className="cursor-not-allowed font-bold text-text-muted"
                 >
                   Quên mật khẩu?
                 </button>
@@ -359,7 +362,7 @@ export default function AuthModal() {
               <FillButton
                 type="button"
                 variant="ink"
-                onClick={() => toast.info("Đăng nhập bằng Google đang được tích hợp.")}
+                disabled
                 className="h-11 w-full justify-center px-4 text-[13px] font-bold"
               >
                 <GoogleIcon />
@@ -429,21 +432,8 @@ export default function AuthModal() {
                   />
                   <span>
                     Tôi đồng ý với{" "}
-                    <button
-                      type="button"
-                      onClick={() => toast.info("Điều khoản dịch vụ đang được cập nhật.")}
-                      className="cursor-pointer font-bold text-primary-deep hover:text-primary"
-                    >
-                      Điều khoản dịch vụ
-                    </button>{" "}
-                    &{" "}
-                    <button
-                      type="button"
-                      onClick={() => toast.info("Chính sách bảo mật đang được cập nhật.")}
-                      className="cursor-pointer font-bold text-primary-deep hover:text-primary"
-                    >
-                      Chính sách bảo mật
-                    </button>
+                    <span className="font-bold text-ink">Điều khoản dịch vụ</span> &{" "}
+                    <span className="font-bold text-ink">Chính sách bảo mật</span>
                   </span>
                 </label>
                 {signUpErrors.agreeTerms ? (

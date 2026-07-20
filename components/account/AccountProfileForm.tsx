@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Pencil } from "lucide-react";
-import { toast } from "sonner";
+import { notify } from "@/lib/toast";
 import {
   updateProfileSchema,
   type UpdateProfileInput,
@@ -49,10 +49,10 @@ export function AccountProfileForm() {
     setIsSubmitting(true);
     try {
       await updateProfile(values);
-      toast.success("Đã cập nhật thông tin cá nhân.");
+      notify.success("Đã cập nhật thông tin cá nhân.");
       setIsEditing(false);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Cập nhật thất bại");
+      notify.error(err instanceof Error ? err.message : "Cập nhật thất bại");
     } finally {
       setIsSubmitting(false);
     }

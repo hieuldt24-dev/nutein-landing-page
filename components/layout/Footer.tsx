@@ -4,7 +4,6 @@ import Link from "next/link";
 import Image from "next/image";
 import type { MouseEvent } from "react";
 import { MessageSquare, ShoppingCart } from "lucide-react";
-import { toast } from "sonner";
 import { BounceChars } from "@/components/ui/BounceChars";
 import { FillButton } from "@/components/ui/FillButton";
 import { useAddToCart } from "@/lib/useAddToCart";
@@ -138,7 +137,7 @@ export default function Footer() {
 
             <FillButton
               variant="outline-white"
-              onClick={() => toast.info("Hệ thống tư vấn viên đang được kết nối.")}
+              disabled
               className="px-7 py-3.5 text-base font-bold"
             >
               <MessageSquare size={18} />

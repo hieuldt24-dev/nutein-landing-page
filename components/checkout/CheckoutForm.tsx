@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSWRConfig } from "swr";
-import { toast } from "sonner";
+import { notify } from "@/lib/toast";
 import {
   CHECKOUT_FORM_DEFAULT_VALUES,
   CHECKOUT_ORDER_SNAPSHOT_KEY,
@@ -90,9 +90,12 @@ export default function CheckoutForm() {
     );
   }, [addressReady, shippingMethod, summary.voucherProgress]);
 
+  const placingOrderRef = useRef(false);
+
   useEffect(() => {
-    if (isEmpty) {
-      toast.info("Giỏ hàng trống — hãy thêm sản phẩm trước khi thanh toán.");
+    // Giỏ trống → về home im lặng (single-SKU: không cần toast “thêm sản phẩm”).
+    // Bỏ qua khi vừa đặt hàng xong (cart clear trước khi push /success).
+    if (isEmpty && !placingOrderRef.current) {
       router.replace("/");
     }
   }, [isEmpty, router]);
@@ -135,6 +138,7 @@ export default function CheckoutForm() {
       ...current,
       buyer: { fullName: "", phone: "", email: "" },
     });
+    notify.success("Đã đăng xuất.");
   };
 
   const onSubmit = handleSubmit(
@@ -175,11 +179,12 @@ export default function CheckoutForm() {
           }
         }
 
+        placingOrderRef.current = true;
         await removeFromCart();
-        toast.success("Đặt hàng thành công!");
+        notify.success("Đặt hàng thành công!");
         router.push(`/checkout/success?orderCode=${encodeURIComponent(result.orderCode)}`);
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Đặt hàng thất bại — vui lòng thử lại");
+        notify.error(err instanceof Error ? err.message : "Đặt hàng thất bại — vui lòng thử lại");
       }
     },
     (formErrors) => {

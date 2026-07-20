@@ -6,7 +6,7 @@ import type {
   UseFormRegister,
   UseFormSetValue,
 } from "react-hook-form";
-import { toast } from "sonner";
+import { notify } from "@/lib/toast";
 import type { CheckoutFormValues } from "@/features/checkout/schemas/checkout.schema";
 import {
   listVnProvinces,
@@ -52,7 +52,7 @@ export function CheckoutDeliverySection({
         if (!cancelled) setProvinces(list);
       })
       .catch(() => {
-        if (!cancelled) toast.error("Không tải được danh sách tỉnh/thành.");
+        if (!cancelled) notify.error("Không tải được danh sách tỉnh/thành.");
       })
       .finally(() => {
         if (!cancelled) setLoadingProvinces(false);
@@ -78,7 +78,7 @@ export function CheckoutDeliverySection({
       .catch(() => {
         if (!cancelled) {
           setWards([]);
-          toast.error("Không tải được danh sách phường/xã.");
+          notify.error("Không tải được danh sách phường/xã.");
         }
       })
       .finally(() => {

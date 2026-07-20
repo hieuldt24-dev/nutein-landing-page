@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { notify } from "@/lib/toast";
 import {
   upsertAddressSchema,
   type UpsertAddressInput,
@@ -84,7 +84,7 @@ export function AccountAddressForm({
         if (!cancelled) setProvinces(list);
       })
       .catch(() => {
-        if (!cancelled) toast.error("Không tải được danh sách tỉnh/thành.");
+        if (!cancelled) notify.error("Không tải được danh sách tỉnh/thành.");
       })
       .finally(() => {
         if (!cancelled) setLoadingProvinces(false);
@@ -108,7 +108,7 @@ export function AccountAddressForm({
       .catch(() => {
         if (!cancelled) {
           setWards([]);
-          toast.error("Không tải được danh sách phường/xã.");
+          notify.error("Không tải được danh sách phường/xã.");
         }
       })
       .finally(() => {
@@ -123,9 +123,9 @@ export function AccountAddressForm({
     setIsSubmitting(true);
     try {
       await onSubmitAddress(values);
-      toast.success(initial ? "Đã cập nhật địa chỉ." : "Đã thêm địa chỉ.");
+      notify.success(initial ? "Đã cập nhật địa chỉ." : "Đã thêm địa chỉ.");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Lưu địa chỉ thất bại");
+      notify.error(err instanceof Error ? err.message : "Lưu địa chỉ thất bại");
     } finally {
       setIsSubmitting(false);
     }
