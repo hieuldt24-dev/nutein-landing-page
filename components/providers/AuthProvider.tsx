@@ -14,6 +14,15 @@ import { authRepository } from "@/features/auth/services/auth.repository";
  * fetcher falsy là "chưa truyền", rồi fallback sang global fetcher thật và
  * gọi fetch("auth-user"), gây 404 lặp lại (bug đã gặp thực tế, xem git log).
  *
+ * CHỈ dùng `onAuthStateChange` — supabase-js tự bắn sự kiện "INITIAL_SESSION"
+ * kèm session hiện tại ngay khi subscribe, nên không cần gọi thêm
+ * `getSession()` riêng. Trước đây có cả 2: 2 nguồn ghi độc lập vào cùng key
+ * SWR, không đảm bảo thứ tự resolve — ở React StrictMode (dev), effect chạy
+ * 2 lần khiến callback của lần mount cũ (đã unsubscribe) vẫn có thể bắn 1
+ * lần cuối (unsubscribe không huỷ được callback đã enqueue), ghi đè tạm
+ * `null` rồi ghi đè lại đúng ngay sau — hiện tượng "tự logout rồi login lại"
+ * trong vài giây. Cờ `cancelled` chặn callback từ effect instance đã cũ.
+ *
  * Cũng tự cấp lại cặp JWT cookie riêng (app/api/auth/session) mỗi khi có
  * session Supabase hợp lệ — bắt các luồng KHÔNG đi qua useAuthStore.signIn
  * trực tiếp: reload trang khi đã đăng nhập từ trước, và OAuth callback
@@ -23,19 +32,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { mutate } = useSWRConfig();
 
   useEffect(() => {
-    supabaseBrowser.auth.getSession().then(({ data }) => {
-      mutate("auth-user", data.session?.user ?? null, { revalidate: false });
-      if (data.session?.user) void authRepository.mintApiSession();
-    });
+    let cancelled = false;
 
     const {
       data: { subscription },
     } = supabaseBrowser.auth.onAuthStateChange((_event, session) => {
+      if (cancelled) return;
       mutate("auth-user", session?.user ?? null, { revalidate: false });
       if (session?.user) void authRepository.mintApiSession();
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, [mutate]);
 
   return <>{children}</>;
