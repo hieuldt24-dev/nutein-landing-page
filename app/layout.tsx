@@ -49,7 +49,10 @@ export default function RootLayout({
       className={`${quicksand.variable} ${mulish.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col font-sans" suppressHydrationWarning>
+      <body
+        className="flex min-h-full flex-col font-sans [&_>_*]:shrink-0"
+        suppressHydrationWarning
+      >
         <SWRProvider>
           {children}
           <AuthModal />
