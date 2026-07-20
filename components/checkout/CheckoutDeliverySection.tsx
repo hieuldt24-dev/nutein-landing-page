@@ -100,6 +100,8 @@ export function CheckoutDeliverySection({
             error={errors.address?.provinceCode?.message || errors.address?.province?.message}
           >
             <CheckoutSelect
+              name="address.provinceCode"
+              data-checkout-field="address.provinceCode"
               disabled={isSubmitting || loadingProvinces}
               error={Boolean(errors.address?.provinceCode || errors.address?.province)}
               value={provinceCode}
@@ -129,6 +131,8 @@ export function CheckoutDeliverySection({
             error={errors.address?.wardCode?.message || errors.address?.ward?.message}
           >
             <CheckoutSelect
+              name="address.wardCode"
+              data-checkout-field="address.wardCode"
               disabled={isSubmitting || !provinceCode || loadingWards}
               error={Boolean(errors.address?.wardCode || errors.address?.ward)}
               value={wardCode}
