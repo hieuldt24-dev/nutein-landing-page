@@ -33,6 +33,7 @@ export const metadata: Metadata = {
 };
 
 import { SWRProvider } from "@/components/providers/SWRProvider";
+import { AuthProvider } from "@/components/providers/AuthProvider";
 import AuthModal from "@/components/shared/AuthModal";
 import CartDrawer from "@/components/shared/CartDrawer";
 import { AppToaster } from "@/components/ui/AppToaster";
@@ -54,10 +55,12 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <SWRProvider>
-          {children}
-          <AuthModal />
-          <CartDrawer />
-          <AppToaster />
+          <AuthProvider>
+            {children}
+            <AuthModal />
+            <CartDrawer />
+            <AppToaster />
+          </AuthProvider>
         </SWRProvider>
       </body>
     </html>
