@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useSWRConfig } from "swr";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { authRepository } from "@/features/auth/services/auth.repository";
+import { AUTH_READY_SWR_KEY } from "@/features/auth/constants";
 
 /**
  * Đồng bộ Supabase auth session vào SWR-as-store key "auth-user" (xem
@@ -34,6 +35,16 @@ import { authRepository } from "@/features/auth/services/auth.repository";
  * thực sự đổi (đăng nhập mới/đổi tài khoản), không cần chạy lại mỗi lần
  * refresh token nội bộ của Supabase (app tự có cơ chế refresh JWT riêng lazy
  * theo 401, xem lib/swr-fetcher.ts) — tránh spam POST /api/auth/session.
+ *
+ * Set "auth-ready" = true ngay khi có event đầu tiên (kể cả session null) —
+ * bug thật đã gặp: các guard như app/(account)/account/layout.tsx trước đây
+ * tự chờ 1 tick `useState(false) -> setTrue trong useEffect riêng` để tránh
+ * flash gate, nhưng effect CON (guard, nằm sâu hơn trong cây) luôn chạy
+ * TRƯỚC effect CHA (AuthProvider) theo thứ tự React — nên guard "chốt"
+ * isLoggedIn=false (giá trị mặc định lúc chưa có session) trước khi
+ * AuthProvider kịp đọc xong session thật từ Supabase (có độ trễ mạng),
+ * gây chập chờn hiện/mất trạng thái đăng nhập ngẫu nhiên mỗi lần F5. Guard
+ * phải chờ đúng tín hiệu "đã biết chắc" này, không phải chờ "đã mount".
  */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { mutate } = useSWRConfig();
@@ -47,6 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = supabaseBrowser.auth.onAuthStateChange((_event, session) => {
       if (cancelled) return;
       mutate("auth-user", session?.user ?? null, { revalidate: false });
+      void mutate(AUTH_READY_SWR_KEY, true, { revalidate: false });
 
       const userId = session?.user?.id ?? null;
       if (userId && userId !== lastMintedUserId) {

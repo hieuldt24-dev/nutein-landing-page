@@ -1,6 +1,16 @@
 /** SWR-as-store key — user đang đăng nhập (không phải URL API). */
 export const AUTH_USER_SWR_KEY = "auth-user";
 
+/**
+ * SWR-as-store key — true khi AuthProvider đã nhận sự kiện onAuthStateChange
+ * đầu tiên (session Supabase đã được xác định thật, dù là có hay không có
+ * user). Dùng để phân biệt "chưa biết" với "chắc chắn chưa đăng nhập" — nếu
+ * chỉ dựa vào `isLoggedIn` (mặc định false lúc mount), UI guard (VD
+ * AccountLayout) có thể chốt hiển thị "chưa đăng nhập" trước khi session
+ * async kịp resolve, gây flash/flip sai giữa các lần load trang.
+ */
+export const AUTH_READY_SWR_KEY = "auth-ready";
+
 /** Tên cookie httpOnly chứa JWT access/refresh token riêng của app (bảo vệ app/api/**). */
 export const ACCESS_TOKEN_COOKIE = "nutein_access_token";
 export const REFRESH_TOKEN_COOKIE = "nutein_refresh_token";
