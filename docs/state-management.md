@@ -26,11 +26,18 @@ const { data, error, isLoading } = useSWR<Order[]>("/api/orders");
 
 Dự án dùng một pattern nhẹ: dùng `useSWR` với một **key tĩnh** (không phải URL) làm store toàn cục, cập nhật bằng `mutate(key, value, { revalidate: false })`. Đây **không phải** server data — key này không bao giờ gọi network, chỉ tồn tại trong SWR cache để chia sẻ state giữa các component không có quan hệ cha-con.
 
+**Bắt buộc** tắt cả 3 cờ `revalidateOnMount`/`revalidateOnFocus`/`revalidateOnReconnect` (không chỉ `revalidateOnMount`) — nếu thiếu `revalidateOnFocus: false`, SWR sẽ tự chạy lại fetcher no-op mỗi khi **tab được focus lại**, ghi đè giá trị thật (vừa `mutate()`) về giá trị mặc định của fetcher. Đây là bug thật đã gặp: key `auth-user`/`auth-ready` thiếu `revalidateOnFocus: false` khiến user bị tự đăng xuất mỗi lần chuyển tab đi rồi quay lại (xem `lib/useAuthStore.ts`).
+
 Ví dụ hiện có — trạng thái mở/đóng `AuthModal` ở [components/shared/AuthModal.tsx](../components/shared/AuthModal.tsx):
 
 ```tsx
 const { mutate } = useSWRConfig();
-const { data: isOpen } = useSWR("auth-modal", () => false, { fallbackData: false });
+const { data: isOpen } = useSWR("auth-modal", () => false, {
+  fallbackData: false,
+  revalidateOnMount: false,
+  revalidateOnFocus: false,
+  revalidateOnReconnect: false,
+});
 
 const setIsOpen = useCallback(
   (val: boolean) => mutate("auth-modal", val, { revalidate: false }),
