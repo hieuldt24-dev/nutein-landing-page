@@ -1,21 +1,19 @@
 "use client";
 
 import { useCallback } from "react";
-import useSWR, { useSWRConfig } from "swr";
+import useSWR from "swr";
 import { accountDataSwrKey } from "@/features/account/constants";
 import type { UpdateProfileInput } from "@/features/account/schemas/profile.schema";
 import type { UpsertAddressInput } from "@/features/account/schemas/address.schema";
 import type { SyncFromCheckoutInput } from "@/features/account/schemas/sync-from-checkout.schema";
 import { accountService } from "@/features/account/services/account.service";
 import type { AccountData, ShippingAddress } from "@/features/account/types";
-import { AUTH_USER_SWR_KEY } from "@/features/auth/constants";
-import { authRepository } from "@/features/auth/services/auth.repository";
+import type { AuthUser } from "@/features/auth/types";
 import { useAuthStore } from "@/lib/useAuthStore";
 
 /** Đọc account + soft-merge tên/SĐT từ session nếu account trống (không ghi SĐT giả). */
-async function loadAccountData(email: string): Promise<AccountData> {
+async function loadAccountData(email: string, session: AuthUser | null): Promise<AccountData> {
   const data = await accountService.getData(email);
-  const session = authRepository.getUser();
   if (!session || session.email.toLowerCase() !== email.toLowerCase()) {
     return data;
   }
@@ -34,14 +32,13 @@ async function loadAccountData(email: string): Promise<AccountData> {
  * Không đụng localStorage trong UI.
  */
 export function useAccountProfile() {
-  const { user, isLoggedIn, signIn } = useAuthStore();
-  const { mutate: globalMutate } = useSWRConfig();
+  const { user, isLoggedIn } = useAuthStore();
   const email = user?.email ?? null;
   const swrKey = email ? accountDataSwrKey(email) : null;
 
   const { data, error, isLoading, isValidating, mutate } = useSWR(
     swrKey,
-    () => loadAccountData(email!),
+    () => loadAccountData(email!, user),
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
@@ -55,17 +52,9 @@ export function useAccountProfile() {
       const addresses = data?.addresses ?? (await accountService.listAddresses(email));
       const next: AccountData = { profile, addresses };
       await mutate(next, { revalidate: false });
-      await signIn({
-        email,
-        fullName: profile.fullName,
-        phone: profile.phone,
-      });
-      await globalMutate(AUTH_USER_SWR_KEY, authRepository.getUser(), {
-        revalidate: false,
-      });
       return profile;
     },
-    [data?.addresses, email, globalMutate, mutate, signIn]
+    [data?.addresses, email, mutate]
   );
 
   const upsertAddress = useCallback(
@@ -104,13 +93,8 @@ export function useAccountProfile() {
       if (!email) return;
       const next = await accountService.syncFromCheckout(email, input);
       await mutate(next, { revalidate: false });
-      await signIn({
-        email,
-        fullName: next.profile.fullName,
-        phone: next.profile.phone,
-      });
     },
-    [email, mutate, signIn]
+    [email, mutate]
   );
 
   const defaultAddress: ShippingAddress | null =

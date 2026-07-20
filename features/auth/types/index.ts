@@ -1,7 +1,8 @@
 /**
- * Session user phía client — mỏng (email / tên / SĐT).
- * Sổ địa chỉ nằm `features/account` (account.repository), không nhồi vào session.
- * Khi có auth API / Supabase: chỉ đổi thân auth.repository get/set/clear.
+ * Session user phía client — map từ Supabase Auth `User` (xem
+ * features/auth/services/auth.repository.ts#toAuthUser). Shape giữ ổn định
+ * để checkout prefill + Navbar dùng chung, không phụ thuộc trực tiếp
+ * @supabase/supabase-js ở tầng UI.
  */
 export interface AuthUser {
   email: string;
