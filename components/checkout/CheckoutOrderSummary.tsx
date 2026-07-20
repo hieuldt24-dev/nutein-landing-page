@@ -1,8 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { NUTEIN_PRODUCT } from "@/features/product/constants";
 import type { CartSummary } from "@/features/cart/types";
+import { productService } from "@/features/product/services/product.service";
 import { cn, formatCurrencyVnd } from "@/lib/utils";
 
 interface CheckoutOrderSummaryProps {
@@ -25,6 +25,7 @@ export function CheckoutOrderSummary({
   const orderTotal =
     shippingFee === null ? merchandiseTotal : merchandiseTotal + shippingFee;
   const hasDiscount = summary.discountAmount > 0;
+  const catalog = productService.getCatalogProduct();
 
   return (
     <aside
@@ -36,8 +37,8 @@ export function CheckoutOrderSummary({
       <div className="flex items-start gap-4 border-b border-ink/10 pb-6">
         <div className="relative size-[72px] shrink-0 overflow-hidden rounded-[var(--radius-md)] border border-ink/10 bg-bg">
           <Image
-            src={NUTEIN_PRODUCT.image}
-            alt={NUTEIN_PRODUCT.imageAlt}
+            src={catalog.image}
+            alt={catalog.imageAlt}
             fill
             sizes="72px"
             className="object-cover"
@@ -48,10 +49,10 @@ export function CheckoutOrderSummary({
         </div>
         <div className="min-w-0 flex-1">
           <p className="font-display text-[17px] font-bold tracking-[-0.02em] text-ink">
-            {NUTEIN_PRODUCT.name}
+            {catalog.name}
           </p>
           <p className="mt-0.5 text-[12px] font-semibold text-text-muted">
-            {NUTEIN_PRODUCT.unitLabel}
+            {catalog.unitLabel}
           </p>
           <p className="mt-2 text-[14px] font-bold text-ink">
             {formatCurrencyVnd(merchandiseTotal)}

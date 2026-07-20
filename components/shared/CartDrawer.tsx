@@ -13,7 +13,7 @@ import {
   CART_EMPTY_HEADING,
 } from "@/features/cart/constants";
 import type { CartSummary as CartSummaryData } from "@/features/cart/types";
-import { NUTEIN_PRODUCT } from "@/features/product/constants";
+import { productService } from "@/features/product/services/product.service";
 import { CartVoucherProgress } from "@/components/shared/CartVoucherProgress";
 import { CartLineItem } from "@/components/shared/CartLineItem";
 import { FillButton } from "@/components/ui/FillButton";
@@ -26,7 +26,7 @@ function CartEmptyState({ onContinueShopping }: { onContinueShopping: () => void
         {CART_EMPTY_HEADING}
       </p>
       <FillButton
-        href="/#san-pham"
+        href="/product"
         onClick={(e) => {
           e.preventDefault();
           onContinueShopping();
@@ -86,13 +86,31 @@ function CartTotals({
 export default function CartDrawer() {
   const router = useRouter();
   const { isOpen, close } = useCartDrawer();
-  const { quantity, summary, isUpdating, increment, decrement, removeFromCart } = useCartStore();
+  const {
+    quantity,
+    variantId,
+    summary,
+    isUpdating,
+    increment,
+    decrement,
+    removeFromCart,
+  } = useCartStore();
   const [isMounted, setIsMounted] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
+
+  const lineProduct = productService.toCartProduct(
+    productService.getProductDetail(),
+    variantId
+  );
 
   const goCheckout = () => {
     close();
     router.push("/checkout");
+  };
+
+  const continueShopping = () => {
+    close();
+    router.push("/product");
   };
 
   useEffect(() => {
@@ -177,11 +195,11 @@ export default function CartDrawer() {
         </div>
 
         {isEmpty ? (
-          <CartEmptyState onContinueShopping={close} />
+          <CartEmptyState onContinueShopping={continueShopping} />
         ) : (
           <div className="flex-1 overflow-y-auto px-7 py-8">
             <CartLineItem
-              product={NUTEIN_PRODUCT}
+              product={lineProduct}
               quantity={quantity}
               disabled={isUpdating}
               onIncrement={() => {

@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState, type FormEvent } from "react";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/Button";
+import type { MouseEvent } from "react";
+import { MessageSquare, ShoppingCart } from "lucide-react";
 import { BounceChars } from "@/components/ui/BounceChars";
-// lucide-react đã bỏ các icon logo thương hiệu (Facebook, Instagram...) vì lý do
-// bản quyền — dùng SVG inline tối giản thay thế.
+import { FillButton } from "@/components/ui/FillButton";
+import { useAddToCart } from "@/lib/useAddToCart";
+
 function FacebookIcon({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
@@ -18,7 +18,16 @@ function FacebookIcon({ size = 16 }: { size?: number }) {
 
 function InstagramIcon({ size = 16 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <rect x="2" y="2" width="20" height="20" rx="5" />
       <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
       <line x1="17.5" y1="6.5" x2="17.5" y2="6.5" />
@@ -28,10 +37,10 @@ function InstagramIcon({ size = 16 }: { size?: number }) {
 
 const QUICK_LINKS = [
   { label: "Trang chủ", href: "/" },
-  { label: "Sản phẩm", href: "/#san-pham" },
-  { label: "Khám phá", href: "/#kien-thuc" },
+  { label: "Sản phẩm", href: "/product" },
+  { label: "Khám phá", href: "/blog" },
   { label: "Về Nutein", href: "/about" },
-  { label: "Liên hệ", href: "/#lien-he" },
+  { label: "Liên hệ", href: "/contact" },
 ];
 
 const POLICY_LINKS = [
@@ -41,82 +50,146 @@ const POLICY_LINKS = [
   { label: "Điều khoản sử dụng", href: "#" },
 ];
 
+/**
+ * Footer site — nền caramel như BottomCta; CTA mua hàng ở trên,
+ * cột link / copyright bên dưới. Không còn newsletter.
+ */
 export default function Footer() {
-  const [email, setEmail] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const addToCart = useAddToCart();
 
-  const handleSubscribe = async (e: FormEvent) => {
+  const handleBuyNow = (e: MouseEvent) => {
     e.preventDefault();
-    if (!email) return;
-    setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 900));
-    setSubmitting(false);
-    toast.success("Đăng ký nhận ưu đãi thành công!");
-    setEmail("");
+    void addToCart();
   };
 
   return (
-    <footer id="lien-he" className="bg-ink relative overflow-hidden">
-      {/* Newsletter heading block */}
-      <div className="relative max-w-[1200px] mx-auto px-6 py-24 md:py-32 border-b border-white/10 overflow-hidden">
-        <div className="relative z-[1] flex flex-col md:flex-row md:items-end md:justify-between gap-10">
-          <h2 className="text-white font-black uppercase text-[clamp(48px,8vw,104px)] leading-[0.94] tracking-[-0.035em] max-w-[720px]">
-            <BounceChars>
-              Không bỏ lỡ
-              <br />
-              ưu đãi từ Nutein
-            </BounceChars>
-          </h2>
+    <footer
+      id="lien-he"
+      className="relative shrink-0 overflow-hidden"
+      style={{ background: "linear-gradient(135deg, #8A5A1E 0%, #E2A550 100%)" }}
+    >
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-16 -left-16 h-[340px] w-[340px] rounded-full"
+        style={{
+          background: "radial-gradient(circle, rgba(196,226,147,0.28) 0%, transparent 70%)",
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-16 bottom-0 h-[340px] w-[340px] translate-y-1/3 rounded-full"
+        style={{
+          background: "radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%)",
+        }}
+      />
 
-          <form onSubmit={handleSubscribe} className="w-full max-w-[420px] flex flex-col gap-3">
-            <p className="text-white/60 text-sm">Đăng ký để nhận tin tức & ưu đãi sớm nhất</p>
-            <div className="flex items-center gap-2 bg-white/10 border border-white/15 rounded-full p-1.5">
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Email của bạn"
-                disabled={submitting}
-                className="flex-1 bg-transparent text-white placeholder:text-white/40 text-sm px-4 py-2.5 outline-none min-w-0"
-              />
-              <Button type="submit" size="sm" disabled={submitting}>
-                {submitting ? "..." : "Đăng ký"}
-              </Button>
-            </div>
-          </form>
+      {/* CTA — khung fan cố định theo nội dung (tránh aspect cao tạo lỗ trống tới cột link) */}
+      <div className="relative z-[1] mx-auto grid max-w-[1200px] grid-cols-1 items-center gap-8 px-6 py-12 md:grid-cols-[minmax(0,340px)_1fr] md:gap-12 md:py-14">
+        <div className="cta-fan relative mx-auto hidden h-[260px] w-full max-w-[300px] md:block">
+          <div className="absolute top-5 left-0 z-[1] aspect-[3/4] w-[56%] -rotate-[13deg] overflow-hidden rounded-3xl border-4 border-white shadow-xl">
+            <Image
+              src="/images/example.jpg"
+              alt="Nutein"
+              fill
+              sizes="180px"
+              className="object-cover"
+            />
+          </div>
+          <div className="absolute top-0 left-[14%] z-[2] aspect-[3/4] w-[56%] -rotate-[1deg] overflow-hidden rounded-3xl border-4 border-white shadow-xl">
+            <Image
+              src="/images/example.jpg"
+              alt="Nutein"
+              fill
+              sizes="180px"
+              className="object-cover"
+            />
+          </div>
+          <div className="absolute top-6 left-[28%] z-[3] aspect-[3/4] w-[56%] rotate-[12deg] overflow-hidden rounded-3xl border-4 border-white shadow-xl">
+            <Image
+              src="/images/example.jpg"
+              alt="Nutein"
+              fill
+              sizes="180px"
+              className="object-cover"
+            />
+          </div>
+        </div>
+
+        <div className="cta-copy relative text-center md:text-left">
+          <h2 className="font-display text-[clamp(28px,4vw,44px)] font-black leading-[1.05] tracking-[-0.03em] text-white">
+            <BounceChars>Sẵn sàng nạp nguồn năng lượng sạch từ thực vật?</BounceChars>
+          </h2>
+          <p className="mx-auto mt-3 max-w-[440px] text-[15px] leading-relaxed text-white/85 md:mx-0 md:text-base">
+            Gia nhập lối sống lành mạnh cùng hàng ngàn khách hàng tin dùng Nutein để chăm
+            sóc sức khỏe chủ động mỗi ngày.
+          </p>
+
+          <div className="mt-5 flex flex-wrap justify-center gap-4 md:justify-start">
+            <FillButton
+              href="/product"
+              onClick={handleBuyNow}
+              variant="white"
+              className="px-7 py-3.5 text-base font-bold shadow-lg"
+            >
+              <ShoppingCart size={18} />
+              Mua Ngay Sản Phẩm
+            </FillButton>
+
+            <FillButton
+              variant="outline-white"
+              disabled
+              className="px-7 py-3.5 text-base font-bold"
+            >
+              <MessageSquare size={18} />
+              Tư vấn trực tiếp
+            </FillButton>
+          </div>
         </div>
       </div>
 
-      {/* Link columns */}
-      <div className="max-w-[1200px] mx-auto px-6 py-14 grid grid-cols-1 md:grid-cols-[1.3fr_1fr_1fr_1fr] gap-10">
+      {/* Cột link */}
+      <div className="relative z-[1] mx-auto grid max-w-[1200px] grid-cols-1 gap-8 border-t border-white/20 px-6 py-8 md:grid-cols-[1.3fr_1fr_1fr_1fr] md:py-10">
         <div>
           <Image
             src="/images/logo-horizontal-2x_1.svg"
             alt="Nutein"
             width={132}
             height={36}
-            className="h-8 w-auto mb-4 brightness-0 invert"
+            className="mb-4 h-8 w-auto brightness-0 invert"
           />
-          <p className="text-white/55 text-sm leading-relaxed max-w-[280px]">
-            100% Protein thực vật từ nguyên liệu thật — nguồn năng lượng sạch cho lối sống lành mạnh mỗi ngày.
+          <p className="max-w-[280px] text-sm leading-relaxed text-white/75">
+            100% Protein thực vật từ nguyên liệu thật — nguồn năng lượng sạch cho lối sống
+            lành mạnh mỗi ngày.
           </p>
-          <div className="flex items-center gap-3 mt-5">
-            <a href="#" aria-label="Facebook" className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:bg-primary hover:text-white transition-colors">
+          <div className="mt-5 flex items-center gap-3">
+            <a
+              href="#"
+              aria-label="Facebook"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white/80 transition-colors hover:bg-white hover:text-[#8A5A1E]"
+            >
               <FacebookIcon size={16} />
             </a>
-            <a href="#" aria-label="Instagram" className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:bg-primary hover:text-white transition-colors">
+            <a
+              href="#"
+              aria-label="Instagram"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white/80 transition-colors hover:bg-white hover:text-[#8A5A1E]"
+            >
               <InstagramIcon size={16} />
             </a>
           </div>
         </div>
 
         <div>
-          <h3 className="text-white text-sm font-bold uppercase tracking-[0.08em] mb-4">Liên kết nhanh</h3>
-          <ul className="flex flex-col gap-2.5 list-none">
+          <h3 className="mb-4 text-sm font-bold tracking-[0.08em] text-white uppercase">
+            Liên kết nhanh
+          </h3>
+          <ul className="flex list-none flex-col gap-2.5">
             {QUICK_LINKS.map((link) => (
               <li key={link.label}>
-                <Link href={link.href} className="text-white/55 text-sm hover:text-white transition-colors">
+                <Link
+                  href={link.href}
+                  className="text-sm text-white/75 transition-colors hover:text-white"
+                >
                   {link.label}
                 </Link>
               </li>
@@ -125,11 +198,16 @@ export default function Footer() {
         </div>
 
         <div>
-          <h3 className="text-white text-sm font-bold uppercase tracking-[0.08em] mb-4">Chính sách</h3>
-          <ul className="flex flex-col gap-2.5 list-none">
+          <h3 className="mb-4 text-sm font-bold tracking-[0.08em] text-white uppercase">
+            Chính sách
+          </h3>
+          <ul className="flex list-none flex-col gap-2.5">
             {POLICY_LINKS.map((link) => (
               <li key={link.label}>
-                <Link href={link.href} className="text-white/55 text-sm hover:text-white transition-colors">
+                <Link
+                  href={link.href}
+                  className="text-sm text-white/75 transition-colors hover:text-white"
+                >
                   {link.label}
                 </Link>
               </li>
@@ -138,8 +216,10 @@ export default function Footer() {
         </div>
 
         <div>
-          <h3 className="text-white text-sm font-bold uppercase tracking-[0.08em] mb-4">Liên hệ</h3>
-          <ul className="flex flex-col gap-2.5 list-none text-white/55 text-sm">
+          <h3 className="mb-4 text-sm font-bold tracking-[0.08em] text-white uppercase">
+            Liên hệ
+          </h3>
+          <ul className="flex list-none flex-col gap-2.5 text-sm text-white/75">
             <li>Hotline: 1900 xxxx</li>
             <li>Email: hello@nutein.vn</li>
             <li>Fanpage · TikTok · Shopee</li>
@@ -147,8 +227,8 @@ export default function Footer() {
         </div>
       </div>
 
-      <div className="border-t border-white/10">
-        <p className="max-w-[1200px] mx-auto px-6 py-6 text-white/40 text-xs">
+      <div className="relative z-[1] border-t border-white/20">
+        <p className="mx-auto max-w-[1200px] px-6 py-6 text-xs text-white/55">
           © 2024 Nutein. Bảo tồn giá trị thực vật.
         </p>
       </div>

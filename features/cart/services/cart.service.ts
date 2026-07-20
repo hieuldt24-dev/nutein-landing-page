@@ -3,13 +3,17 @@ import {
   MIN_CART_QUANTITY,
 } from "../constants";
 import { buildCartSummary } from "../pricing";
-import type { CartSummary } from "../types";
+import type { CartState, CartSummary } from "../types";
 import { cartRepository } from "./cart.repository";
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
+}
+
+function summaryFromState(state: CartState): CartSummary {
+  return buildCartSummary(state.quantity, undefined, undefined, state.variantId);
 }
 
 /**
@@ -21,32 +25,45 @@ export const cartService = {
 
   async getSummary(): Promise<CartSummary> {
     await delay(CART_LOCAL_LATENCY_MS);
-    const { quantity } = cartRepository.getState();
-    return buildCartSummary(quantity);
+    return summaryFromState(cartRepository.getState());
+  },
+
+  async setState(state: CartState): Promise<CartSummary> {
+    await delay(CART_LOCAL_LATENCY_MS);
+    const next = cartRepository.setState(state);
+    return summaryFromState(next);
   },
 
   async setQuantity(quantity: number): Promise<CartSummary> {
-    await delay(CART_LOCAL_LATENCY_MS);
-    const { quantity: next } = cartRepository.setState({ quantity });
-    return buildCartSummary(next);
+    const { variantId } = cartRepository.getState();
+    return cartService.setState({ quantity, variantId });
   },
 
-  async add(amount: number = 1): Promise<CartSummary> {
+  async setVariant(variantId: string): Promise<CartSummary> {
     const { quantity } = cartRepository.getState();
-    return cartService.setQuantity(quantity + amount);
+    return cartService.setState({ quantity, variantId });
+  },
+
+  async add(amount: number = 1, variantId?: string): Promise<CartSummary> {
+    const current = cartRepository.getState();
+    return cartService.setState({
+      quantity: current.quantity + amount,
+      variantId: variantId ?? current.variantId,
+    });
   },
 
   async increment(): Promise<CartSummary> {
-    const { quantity } = cartRepository.getState();
-    return cartService.setQuantity(quantity + 1);
+    const { quantity, variantId } = cartRepository.getState();
+    return cartService.setState({ quantity: quantity + 1, variantId });
   },
 
   async decrement(): Promise<CartSummary> {
-    const { quantity } = cartRepository.getState();
-    return cartService.setQuantity(quantity - 1);
+    const { quantity, variantId } = cartRepository.getState();
+    return cartService.setState({ quantity: quantity - 1, variantId });
   },
 
   async remove(): Promise<CartSummary> {
-    return cartService.setQuantity(MIN_CART_QUANTITY);
+    const { variantId } = cartRepository.getState();
+    return cartService.setState({ quantity: MIN_CART_QUANTITY, variantId });
   },
 };

@@ -4,62 +4,78 @@ import Image from "next/image";
 import { ABOUT_STORY } from "@/features/about/constants";
 import { RotatingText } from "@/components/ui/RotatingText";
 
+function StoryBlock({
+  index,
+  title,
+  body,
+}: {
+  index: string;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div className="flex flex-col gap-3.5 md:gap-4">
+      <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-primary md:text-[13px]">
+        {index}
+      </p>
+      <h3 className="font-display max-w-[14ch] text-[clamp(32px,4vw,44px)] font-bold leading-[1.08] tracking-[-0.035em] text-ink">
+        {title}
+      </h3>
+      <p className="max-w-[38rem] text-[17px] leading-[1.7] font-medium text-ink/80 md:text-[19px] md:leading-[1.65]">
+        {body}
+      </p>
+    </div>
+  );
+}
+
 /**
- * Brand statement — trái = câu chuyện + triết lý;
- * phải = ảnh bounce + RotatingText phía sau (pattern Differentiators).
+ * Brand statement — media lớn full cột phải;
+ * RotatingText nằm sau media, lòi góc dưới-phải.
  */
 export default function AboutStory() {
   return (
-    <section id="about-story" className="relative overflow-hidden bg-bg px-6 py-20 md:py-28">
+    <section id="about-story" className="relative bg-bg px-6 py-16 md:py-20 lg:py-24">
       <div className="relative z-[1] mx-auto max-w-[1200px]">
-        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-10 xl:gap-16">
-          <div className="flex flex-col gap-10 md:gap-12">
-            <div>
-              <p className="mb-3 text-xs font-extrabold uppercase tracking-[0.18em] text-primary">
-                01 — {ABOUT_STORY.storyTitle}
-              </p>
-              <p className="font-display text-[clamp(22px,2.8vw,32px)] font-black leading-[1.2] tracking-[-0.03em] text-ink">
-                {ABOUT_STORY.storyBody}
-              </p>
-            </div>
-            <div>
-              <p className="mb-3 text-xs font-extrabold uppercase tracking-[0.18em] text-primary">
-                02 — {ABOUT_STORY.philosophyTitle}
-              </p>
-              <p className="font-display text-[clamp(22px,2.8vw,32px)] font-black leading-[1.2] tracking-[-0.03em] text-ink">
-                {ABOUT_STORY.philosophyBody}
-              </p>
-            </div>
+        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-14 xl:gap-16">
+          <div className="flex flex-col gap-16 md:gap-20 lg:gap-24">
+            <StoryBlock
+              index="01"
+              title={ABOUT_STORY.storyTitle}
+              body={ABOUT_STORY.storyBody}
+            />
+            <div className="h-px w-20 bg-primary/40 lg:hidden" aria-hidden />
+            <StoryBlock
+              index="02"
+              title={ABOUT_STORY.philosophyTitle}
+              body={ABOUT_STORY.philosophyBody}
+            />
           </div>
 
-          <div className="relative mx-auto flex h-[360px] w-full max-w-[480px] items-center justify-center overflow-visible md:h-[480px] lg:max-w-none">
+          <div className="relative mx-auto w-full max-w-[560px] overflow-visible pb-20 pr-16 md:pb-24 md:pr-20 lg:max-w-none">
             <div
               aria-hidden
-              className="absolute z-0 h-[70%] w-[70%] rounded-full blur-[40px]"
-              style={{
-                background: "radial-gradient(circle, rgba(226,165,80,0.28) 0%, transparent 70%)",
-              }}
+              className="absolute top-1/2 left-1/2 z-0 h-[70%] w-[70%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/25 blur-[44px]"
             />
 
-            <RotatingText
-              radius={128}
-              fontSize={10.5}
-              duration={18}
-              color="rgba(192,134,53,0.75)"
-              className="absolute right-[-12px] bottom-[-12px] z-[1] md:right-[-20px] md:bottom-[-16px]"
-            />
-
-            <div
-              className="animate-float-slow relative z-[2] aspect-[4/5] w-[82%] overflow-hidden rounded-[32px] md:rounded-[40px]"
-              style={{ boxShadow: "0 0 0 5px var(--color-primary-deep)" }}
-            >
-              <Image
-                src={ABOUT_STORY.mainImage}
-                alt={ABOUT_STORY.mainImageAlt}
-                fill
-                sizes="(max-width: 1024px) 80vw, 420px"
-                className="object-cover"
+            <div className="relative isolate w-full overflow-visible">
+              {/* z thấp hơn media — chỉ phần lòi góc mới thấy */}
+              <RotatingText
+                radius={152}
+                fontSize={12}
+                duration={18}
+                color="rgba(192,134,53,0.9)"
+                className="absolute -right-16 -bottom-16 z-[1] md:-right-20 md:-bottom-20"
               />
+
+              <div className="animate-float-slow relative z-[2] aspect-[4/5] w-full overflow-hidden rounded-[var(--radius-xl)] shadow-[0_0_0_4px_var(--color-primary-deep)] md:rounded-[40px]">
+                <Image
+                  src={ABOUT_STORY.mainImage}
+                  alt={ABOUT_STORY.mainImageAlt}
+                  fill
+                  sizes="(max-width: 1024px) 90vw, 560px"
+                  className="object-cover object-center scale-[1.08]"
+                />
+              </div>
             </div>
           </div>
         </div>

@@ -5,11 +5,13 @@ import useSWR, { useSWRConfig } from "swr";
 import {
   CART_QUANTITY_SWR_KEY,
   CART_UPDATING_SWR_KEY,
+  CART_VARIANT_SWR_KEY,
   MIN_CART_QUANTITY,
 } from "@/features/cart/constants";
 import { cartRepository } from "@/features/cart/services/cart.repository";
 import { cartService } from "@/features/cart/services/cart.service";
 import type { CartSummary } from "@/features/cart/types";
+import { DEFAULT_PRODUCT_VARIANT_ID } from "@/features/product/constants";
 
 /**
  * Global UI state giỏ hàng — SWR-as-store (docs/state-management.md mục 3 + 7).
@@ -29,6 +31,16 @@ export function useCartStore() {
     }
   );
 
+  const { data: variantId } = useSWR(
+    CART_VARIANT_SWR_KEY,
+    () => cartRepository.getState().variantId,
+    {
+      fallbackData: DEFAULT_PRODUCT_VARIANT_ID,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+    }
+  );
+
   const { data: isUpdating } = useSWR(CART_UPDATING_SWR_KEY, () => false, {
     fallbackData: false,
     revalidateOnFocus: false,
@@ -36,37 +48,64 @@ export function useCartStore() {
   });
 
   const currentQuantity = quantity ?? MIN_CART_QUANTITY;
-  const summary = cartService.buildSummary(currentQuantity);
+  const currentVariantId = variantId ?? DEFAULT_PRODUCT_VARIANT_ID;
+  const summary = cartService.buildSummary(
+    currentQuantity,
+    undefined,
+    undefined,
+    currentVariantId
+  );
+
+  const syncFromSummary = useCallback(
+    async (next: CartSummary) => {
+      await mutate(CART_QUANTITY_SWR_KEY, next.quantity, { revalidate: false });
+      await mutate(CART_VARIANT_SWR_KEY, next.variantId, { revalidate: false });
+      return next;
+    },
+    [mutate]
+  );
 
   const runMutation = useCallback(
     async (action: () => Promise<CartSummary>) => {
       if (inFlightRef.current) {
-        return cartService.buildSummary(cartRepository.getState().quantity);
+        return summaryFromRepo();
       }
 
       inFlightRef.current = true;
       await mutate(CART_UPDATING_SWR_KEY, true, { revalidate: false });
       try {
         const next = await action();
-        await mutate(CART_QUANTITY_SWR_KEY, next.quantity, { revalidate: false });
-        return next;
+        return await syncFromSummary(next);
       } finally {
         inFlightRef.current = false;
         await mutate(CART_UPDATING_SWR_KEY, false, { revalidate: false });
       }
     },
-    [mutate]
+    [mutate, syncFromSummary]
   );
 
   return {
     quantity: currentQuantity,
+    variantId: currentVariantId,
     summary,
     isEmpty: summary.isEmpty,
     isUpdating: Boolean(isUpdating),
     setQuantity: (next: number) => runMutation(() => cartService.setQuantity(next)),
+    setVariant: (next: string) => runMutation(() => cartService.setVariant(next)),
     increment: () => runMutation(() => cartService.increment()),
     decrement: () => runMutation(() => cartService.decrement()),
-    addToCart: (amount: number = 1) => runMutation(() => cartService.add(amount)),
+    addToCart: (amount: number = 1, nextVariantId?: string) =>
+      runMutation(() => cartService.add(amount, nextVariantId)),
     removeFromCart: () => runMutation(() => cartService.remove()),
   };
+}
+
+function summaryFromRepo(): CartSummary {
+  const state = cartRepository.getState();
+  return cartService.buildSummary(
+    state.quantity,
+    undefined,
+    undefined,
+    state.variantId
+  );
 }

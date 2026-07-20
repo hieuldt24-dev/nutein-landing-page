@@ -2,10 +2,17 @@ import type { VoucherTier } from "./types";
 
 /** SWR-as-store key (không phải URL thật) cho quantity trong giỏ — xem state-management.md mục 3. */
 export const CART_QUANTITY_SWR_KEY = "cart-quantity";
+/** SWR-as-store key cho variantId gói đang chọn trong giỏ. */
+export const CART_VARIANT_SWR_KEY = "cart-variant-id";
 /** SWR-as-store key — cart đang mutate (add/qty/remove), dùng overlay loading. */
 export const CART_UPDATING_SWR_KEY = "cart-updating";
-/** localStorage key để persist quantity qua reload, trước khi có backend cart thật. */
+/**
+ * localStorage key legacy — chỉ quantity (số). Repository vẫn đọc để migrate.
+ * @deprecated Dùng `CART_STATE_STORAGE_KEY`.
+ */
 export const CART_QUANTITY_STORAGE_KEY = "nutein:cart-quantity";
+/** localStorage key persist `{ quantity, variantId }` — sẵn swap `/api/cart`. */
+export const CART_STATE_STORAGE_KEY = "nutein:cart-state";
 /** SWR-as-store key cho trạng thái mở/đóng CartDrawer. */
 export const CART_DRAWER_SWR_KEY = "cart-drawer-open";
 

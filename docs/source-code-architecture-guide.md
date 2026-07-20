@@ -129,7 +129,8 @@ Mỗi nghiệp vụ lớn (contact, product, cart, checkout, blog, account...) c
 
 ```txt
 features/<feature-name>/
-  constants.ts       # Hằng số nghiệp vụ của module
+  constants.ts       # Hằng số nghiệp vụ ổn định (labels, keys, meta) — không chứa dataset mock
+  data/*.mock.ts     # Dataset giả (optional) — chỉ services được import, UI không import thẳng
   schemas/            # Zod schema validate request/response
   services/           # Business logic (DB queries, external API, tính toán)
   types/               # Type/interface riêng của module
