@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import Image from "next/image";
 import { ABOUT_PROCESS } from "@/features/about/constants";
 import { BounceChars } from "@/components/ui/BounceChars";
 import { cn } from "@/lib/utils";
@@ -35,6 +36,10 @@ const TONE_CLASS: Record<Tone, { card: string; muted: string }> = {
   },
 };
 
+/**
+ * Joy Rush `.b-functionals__card`:
+ * portrait ~34.8×40.7rem, rotate ±2°, flex column, ingredient đẩy đáy.
+ */
 function ProcessCard({
   panel,
 }: {
@@ -44,32 +49,37 @@ function ProcessCard({
   return (
     <article
       className={cn(
-        "about-process-card w-full max-w-[340px] rounded-[28px] px-6 py-8 shadow-md md:max-w-[360px] md:rounded-[32px] md:px-8 md:py-10",
+        /* Tỉ lệ JR 34.8×40.7; scale theo vw để card chiếm diện tích viewport giống JR */
+        "about-process-card flex w-[clamp(300px,28vw,400px)] flex-col",
+        "h-[clamp(351px,32.7vw,468px)] rounded-[var(--radius-lg)] p-6 shadow-md md:rounded-[22px] md:p-7",
         tone.card
       )}
       style={{ "--r": `${panel.rotate}deg` } as CSSProperties}
     >
-      <h3 className="font-display mb-2 text-[clamp(22px,2.8vw,30px)] font-black uppercase leading-[1.05] tracking-[-0.03em]">
+      <h3 className="font-display max-w-[94%] text-[clamp(34px,3.8vw,50px)] font-black uppercase leading-[0.92] tracking-[-0.04em]">
         {panel.headline}
       </h3>
-      <p className={cn("mb-3 text-sm font-bold", tone.muted)}>{panel.name}</p>
-      <p className={cn("text-[13.5px] leading-relaxed md:text-sm", tone.muted)}>{panel.desc}</p>
+      <p className={cn("mt-auto text-lg font-bold md:text-xl", tone.muted)}>{panel.name}</p>
+      <p className={cn("mt-2.5 text-lg leading-snug md:text-[21px] md:leading-[1.4]", tone.muted)}>
+        {panel.desc}
+      </p>
     </article>
   );
 }
 
 function ProcessHeading() {
   return (
-    <div className="flex max-w-[min(92vw,640px)] flex-col items-center px-4 text-center">
-      <span
+    /* JR heading ~60% viewport rộng — Nutein trước max-w 640px nên hai bên heading trống */
+    <div className="flex w-full max-w-[min(96vw,920px)] flex-col items-center px-4 text-center">
+      <Image
         aria-hidden
-        className="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-ink md:mb-6 md:h-14 md:w-14"
-      >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 0.5C12.6 7.2 16.8 11.4 23.5 12C16.8 12.6 12.6 16.8 12 23.5C11.4 16.8 7.2 12.6 0.5 12C7.2 11.4 11.4 7.2 12 0.5Z" />
-        </svg>
-      </span>
-      <h2 className="font-display text-[clamp(48px,9vw,104px)] font-black uppercase leading-[0.9] tracking-[-0.05em] text-ink">
+        src="/images/favicon-color-3232-10x_2.svg"
+        alt=""
+        width={48}
+        height={48}
+        className="mb-5 h-12 w-12 md:mb-6 md:h-14 md:w-14"
+      />
+      <h2 className="font-display w-full text-[clamp(56px,10.5vw,120px)] font-black uppercase leading-[0.88] tracking-[-0.05em] text-ink">
         <BounceChars staggerMs={22}>
           {ABOUT_PROCESS.titleLine1}
           <br />
@@ -80,6 +90,10 @@ function ProcessHeading() {
   );
 }
 
+/**
+ * Joy Rush align pattern:
+ * 3n+1 → flex-start (trái), 3n+2 → flex-end (phải), 3n → center (có thể đè heading).
+ */
 function CardTrack({
   trackRef,
   className,
@@ -91,22 +105,21 @@ function CardTrack({
     <div
       ref={trackRef}
       className={cn(
-        "mx-auto flex w-full max-w-[1200px] flex-col gap-16 px-3 sm:gap-20 sm:px-5 md:gap-28 lg:gap-32",
+        /* Full viewport như JR .wrapper — không max-w 1200 (tạo lề trống hai bên) */
+        "mx-auto flex w-full flex-col gap-8 px-3 sm:gap-9 md:gap-10",
         className
       )}
     >
       {ABOUT_PROCESS.panels.map((panel, idx) => {
-        const onLeft = idx % 2 === 0;
+        const slot = idx % 3; // 0 left, 1 right, 2 center
         return (
           <div
             key={panel.name}
             className={cn(
               "flex w-full",
-              // Đẩy sát mép trái/phải — để trống giữa cho heading
-              onLeft ? "justify-start" : "justify-end",
-              onLeft ? "pr-[28%] sm:pr-[36%] md:pr-[42%]" : "pl-[28%] sm:pl-[36%] md:pl-[42%]",
-              // Stagger dọc: card phải lệch thêm một nhịp
-              !onLeft && "mt-6 md:mt-10"
+              slot === 0 && "justify-start",
+              slot === 1 && "justify-end",
+              slot === 2 && "justify-center"
             )}
           >
             <ProcessCard panel={panel} />
@@ -119,7 +132,7 @@ function CardTrack({
 
 /**
  * Quy trình — Joy Rush FUNCTIONALS:
- * sticky pin + heading lớn giữa + card lệch 2 mép (palette phụ), scroll trượt lên.
+ * sticky pin + heading giữa + card portrait lệch trái/phải/giữa, scroll trượt lên.
  */
 export default function AboutProcess() {
   const spacerRef = useRef<HTMLElement>(null);

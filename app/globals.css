@@ -33,6 +33,9 @@
   --color-forest:   #477236;
   --color-gray:     #E0E0E0;
 
+  /* Danger — lỗi / toast error (ấm, không đỏ neon) */
+  --color-danger: #9B3D4A;
+
   /* Shadows */
   --shadow-sm:    0 1px 3px rgba(53,30,41,0.06), 0 1px 2px rgba(53,30,41,0.04);
   --shadow-md:    0 4px 16px rgba(53,30,41,0.08), 0 2px 6px rgba(53,30,41,0.04);
@@ -151,6 +154,12 @@ h1, h2, h3, h4, h5, h6 {
   to   { transform: translateX(100%); }
 }
 
+/* Mega nav (Joy Rush LEARN): nội dung fade + trượt nhẹ từ trên khi panel mở. */
+@keyframes navMegaIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* ── Animation classes ───────────────────────────────────────────────────────── */
 .animate-float       { animation: floatY 4s ease-in-out infinite; }
 .animate-float-slow  { animation: floatYSlow 6s ease-in-out infinite; }
@@ -163,6 +172,9 @@ h1, h2, h3, h4, h5, h6 {
 .animate-fade-out       { animation: fadeOut 0.3s ease-in both; }
 .animate-slide-in-right  { animation: slideInRight 0.38s cubic-bezier(0.16,1,0.3,1) both; }
 .animate-slide-out-right { animation: slideOutRight 0.38s cubic-bezier(0.645,0.045,0.355,1) both; }
+.animate-nav-mega-in {
+  animation: navMegaIn 0.4s cubic-bezier(0.215, 0.61, 0.355, 1) both;
+}
 
 
 /* Ẩn scrollbar cho track carousel ngang (Intro/Testimonials) — điều hướng qua
@@ -576,3 +588,39 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* Fill Button → xem components/ui/FillButton.tsx (Tailwind group-hover, không dùng CSS class) */
+
+/* Blog article body (mock HTML tin cậy) */
+.blog-prose h2 {
+  margin-top: 1.75em;
+  margin-bottom: 0.5em;
+  font-family: var(--font-display);
+  font-size: clamp(1.25rem, 2.2vw, 1.5rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--color-ink);
+}
+.blog-prose p {
+  margin-top: 0.85em;
+  margin-bottom: 0.85em;
+}
+.blog-prose ul,
+.blog-prose ol {
+  margin: 0.85em 0;
+  padding-left: 1.25em;
+}
+.blog-prose ul {
+  list-style: disc;
+}
+.blog-prose ol {
+  list-style: decimal;
+}
+.blog-prose li {
+  margin: 0.35em 0;
+}
+.blog-prose a {
+  font-weight: 700;
+  color: var(--color-primary-deep);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+

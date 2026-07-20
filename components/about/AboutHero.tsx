@@ -23,13 +23,13 @@ export default function AboutHero() {
         sizes="100vw"
         className="object-cover object-center"
       />
-      {/* Overlay đọc chữ — ink ấm, không flat đen */}
+      {/* Overlay đọc chữ hero — ink ấm, không flat đen */}
       <div
         aria-hidden
         className="absolute inset-0"
         style={{
           background:
-            "linear-gradient(180deg, rgba(53,30,41,0.45) 0%, rgba(53,30,41,0.35) 45%, rgba(53,30,41,0.55) 100%)",
+            "linear-gradient(180deg, rgba(53,30,41,0.42) 0%, rgba(53,30,41,0.32) 45%, rgba(53,30,41,0.52) 100%)",
         }}
       />
 

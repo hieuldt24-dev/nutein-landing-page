@@ -3,6 +3,7 @@
 import {
   useRef,
   useEffect,
+  useLayoutEffect,
   useState,
   useMemo,
   type ReactNode,
@@ -69,12 +70,17 @@ function toSegments(children: ReactNode): Segment[] {
 
 function plainText(segments: Segment[]): string {
   return segments
-    .map((s) => (s.type === "word" ? s.text : s.type === "br" ? "\n" : " "))
-    .join("");
+    .map((s) => (s.type === "word" ? s.text : " "))
+    .join("")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /**
  * Heading split kiểu Joy Rush: word → char, bounce stagger khi vào viewport (1 lần).
+ *
+ * SSR + lần hydrate đầu render children plain (DOM khớp server/client).
+ * Sau mount mới tách char và chạy bounce — tránh hydration mismatch.
  */
 export function BounceChars({
   children,
@@ -85,13 +91,22 @@ export function BounceChars({
   as: Comp = "span",
 }: BounceCharsProps) {
   const rootRef = useRef<HTMLElement>(null);
+  const [mounted, setMounted] = useState(false);
   const [active, setActive] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
 
   const segments = useMemo(() => toSegments(children), [children]);
   const label = useMemo(() => plainText(segments), [segments]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Bật bounce trước paint nếu đã trong viewport — tránh nháy chữ khi chuyển
+  // plain markup → char-split (bc-char mặc định opacity: 0).
+  useLayoutEffect(() => {
+    if (!mounted) return;
+
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
     setReduceMotion(mq.matches);
     if (mq.matches) {
@@ -113,7 +128,16 @@ export function BounceChars({
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [rootMargin]);
+  }, [mounted, rootMargin]);
+
+  // Plain markup cho SSR/hydrate — cùng children với server, không split char.
+  if (!mounted) {
+    return (
+      <Comp ref={rootRef as never} className={cn("bounce-chars", className)}>
+        {children}
+      </Comp>
+    );
+  }
 
   let charIndex = 0;
 
@@ -203,4 +227,3 @@ export function FadeInOnView({
     </span>
   );
 }
-

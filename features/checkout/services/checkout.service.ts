@@ -47,6 +47,8 @@ function resolvePayment(
 /**
  * Tạo đơn hàng — v1 mock (sinh mã, tính lại tiền).
  * Khi có backend: thêm nhánh remote, giữ chữ ký `createOrder`.
+ * `saveInfo`: hiện client gọi `accountService.syncFromCheckout` sau order OK
+ * khi logged in. Khi có session server: xử lý sync tại đây, client có thể bỏ bước đó.
  */
 export const checkoutService = {
   async createOrder(input: CreateOrderRequest): Promise<CreateOrderResult> {

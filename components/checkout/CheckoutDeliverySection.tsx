@@ -6,7 +6,7 @@ import type {
   UseFormRegister,
   UseFormSetValue,
 } from "react-hook-form";
-import { toast } from "sonner";
+import { notify } from "@/lib/toast";
 import type { CheckoutFormValues } from "@/features/checkout/schemas/checkout.schema";
 import {
   listVnProvinces,
@@ -52,7 +52,7 @@ export function CheckoutDeliverySection({
         if (!cancelled) setProvinces(list);
       })
       .catch(() => {
-        if (!cancelled) toast.error("Không tải được danh sách tỉnh/thành.");
+        if (!cancelled) notify.error("Không tải được danh sách tỉnh/thành.");
       })
       .finally(() => {
         if (!cancelled) setLoadingProvinces(false);
@@ -78,7 +78,7 @@ export function CheckoutDeliverySection({
       .catch(() => {
         if (!cancelled) {
           setWards([]);
-          toast.error("Không tải được danh sách phường/xã.");
+          notify.error("Không tải được danh sách phường/xã.");
         }
       })
       .finally(() => {
@@ -100,6 +100,8 @@ export function CheckoutDeliverySection({
             error={errors.address?.provinceCode?.message || errors.address?.province?.message}
           >
             <CheckoutSelect
+              name="address.provinceCode"
+              data-checkout-field="address.provinceCode"
               disabled={isSubmitting || loadingProvinces}
               error={Boolean(errors.address?.provinceCode || errors.address?.province)}
               value={provinceCode}
@@ -129,6 +131,8 @@ export function CheckoutDeliverySection({
             error={errors.address?.wardCode?.message || errors.address?.ward?.message}
           >
             <CheckoutSelect
+              name="address.wardCode"
+              data-checkout-field="address.wardCode"
               disabled={isSubmitting || !provinceCode || loadingWards}
               error={Boolean(errors.address?.wardCode || errors.address?.ward)}
               value={wardCode}

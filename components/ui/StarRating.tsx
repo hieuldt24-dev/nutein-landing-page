@@ -10,7 +10,7 @@ interface StarRatingProps {
   className?: string;
   /**
    * Hover jitter kiểu Joy Rush (sao lệch + label xoay nhẹ).
-   * Chỉ bật ở section Differentiators theo yêu cầu.
+   * Bật ở Differentiators, PDP, và mọi chỗ muốn có cảm giác interactive.
    */
   interactive?: boolean;
 }
@@ -44,7 +44,7 @@ function StarIcon() {
  * Rating stars kiểu Joy Rush:
  * - Sao bo tròn chunky + partial fill (--fill)
  * - Label uppercase + underline bar
- * - `interactive`: hover jitter từng sao + label (chỉ Differentiators)
+ * - `interactive`: hover jitter từng sao + label
  * Màu fill: --color-primary
  */
 export function StarRating({
