@@ -1,0 +1,189 @@
+<!--
+  Template email "Confirm signup" — Supabase Auth (Authentication > Email Templates > Confirm signup)
+  Biến {{ .ConfirmationURL }} do Supabase tự thay khi gửi, giữ nguyên không sửa.
+  HTML email dùng bảng (table) + inline style cố tình — Outlook/nhiều mail client
+  không đọc flexbox/grid/class CSS ngoài, chỉ inline style mới chắc chắn hiển thị đúng.
+  Font Quicksand/Mulish là Google Fonts — có thể bị chặn ở 1 số client, đã có
+  fallback hệ thống (system-ui/Arial) nên vẫn đọc được bình thường khi đó.
+-->
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Xác nhận email — Nutein</title>
+    <!--[if mso]>
+    <style type="text/css">
+      body, table, td { font-family: Arial, sans-serif !important; }
+    </style>
+    <![endif]-->
+  </head>
+  <body
+    style="
+      margin: 0;
+      padding: 0;
+      background-color: #fbeeda;
+      font-family: 'Mulish', 'Segoe UI', Arial, sans-serif;
+    "
+  >
+    <!-- Preheader ẩn — dòng preview trong hộp thư đến -->
+    <div style="display: none; max-height: 0; overflow: hidden; opacity: 0;">
+      Xác nhận email để bắt đầu hành trình sống lành cùng Nutein.
+    </div>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #fbeeda; padding: 32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px; background-color: #ffffff; border-radius: 28px; overflow: hidden; border: 1px solid #f0dcc0;">
+            <!-- Wordmark -->
+            <tr>
+              <td align="center" style="padding: 36px 32px 8px;">
+                <span
+                  style="
+                    font-family: 'Quicksand', 'Segoe UI', Arial, sans-serif;
+                    font-size: 24px;
+                    font-weight: 700;
+                    letter-spacing: -0.02em;
+                    color: #351e29;
+                  "
+                >
+                  Nutein
+                </span>
+              </td>
+            </tr>
+
+            <!-- Eyebrow -->
+            <tr>
+              <td align="center" style="padding: 0 32px;">
+                <span
+                  style="
+                    display: inline-block;
+                    font-size: 11px;
+                    font-weight: 800;
+                    letter-spacing: 0.14em;
+                    text-transform: uppercase;
+                    color: #c08635;
+                  "
+                >
+                  Tài khoản Nutein
+                </span>
+              </td>
+            </tr>
+
+            <!-- Headline -->
+            <tr>
+              <td align="center" style="padding: 12px 32px 0;">
+                <h1
+                  style="
+                    margin: 0;
+                    font-family: 'Quicksand', 'Segoe UI', Arial, sans-serif;
+                    font-size: 26px;
+                    font-weight: 700;
+                    letter-spacing: -0.02em;
+                    color: #351e29;
+                    line-height: 1.25;
+                  "
+                >
+                  Xác nhận địa chỉ email của bạn
+                </h1>
+              </td>
+            </tr>
+
+            <!-- Body copy -->
+            <tr>
+              <td align="center" style="padding: 16px 32px 0;">
+                <p
+                  style="
+                    margin: 0;
+                    font-size: 15px;
+                    line-height: 1.6;
+                    color: #6b5b63;
+                  "
+                >
+                  Cảm ơn bạn đã đăng ký Nutein! Bấm nút bên dưới để xác nhận email và
+                  bắt đầu theo dõi đơn hàng, nhận ưu đãi dành riêng cho thành viên.
+                </p>
+              </td>
+            </tr>
+
+            <!-- CTA button -->
+            <tr>
+              <td align="center" style="padding: 28px 32px 8px;">
+                <table role="presentation" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td
+                      align="center"
+                      style="
+                        border-radius: 999px;
+                        background-color: #351e29;
+                      "
+                    >
+                      <a
+                        href="{{ .ConfirmationURL }}"
+                        target="_blank"
+                        style="
+                          display: inline-block;
+                          padding: 15px 36px;
+                          font-family: 'Mulish', 'Segoe UI', Arial, sans-serif;
+                          font-size: 15px;
+                          font-weight: 700;
+                          text-transform: uppercase;
+                          letter-spacing: -0.01em;
+                          color: #ffffff;
+                          text-decoration: none;
+                          border-radius: 999px;
+                        "
+                      >
+                        Xác nhận email
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- Fallback link -->
+            <tr>
+              <td align="center" style="padding: 8px 32px 0;">
+                <p style="margin: 0; font-size: 12px; line-height: 1.6; color: #a8969e;">
+                  Nếu nút phía trên không hoạt động, sao chép liên kết sau vào trình duyệt:
+                </p>
+                <p style="margin: 4px 0 0; font-size: 12px; line-height: 1.6; word-break: break-all;">
+                  <a href="{{ .ConfirmationURL }}" target="_blank" style="color: #c08635; text-decoration: underline;">{{ .ConfirmationURL }}</a>
+                </p>
+              </td>
+            </tr>
+
+            <!-- Divider -->
+            <tr>
+              <td style="padding: 28px 32px 0;">
+                <div style="height: 1px; background-color: #f0dcc0;"></div>
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td align="center" style="padding: 20px 32px 32px;">
+                <p style="margin: 0; font-size: 12px; line-height: 1.6; color: #a8969e;">
+                  Nếu bạn không tạo tài khoản này, bạn có thể bỏ qua email — không cần
+                  làm gì thêm.
+                </p>
+              </td>
+            </tr>
+          </table>
+
+          <!-- Ngoài card -->
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px;">
+            <tr>
+              <td align="center" style="padding: 20px 32px;">
+                <p style="margin: 0; font-size: 12px; color: #b89b7a;">
+                  © Nutein — 100% Protein thực vật
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

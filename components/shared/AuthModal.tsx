@@ -6,36 +6,17 @@ import { useRouter } from "next/navigation";
 import useSWR, { useSWRConfig } from "swr";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { notify } from "@/lib/toast";
 import { Eye, EyeOff, Loader2, X } from "lucide-react";
 import { FillButton } from "@/components/ui/FillButton";
 import { useAuthStore } from "@/lib/useAuthStore";
+import {
+  loginSchema,
+  registerSchema,
+  type LoginFormValues,
+  type RegisterFormValues,
+} from "@/features/auth/schemas/auth.schema";
 import { cn } from "@/lib/utils";
-
-const loginSchema = z.object({
-  email: z.string().min(1, "Vui lòng nhập email").email("Email không đúng định dạng"),
-  password: z.string().min(6, "Mật khẩu phải có ít nhất 6 ký tự"),
-  rememberMe: z.boolean().optional(),
-});
-
-const registerSchema = z
-  .object({
-    fullName: z.string().min(1, "Vui lòng nhập họ và tên"),
-    email: z.string().min(1, "Vui lòng nhập email").email("Email không đúng định dạng"),
-    password: z.string().min(6, "Mật khẩu phải có ít nhất 6 ký tự"),
-    confirmPassword: z.string().min(1, "Vui lòng xác nhận mật khẩu"),
-    agreeTerms: z.boolean().refine((val) => val === true, {
-      message: "Bạn cần đồng ý với Điều khoản dịch vụ & Chính sách bảo mật",
-    }),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Mật khẩu xác nhận không khớp",
-    path: ["confirmPassword"],
-  });
-
-type LoginFormValues = z.infer<typeof loginSchema>;
-type RegisterFormValues = z.infer<typeof registerSchema>;
 
 function Field({
   label,
@@ -78,8 +59,14 @@ function TextInput({
 export default function AuthModal() {
   const router = useRouter();
   const { mutate } = useSWRConfig();
-  const { user, isLoggedIn, signIn, signOut } = useAuthStore();
-  const { data: isOpen } = useSWR("auth-modal", () => false, { fallbackData: false });
+  const { user, isLoggedIn, signIn, signUp, signOut } = useAuthStore();
+  // revalidateOnMount: false — key này chỉ là cờ mở/đóng UI (SWR-as-store),
+  // không phải server data. Không tắt sẽ có nguy cơ race giống useAuthStore:
+  // fetcher no-op resolve SAU 1 mutate(true) thật và tự đóng lại modal.
+  const { data: isOpen } = useSWR("auth-modal", () => false, {
+    fallbackData: false,
+    revalidateOnMount: false,
+  });
 
   const setIsOpen = useCallback(
     (val: boolean) => mutate("auth-modal", val, { revalidate: false }),
@@ -137,12 +124,10 @@ export default function AuthModal() {
   const onLogin = async (data: LoginFormValues) => {
     setIsSubmittingForm(true);
     try {
-      // Mock auth — khi có API: đổi sang /api/auth/login rồi map user vào signIn.
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      await signIn({ email: data.email });
+      await signIn(data.email, data.password, data.rememberMe);
       resetLoginForm();
       setIsOpen(false);
-      notify.success("Đăng nhập thành công.");
+      notify.success("Đăng nhập thành công! Chào mừng bạn quay trở lại.");
     } catch (err) {
       notify.error(err instanceof Error ? err.message : "Đăng nhập thất bại");
     } finally {
@@ -153,13 +138,17 @@ export default function AuthModal() {
   const onRegister = async (data: RegisterFormValues) => {
     setIsSubmittingForm(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      // Auto sign-in sau đăng ký (mock) — rồi vào /account bổ sung hồ sơ.
-      await signIn({ email: data.email, fullName: data.fullName });
+      const { needsEmailConfirmation } = await signUp(data.email, data.password, data.fullName);
       resetSignUpForm();
       setIsOpen(false);
-      notify.success("Đăng ký thành công.");
-      router.push("/account");
+      notify.success(
+        needsEmailConfirmation
+          ? "Đăng ký thành công! Vui lòng kiểm tra email để xác nhận tài khoản."
+          : "Đăng ký thành công! Bạn đã được đăng nhập."
+      );
+      if (!needsEmailConfirmation) {
+        router.push("/account");
+      }
     } catch (err) {
       notify.error(err instanceof Error ? err.message : "Đăng ký thất bại");
     } finally {

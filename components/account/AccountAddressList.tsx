@@ -7,22 +7,27 @@ import type { UpsertAddressInput } from "@/features/account/schemas/address.sche
 import type { ShippingAddress } from "@/features/account/types";
 import { AccountAddressForm } from "@/components/account/AccountAddressForm";
 import { FillButton } from "@/components/ui/FillButton";
-import { useAccountProfile } from "@/lib/useAccountProfile";
+import { useAddresses } from "@/lib/useAddresses";
 import { cn } from "@/lib/utils";
 
 export function AccountAddressList() {
   const {
     addresses,
     isLoading,
-    upsertAddress,
+    createAddress,
+    updateAddress,
     removeAddress,
     setDefaultAddress,
-  } = useAccountProfile();
+  } = useAddresses();
   const [mode, setMode] = useState<"list" | "create" | "edit">("list");
   const [editing, setEditing] = useState<ShippingAddress | null>(null);
 
   const handleSave = async (input: UpsertAddressInput) => {
-    await upsertAddress(input);
+    if (input.id) {
+      await updateAddress(input.id, input);
+    } else {
+      await createAddress(input);
+    }
     setMode("list");
     setEditing(null);
   };
@@ -37,7 +42,9 @@ export function AccountAddressList() {
     <section className="rounded-[var(--radius-lg)] border border-ink/15 bg-surface px-5 py-6 md:px-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="font-display text-xl font-bold text-ink">Sổ địa chỉ</h2>
+          <h2 className="font-display text-xl font-bold text-ink">
+            Sổ địa chỉ
+          </h2>
           <p className="mt-1 text-[13px] text-text-muted">
             Địa chỉ mặc định sẽ được điền sẵn ở trang thanh toán.
           </p>
@@ -81,7 +88,9 @@ export function AccountAddressList() {
                 key={addr.id}
                 className={cn(
                   "rounded-[var(--radius-md)] border px-4 py-4",
-                  addr.isDefault ? "border-primary/50 bg-primary/5" : "border-ink/10"
+                  addr.isDefault
+                    ? "border-primary/50 bg-primary/5"
+                    : "border-ink/10",
                 )}
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -109,8 +118,10 @@ export function AccountAddressList() {
                         onClick={() => {
                           void setDefaultAddress(addr.id).catch((err) =>
                             notify.error(
-                              err instanceof Error ? err.message : "Không đặt được mặc định"
-                            )
+                              err instanceof Error
+                                ? err.message
+                                : "Không đặt được mặc định",
+                            ),
                           );
                         }}
                         className="inline-flex cursor-pointer items-center gap-1 rounded-full px-2.5 py-1.5 text-[12px] font-bold text-ink/70 hover:bg-ink/5"
@@ -139,8 +150,10 @@ export function AccountAddressList() {
                           .then(() => notify.success("Đã xoá địa chỉ."))
                           .catch((err) =>
                             notify.error(
-                              err instanceof Error ? err.message : "Xoá thất bại"
-                            )
+                              err instanceof Error
+                                ? err.message
+                                : "Xoá thất bại",
+                            ),
                           );
                       }}
                       className="inline-flex cursor-pointer items-center gap-1 rounded-full px-2.5 py-1.5 text-[12px] font-bold text-red-700/80 hover:bg-red-50"

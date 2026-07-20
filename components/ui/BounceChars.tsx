@@ -29,7 +29,18 @@ type Segment =
   | { type: "br" }
   | { type: "space" };
 
-/** Tách React children (text + <br />) thành word / br / space — giống Joy Rush. */
+/**
+ * Tách React children (text + <br /> hoặc "\n") thành word / br / space —
+ * giống Joy Rush. Nhận "\n" trong text tương đương <br /> vì <br /> element
+ * đi qua ranh giới Server Component -> Client Component (props RSC) có thể
+ * không được React 19/Next 16 (bản dev, kèm debug/owner info) tái tạo đúng
+ * thành isValidElement + type "br" khi client hydrate — dù SSR HTML render
+ * đúng, client vẫn tính thiếu <br>, gây hydration mismatch (đã xác nhận thực
+ * tế qua incognito, không phải do extension). "\n" là primitive string nên
+ * luôn an toàn qua mọi ranh giới serialize; callers là Server Component
+ * (IntroSection) nên dùng {"\n"} thay vì <br /> — callers vốn đã là Client
+ * Component (không qua boundary) vẫn dùng <br /> bình thường, không cần đổi.
+ */
 function toSegments(children: ReactNode): Segment[] {
   const segments: Segment[] = [];
 
@@ -38,7 +49,7 @@ function toSegments(children: ReactNode): Segment[] {
     for (const part of parts) {
       if (!part) continue;
       if (/^\s+$/.test(part)) {
-        segments.push({ type: "space" });
+        segments.push(part.includes("\n") ? { type: "br" } : { type: "space" });
       } else {
         segments.push({ type: "word", text: part });
       }
@@ -146,7 +157,13 @@ export function BounceChars({
       ref={rootRef as never}
       className={cn("bounce-chars", active && "is-active", className)}
     >
-      <span className="sr-only">{label}</span>
+      {/* suppressHydrationWarning: text thuần cho screen reader, không ảnh hưởng
+          hiển thị (phần thật là span aria-hidden bên dưới) — đã xác nhận SSR
+          HTML/RSC payload đúng, nếu client vẫn lệch thì đây chỉ là sai khác vô
+          hại ở bản sao a11y, không đáng để React quăng bỏ + render lại cả cây. */}
+      <span className="sr-only" suppressHydrationWarning>
+        {label}
+      </span>
       <span aria-hidden="true">
         {segments.map((seg, i) => {
           if (seg.type === "br") {

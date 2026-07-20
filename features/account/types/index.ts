@@ -20,10 +20,9 @@ export interface ShippingAddress {
   isDefault: boolean;
 }
 
-/** Snapshot local (repository) theo 1 user email. */
+/** Snapshot local (repository) theo 1 user email — chỉ hồ sơ, sổ địa chỉ nay là dữ liệu thật (xem features/account/services/address.service.ts). */
 export interface AccountData {
   profile: AccountProfile;
-  addresses: ShippingAddress[];
 }
 
 /** Trạng thái đơn trên portal — khác checkout create (`pending` / `awaiting_payment`). */

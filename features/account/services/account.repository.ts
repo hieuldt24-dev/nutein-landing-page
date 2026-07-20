@@ -1,5 +1,5 @@
 import { ACCOUNT_DATA_STORAGE_KEY } from "../constants";
-import type { AccountData, AccountProfile, ShippingAddress } from "../types";
+import type { AccountData, AccountProfile } from "../types";
 
 type AccountStore = Record<string, AccountData>;
 
@@ -10,37 +10,6 @@ function normalizeEmail(email: string): string {
 function emptyData(email: string): AccountData {
   return {
     profile: { email: normalizeEmail(email) },
-    addresses: [],
-  };
-}
-
-function normalizeAddress(raw: unknown): ShippingAddress | null {
-  if (!raw || typeof raw !== "object") return null;
-  const o = raw as Record<string, unknown>;
-  const id = typeof o.id === "string" && o.id.trim() ? o.id.trim() : null;
-  const provinceCode =
-    typeof o.provinceCode === "string" && o.provinceCode.trim()
-      ? o.provinceCode.trim()
-      : null;
-  const province =
-    typeof o.province === "string" && o.province.trim() ? o.province.trim() : null;
-  const wardCode =
-    typeof o.wardCode === "string" && o.wardCode.trim() ? o.wardCode.trim() : null;
-  const ward = typeof o.ward === "string" && o.ward.trim() ? o.ward.trim() : null;
-  const street = typeof o.street === "string" && o.street.trim() ? o.street.trim() : null;
-  if (!id || !provinceCode || !province || !wardCode || !ward || !street) {
-    return null;
-  }
-  return {
-    id,
-    label:
-      typeof o.label === "string" && o.label.trim() ? o.label.trim() : undefined,
-    provinceCode,
-    province,
-    wardCode,
-    ward,
-    street,
-    isDefault: Boolean(o.isDefault),
   };
 }
 
@@ -48,7 +17,10 @@ function normalizeData(email: string, raw: unknown): AccountData {
   const base = emptyData(email);
   if (!raw || typeof raw !== "object") return base;
   const o = raw as Record<string, unknown>;
-  const profileRaw = o.profile && typeof o.profile === "object" ? (o.profile as Record<string, unknown>) : {};
+  const profileRaw =
+    o.profile && typeof o.profile === "object"
+      ? (o.profile as Record<string, unknown>)
+      : {};
   const profile: AccountProfile = {
     email: normalizeEmail(email),
     fullName:
@@ -60,11 +32,7 @@ function normalizeData(email: string, raw: unknown): AccountData {
         ? profileRaw.phone.trim()
         : undefined,
   };
-  const addressesRaw = Array.isArray(o.addresses) ? o.addresses : [];
-  const addresses = addressesRaw
-    .map(normalizeAddress)
-    .filter((a): a is ShippingAddress => a != null);
-  return { profile, addresses };
+  return { profile };
 }
 
 function readStore(): AccountStore {
@@ -86,8 +54,10 @@ function writeStore(store: AccountStore): void {
 }
 
 /**
- * Nguồn account (profile + addresses) phía client — localStorage theo email.
- * Khi có API: đổi thân get/set sang fetch('/api/account/...'), giữ chữ ký.
+ * Nguồn hồ sơ (fullName/phone) phía client — localStorage theo email.
+ * Sổ địa chỉ KHÔNG còn ở đây — đã chuyển sang bảng `user_addresses` thật,
+ * xem features/account/services/address.repository.ts.
+ * Khi có API profile: đổi thân get/set sang fetch('/api/account/profile'), giữ chữ ký.
  */
 export const accountRepository = {
   getData(email: string): AccountData {
