@@ -3,7 +3,7 @@
 import { useCallback } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import type { User } from "@supabase/supabase-js";
-import { AUTH_USER_SWR_KEY } from "@/features/auth/constants";
+import { AUTH_USER_SWR_KEY, AUTH_READY_SWR_KEY } from "@/features/auth/constants";
 import { authRepository, toAuthUser } from "@/features/auth/services/auth.repository";
 import type { AuthUser } from "@/features/auth/types";
 
@@ -22,6 +22,13 @@ export function useAuthStore() {
   // SAU một mutate() thật (vừa signIn xong) và ghi đè session về null.
   const { data: rawUser } = useSWR<User | null>(AUTH_USER_SWR_KEY, () => null, {
     fallbackData: null,
+    revalidateOnMount: false,
+  });
+
+  // true khi AuthProvider đã xác định xong session thật (xem constants.ts) —
+  // dùng cho UI guard cần phân biệt "chưa biết" với "chắc chắn chưa đăng nhập".
+  const { data: isReady } = useSWR<boolean>(AUTH_READY_SWR_KEY, () => false, {
+    fallbackData: false,
     revalidateOnMount: false,
   });
 
@@ -58,6 +65,7 @@ export function useAuthStore() {
   return {
     user,
     isLoggedIn: Boolean(user?.email),
+    isReady: Boolean(isReady),
     signIn,
     signUp,
     signOut,
