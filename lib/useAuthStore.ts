@@ -16,20 +16,27 @@ import type { AuthUser } from "@/features/auth/types";
 export function useAuthStore() {
   const { mutate } = useSWRConfig();
 
-  // revalidateOnMount: false — key này không phải server data, chỉ là
-  // cache dùng chung (AuthProvider/signIn/signUp/signOut tự mutate). Nếu để
-  // SWR tự gọi lại fetcher no-op khi mount, promise null đó có thể resolve
-  // SAU một mutate() thật (vừa signIn xong) và ghi đè session về null.
+  // revalidateOnMount/OnFocus/OnReconnect: false — key này không phải server
+  // data, chỉ là cache dùng chung (AuthProvider/signIn/signUp/signOut tự
+  // mutate). Nếu để SWR tự gọi lại fetcher no-op (VD khi mount, hoặc — bug
+  // thật đã gặp — mỗi lần tab được focus lại), promise `null` đó ghi đè lên
+  // session thật vừa set, gây "tự đăng xuất" khi chuyển tab đi rồi quay lại.
   const { data: rawUser } = useSWR<User | null>(AUTH_USER_SWR_KEY, () => null, {
     fallbackData: null,
     revalidateOnMount: false,
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
   });
 
   // true khi AuthProvider đã xác định xong session thật (xem constants.ts) —
-  // dùng cho UI guard cần phân biệt "chưa biết" với "chắc chắn chưa đăng nhập".
+  // dùng cho UI guard cần phân biệt "chưa biết" với "chắc chắn chưa đăng
+  // nhập". Cùng lý do trên: fetcher no-op không được tự chạy lại khi focus,
+  // nếu không sẽ ghi đè `isReady` về false mãi mãi sau khi chuyển tab.
   const { data: isReady } = useSWR<boolean>(AUTH_READY_SWR_KEY, () => false, {
     fallbackData: false,
     revalidateOnMount: false,
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
   });
 
   const user: AuthUser | null = rawUser ? toAuthUser(rawUser) : null;

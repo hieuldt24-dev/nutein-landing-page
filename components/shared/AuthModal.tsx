@@ -60,12 +60,15 @@ export default function AuthModal() {
   const router = useRouter();
   const { mutate } = useSWRConfig();
   const { user, isLoggedIn, signIn, signUp, signOut } = useAuthStore();
-  // revalidateOnMount: false — key này chỉ là cờ mở/đóng UI (SWR-as-store),
-  // không phải server data. Không tắt sẽ có nguy cơ race giống useAuthStore:
-  // fetcher no-op resolve SAU 1 mutate(true) thật và tự đóng lại modal.
+  // revalidateOnMount/OnFocus/OnReconnect: false — key này chỉ là cờ mở/đóng
+  // UI (SWR-as-store), không phải server data. Không tắt sẽ có nguy cơ race
+  // giống useAuthStore: fetcher no-op tự chạy lại (VD mỗi lần tab focus lại)
+  // rồi ghi đè `true` thật về `false`, tự đóng modal ngoài ý muốn.
   const { data: isOpen } = useSWR("auth-modal", () => false, {
     fallbackData: false,
     revalidateOnMount: false,
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
   });
 
   const setIsOpen = useCallback(
