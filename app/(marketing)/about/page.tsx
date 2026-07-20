@@ -4,7 +4,6 @@ import AboutStory from "@/components/about/AboutStory";
 import AboutProcess from "@/components/about/AboutProcess";
 import AboutCommitment from "@/components/about/AboutCommitment";
 import AboutMission from "@/components/about/AboutMission";
-import BottomCtaSection from "@/components/shared/BottomCtaSection";
 import { MarqueeTicker } from "@/components/ui/MarqueeTicker";
 import { ABOUT_META, ABOUT_USP_TICKER } from "@/features/about/constants";
 
@@ -21,7 +20,7 @@ export const metadata: Metadata = {
 
 /**
  * About — cấu trúc Joy Rush About (không Reviews):
- * Hero → Marquee → Story → Process → Mission (Goals) → Commitment → CTA
+ * Hero → Marquee → Story → Process → Mission (Goals) → Commitment → Footer CTA
  */
 export default function AboutPage() {
   return (
@@ -35,7 +34,6 @@ export default function AboutPage() {
         <AboutProcess />
         <AboutMission />
         <AboutCommitment />
-        <BottomCtaSection />
       </main>
     </>
   );

@@ -1,9 +1,12 @@
 /**
- * Cart state của Nutein — single-SKU: chỉ 1 dòng hàng (sản phẩm Nutein) +
- * quantity, KHÔNG phải danh sách nhiều sản phẩm (xem docs/state-management.md mục 7).
+ * Cart state của Nutein — single-SKU: 1 dòng hàng (sản phẩm Nutein) +
+ * quantity + variantId gói, KHÔNG phải danh sách nhiều sản phẩm
+ * (xem docs/state-management.md mục 7).
  */
 export interface CartState {
   quantity: number;
+  /** Id gói đóng (`pack-1` / `pack-3` / `pack-6`) — sẵn gửi API cart/order sau. */
+  variantId: string;
 }
 
 /**
@@ -12,6 +15,7 @@ export interface CartState {
  */
 export interface CartSummary {
   quantity: number;
+  variantId: string;
   unitPrice: number;
   /** Tổng trước giảm = quantity × unitPrice. */
   subtotal: number;

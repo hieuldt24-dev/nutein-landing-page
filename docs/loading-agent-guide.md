@@ -1,6 +1,6 @@
 # Loading Agent Guide
 
-Tài liệu này hướng dẫn developer và AI agent xử lý trạng thái loading trong dự án Nutein (Next.js 16 App Router, landing page/e-commerce). Mục tiêu: loading phải nhất quán, không làm layout giật, và không phát sinh thư viện/pattern mới khi những gì đã có (Next.js Suspense, SWR, `Loader2` từ `lucide-react`, `sonner`) là đủ.
+Tài liệu này hướng dẫn developer và AI agent xử lý trạng thái loading trong dự án Nutein (Next.js 16 App Router, landing page/e-commerce). Mục tiêu: loading phải nhất quán, không làm layout giật, và không phát sinh thư viện/pattern mới khi những gì đã có (Next.js Suspense, SWR, `Loader2` từ `lucide-react`, Sonner qua `notify` trong `lib/toast.tsx`) là đủ.
 
 ## 1. Bốn loại loading trong dự án
 
@@ -65,15 +65,17 @@ Quy tắc:
 Đây là pattern chuẩn đã áp dụng nhất quán trong [components/shared/AuthModal.tsx](../components/shared/AuthModal.tsx) — mọi form/action mới phải theo đúng pattern này:
 
 ```tsx
+import { notify } from "@/lib/toast";
+
 const [isSubmitting, setIsSubmitting] = useState(false);
 
 async function onSubmit(values: FormValues) {
   setIsSubmitting(true);
   try {
     await someService.submit(values);
-    toast.success("Thành công!");
+    notify.success("Thành công!");
   } catch (err) {
-    toast.error(err instanceof Error ? err.message : "Đã xảy ra lỗi");
+    notify.error(err instanceof Error ? err.message : "Đã xảy ra lỗi");
   } finally {
     setIsSubmitting(false);
   }
@@ -95,7 +97,10 @@ Quy tắc bắt buộc:
 - Luôn `disabled={isSubmitting}` trên nút submit VÀ trên các input/checkbox liên quan nếu double-submit có thể gây lỗi dữ liệu (đã làm đúng trong `AuthModal`).
 - Icon loading luôn là `Loader2` từ `lucide-react` với `className="animate-spin"` — không dùng icon spinner khác, không tự vẽ SVG spinner mới.
 - Giữ nguyên kích thước nút khi chuyển giữa state loading/idle (không để nút co giãn làm layout nhảy).
-- Kết quả thành công/lỗi báo qua `toast` (`sonner`, đã cấu hình global ở `app/layout.tsx`) — loading state không tự hiển thị thông báo, chỉ khoá tương tác.
+- Kết quả thành công/lỗi báo qua `notify` từ [`lib/toast.tsx`](../lib/toast.tsx) (Sonner + custom UI Nutein, mount [`AppToaster`](../components/ui/AppToaster.tsx) ở `app/layout.tsx`) — loading state không tự hiển thị thông báo, chỉ khoá tương tác.
+- **Không** toast lỗi field validate (Zod / RHF) — lỗi hiện inline dưới input.
+- **Không** toast placeholder “tính năng đang phát triển” — disable / ẩn nút thay vì thông báo stub.
+- Call sites chỉ dùng `notify.success` / `notify.error` / `notify.info` — không gọi `toast.*` từ `sonner` trực tiếp.
 - Khi có `Button` primitive dùng chung được tạo trong `components/ui/` (xem `docs/frontend-style-system-guide.md`), pattern này nên được gói vào prop `loading` của `Button` để không phải lặp lại JSX `Loader2` ở mọi nơi.
 
 ## 5. Blocking overlay — chỉ dùng khi thật cần thiết
@@ -118,7 +123,7 @@ Khi thêm loading vào bất kỳ page/component:
 3. Section/Client Component dùng `useSWR` → dùng `isLoading` + skeleton đúng hình dạng nội dung.
 4. Form/nút action → `useState` cờ `isSubmitting` + `Loader2` `animate-spin`, disable input liên quan.
 5. Không thêm thư viện loading/spinner mới (react-loading, react-spinners...) khi `lucide-react` + Tailwind `animate-pulse`/`animate-spin` đã đủ.
-6. Không dùng `alert()`/`console.log` để báo trạng thái loading — dùng disabled state trực quan + `toast` khi kết thúc.
+6. Không dùng `alert()`/`console.log` để báo trạng thái loading — dùng disabled state trực quan + `notify` khi kết thúc.
 7. Không để `isLoading` và data cũ hiển thị đồng thời gây giật UI — SWR mặc định giữ data cũ khi refetch (`isValidating`), chỉ dùng `isLoading` (lần fetch đầu) để quyết định hiện skeleton.
 8. Test nhanh mọi state trước khi coi là hoàn thành: idle → loading → success, và idle → loading → error.
 
@@ -127,5 +132,5 @@ Khi thêm loading vào bất kỳ page/component:
 - Route có fetch server-side đã có `loading.tsx` phù hợp bố cục chưa?
 - Skeleton có giữ đúng kích thước nội dung thật không (không gây layout shift)?
 - Nút submit có disable đúng lúc và hiển thị `Loader2` xoay không?
-- Có xử lý cả 2 nhánh success và error (qua `toast`) không?
+- Có xử lý cả 2 nhánh success và error (qua `notify`) không?
 - Có tái sử dụng skeleton/spinner đã có sẵn thay vì tạo bản mới không?

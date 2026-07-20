@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { FillButton } from "@/components/ui/FillButton";
 import type { CreateOrderResult } from "@/features/checkout/types";
 import { PAYMENT_OPTIONS, SHIPPING_OPTIONS } from "@/features/checkout/constants";
@@ -92,18 +91,12 @@ export function CheckoutSuccessView({ order }: CheckoutSuccessViewProps) {
           Tiếp tục mua sắm
         </FillButton>
         <FillButton
-          href="/#kien-thuc"
+          href="/blog"
           variant="ink"
           className="h-[48px] justify-center px-6 text-[14px] font-bold uppercase"
         >
-          Xem công thức
-        </FillButton>
-        <Link
-          href="/blog"
-          className="inline-flex h-[48px] items-center justify-center px-2 text-[14px] font-bold text-primary-deep underline-offset-2 hover:underline"
-        >
           Khám phá Blog
-        </Link>
+        </FillButton>
       </div>
 
       <p className="mt-8 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted">

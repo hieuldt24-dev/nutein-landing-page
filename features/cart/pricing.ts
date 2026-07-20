@@ -1,4 +1,5 @@
-import { NUTEIN_PRODUCT } from "@/features/product/constants";
+import { DEFAULT_PRODUCT_VARIANT_ID } from "@/features/product/constants";
+import { productService } from "@/features/product/services/product.service";
 import {
   MAX_CART_QUANTITY,
   MIN_CART_QUANTITY,
@@ -87,8 +88,9 @@ function resolveShippingNote(voucherProgress: VoucherProgress): string {
 /** Snapshot tiền hàng + voucher từ quantity (chưa gồm phí ship checkout). */
 export function buildCartSummary(
   quantity: number,
-  unitPrice: number = NUTEIN_PRODUCT.price,
-  tiers: VoucherTier[] = VOUCHER_TIERS
+  unitPrice: number = productService.getCatalogProduct().price,
+  tiers: VoucherTier[] = VOUCHER_TIERS,
+  variantId: string = DEFAULT_PRODUCT_VARIANT_ID
 ): CartSummary {
   const safeQuantity = clampCartQuantity(quantity);
   const subtotal = Math.max(0, safeQuantity) * unitPrice;
@@ -99,6 +101,7 @@ export function buildCartSummary(
 
   return {
     quantity: safeQuantity,
+    variantId,
     unitPrice,
     subtotal,
     discountPercent,

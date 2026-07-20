@@ -1,6 +1,7 @@
 /**
- * Session user phía client — mock trước khi có auth API / Supabase session.
- * Shape giữ ổn định để checkout prefill + Navbar sau này.
+ * Session user phía client — mỏng (email / tên / SĐT).
+ * Sổ địa chỉ nằm `features/account` (account.repository), không nhồi vào session.
+ * Khi có auth API / Supabase: chỉ đổi thân auth.repository get/set/clear.
  */
 export interface AuthUser {
   email: string;

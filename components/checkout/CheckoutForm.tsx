@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSWRConfig } from "swr";
-import { toast } from "sonner";
+import { notify } from "@/lib/toast";
 import {
   CHECKOUT_FORM_DEFAULT_VALUES,
   CHECKOUT_ORDER_SNAPSHOT_KEY,
@@ -15,6 +15,10 @@ import {
   checkoutFormSchema,
   type CheckoutFormValues,
 } from "@/features/checkout/schemas/checkout.schema";
+import {
+  getFirstCheckoutErrorPath,
+  scrollToCheckoutField,
+} from "@/features/checkout/scroll-to-error";
 import { resolveCheckoutShippingFee } from "@/features/cart/pricing";
 import { CheckoutContactSection } from "@/components/checkout/CheckoutContactSection";
 import { CheckoutDeliverySection } from "@/components/checkout/CheckoutDeliverySection";
@@ -25,6 +29,9 @@ import {
   CheckoutSubmitBlock,
   CheckoutSubmittingOverlay,
 } from "@/components/checkout/CheckoutSubmitBlock";
+import { accountService } from "@/features/account/services/account.service";
+import { isCheckoutContactComplete } from "@/features/checkout/contact-complete";
+import { useAccountProfile } from "@/lib/useAccountProfile";
 import { useAuthStore } from "@/lib/useAuthStore";
 import { useCartStore } from "@/lib/useCartStore";
 import { useCheckoutSubmit } from "@/lib/useCheckoutSubmit";
@@ -37,6 +44,7 @@ export default function CheckoutForm() {
   const router = useRouter();
   const { mutate } = useSWRConfig();
   const { user, isLoggedIn, signOut } = useAuthStore();
+  const { syncFromCheckout, updateProfile, profile } = useAccountProfile();
   const { quantity, summary, isEmpty, removeFromCart } = useCartStore();
   const { submitOrder, isSubmitting } = useCheckoutSubmit();
 
@@ -62,6 +70,15 @@ export default function CheckoutForm() {
   const wardCode = address?.wardCode ?? "";
   const addressReady = Boolean(provinceCode.trim() && wardCode.trim());
 
+  /** Khóa Liên hệ chỉ khi session/profile đã đủ — không khóa giữa chừng khi đang bổ sung. */
+  const contactLocked = useMemo(() => {
+    if (!isLoggedIn) return false;
+    return isCheckoutContactComplete({
+      fullName: profile?.fullName || user?.fullName,
+      phone: profile?.phone || user?.phone,
+    });
+  }, [isLoggedIn, profile?.fullName, profile?.phone, user?.fullName, user?.phone]);
+
   const shippingPreview = useMemo(() => {
     if (!addressReady) {
       return { shippingFee: null as number | null, shippingNote: "Nhập địa chỉ giao hàng" };
@@ -73,9 +90,12 @@ export default function CheckoutForm() {
     );
   }, [addressReady, shippingMethod, summary.voucherProgress]);
 
+  const placingOrderRef = useRef(false);
+
   useEffect(() => {
-    if (isEmpty) {
-      toast.info("Giỏ hàng trống — hãy thêm sản phẩm trước khi thanh toán.");
+    // Giỏ trống → về home im lặng (single-SKU: không cần toast “thêm sản phẩm”).
+    // Bỏ qua khi vừa đặt hàng xong (cart clear trước khi push /success).
+    if (isEmpty && !placingOrderRef.current) {
       router.replace("/");
     }
   }, [isEmpty, router]);
@@ -83,13 +103,30 @@ export default function CheckoutForm() {
   useEffect(() => {
     if (!user) return;
     setValue("buyer.email", user.email, { shouldValidate: true, shouldDirty: true });
-    if (user.fullName) {
-      setValue("buyer.fullName", user.fullName, { shouldValidate: true, shouldDirty: true });
+
+    const fullName = (profile?.fullName || user.fullName || "").trim();
+    const phone = (profile?.phone || user.phone || "").trim();
+    if (fullName) {
+      setValue("buyer.fullName", fullName, { shouldValidate: true, shouldDirty: true });
     }
-    if (user.phone) {
-      setValue("buyer.phone", user.phone, { shouldValidate: true, shouldDirty: true });
+    if (phone) {
+      setValue("buyer.phone", phone, { shouldValidate: true, shouldDirty: true });
     }
-  }, [user, setValue]);
+
+    let cancelled = false;
+    void accountService.getDefaultAddress(user.email).then((addr) => {
+      if (cancelled || !addr) return;
+      setValue("address.provinceCode", addr.provinceCode, { shouldValidate: true });
+      setValue("address.province", addr.province, { shouldValidate: true });
+      setValue("address.wardCode", addr.wardCode, { shouldValidate: true });
+      setValue("address.ward", addr.ward, { shouldValidate: true });
+      setValue("address.street", addr.street, { shouldValidate: true });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, profile?.fullName, profile?.phone, setValue]);
 
   const openAuth = () => mutate("auth-modal", true, { revalidate: false });
 
@@ -101,34 +138,60 @@ export default function CheckoutForm() {
       ...current,
       buyer: { fullName: "", phone: "", email: "" },
     });
-    toast.success("Đã đăng xuất.");
+    notify.success("Đã đăng xuất.");
   };
 
-  const onSubmit = handleSubmit(async (values) => {
-    try {
-      const result = await submitOrder({
-        quantity,
-        buyer: values.buyer,
-        address: values.address,
-        note: values.note || undefined,
-        shippingMethod: values.shippingMethod,
-        paymentMethod: values.paymentMethod,
-        saveInfo: values.saveInfo,
-      });
-
+  const onSubmit = handleSubmit(
+    async (values) => {
       try {
-        sessionStorage.setItem(CHECKOUT_ORDER_SNAPSHOT_KEY, JSON.stringify(result));
-      } catch {
-        /* private mode */
-      }
+        const result = await submitOrder({
+          quantity,
+          buyer: values.buyer,
+          address: values.address,
+          note: values.note || undefined,
+          shippingMethod: values.shippingMethod,
+          paymentMethod: values.paymentMethod,
+          saveInfo: values.saveInfo,
+        });
 
-      await removeFromCart();
-      toast.success("Đặt hàng thành công!");
-      router.push(`/checkout/success?orderCode=${encodeURIComponent(result.orderCode)}`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Đặt hàng thất bại — vui lòng thử lại");
+        try {
+          sessionStorage.setItem(CHECKOUT_ORDER_SNAPSHOT_KEY, JSON.stringify(result));
+        } catch {
+          /* private mode */
+        }
+
+        if (isLoggedIn && user?.email) {
+          try {
+            if (values.saveInfo) {
+              await syncFromCheckout({
+                buyer: values.buyer,
+                address: values.address,
+              });
+            } else {
+              // Luôn đồng bộ họ tên/SĐT về hồ sơ (kể cả không tick lưu địa chỉ).
+              await updateProfile({
+                fullName: values.buyer.fullName,
+                phone: values.buyer.phone,
+              });
+            }
+          } catch {
+            /* không chặn success flow nếu sync thất bại */
+          }
+        }
+
+        placingOrderRef.current = true;
+        await removeFromCart();
+        notify.success("Đặt hàng thành công!");
+        router.push(`/checkout/success?orderCode=${encodeURIComponent(result.orderCode)}`);
+      } catch (err) {
+        notify.error(err instanceof Error ? err.message : "Đặt hàng thất bại — vui lòng thử lại");
+      }
+    },
+    (formErrors) => {
+      const path = getFirstCheckoutErrorPath(formErrors);
+      if (path) scrollToCheckoutField(path);
     }
-  });
+  );
 
   if (isEmpty) {
     return (
@@ -147,6 +210,7 @@ export default function CheckoutForm() {
             errors={errors}
             isSubmitting={isSubmitting}
             isLoggedIn={isLoggedIn}
+            contactLocked={contactLocked}
             user={user}
             onOpenAuth={openAuth}
             onLogout={() => {

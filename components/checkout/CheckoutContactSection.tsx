@@ -14,6 +14,8 @@ interface CheckoutContactSectionProps {
   errors: FieldErrors<CheckoutFormValues>;
   isSubmitting: boolean;
   isLoggedIn: boolean;
+  /** true = hồ sơ đủ → chỉ xem; false + logged in = cho bổ sung họ tên/SĐT */
+  contactLocked: boolean;
   user: AuthUser | null;
   onOpenAuth: () => void;
   onLogout: () => void;
@@ -24,10 +26,13 @@ export function CheckoutContactSection({
   errors,
   isSubmitting,
   isLoggedIn,
+  contactLocked,
   user,
   onOpenAuth,
   onLogout,
 }: CheckoutContactSectionProps) {
+  const namePhoneLocked = isLoggedIn && contactLocked;
+
   return (
     <section>
       <CheckoutSectionHeading
@@ -60,6 +65,11 @@ export function CheckoutContactSection({
         }
       />
       <div className="flex flex-col gap-3">
+        {isLoggedIn && !contactLocked ? (
+          <p className="text-[13px] text-text-muted">
+            Bổ sung họ tên và số điện thoại để tiếp tục đặt hàng.
+          </p>
+        ) : null}
         <CheckoutField label="Email" error={errors.buyer?.email?.message}>
           <CheckoutTextInput
             type="email"
@@ -76,7 +86,8 @@ export function CheckoutContactSection({
             <CheckoutTextInput
               autoComplete="name"
               placeholder="Nguyễn Văn A"
-              disabled={isSubmitting}
+              disabled={isSubmitting || namePhoneLocked}
+              readOnly={namePhoneLocked}
               error={Boolean(errors.buyer?.fullName)}
               {...register("buyer.fullName")}
             />
@@ -86,7 +97,8 @@ export function CheckoutContactSection({
               type="tel"
               autoComplete="tel"
               placeholder="0901234567"
-              disabled={isSubmitting}
+              disabled={isSubmitting || namePhoneLocked}
+              readOnly={namePhoneLocked}
               error={Boolean(errors.buyer?.phone)}
               {...register("buyer.phone")}
             />

@@ -35,7 +35,7 @@ export const metadata: Metadata = {
 import { SWRProvider } from "@/components/providers/SWRProvider";
 import AuthModal from "@/components/shared/AuthModal";
 import CartDrawer from "@/components/shared/CartDrawer";
-import { Toaster } from "sonner";
+import { AppToaster } from "@/components/ui/AppToaster";
 
 export default function RootLayout({
   children,
@@ -49,12 +49,15 @@ export default function RootLayout({
       className={`${quicksand.variable} ${mulish.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col font-sans" suppressHydrationWarning>
+      <body
+        className="flex min-h-full flex-col font-sans [&_>_*]:shrink-0"
+        suppressHydrationWarning
+      >
         <SWRProvider>
           {children}
           <AuthModal />
           <CartDrawer />
-          <Toaster position="top-center" richColors />
+          <AppToaster />
         </SWRProvider>
       </body>
     </html>
