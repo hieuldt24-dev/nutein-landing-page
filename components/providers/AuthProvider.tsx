@@ -27,19 +27,34 @@ import { authRepository } from "@/features/auth/services/auth.repository";
  * session Supabase hợp lệ — bắt các luồng KHÔNG đi qua useAuthStore.signIn
  * trực tiếp: reload trang khi đã đăng nhập từ trước, và OAuth callback
  * (app/auth/callback/route.ts).
+ *
+ * De-dupe theo user id (`lastMintedUserId`): Supabase có thể bắn nhiều event
+ * liên tiếp cho CÙNG 1 session (VD INITIAL_SESSION rồi SIGNED_IN, hoặc
+ * TOKEN_REFRESHED định kỳ) — mintApiSession() chỉ cần chạy 1 lần khi user id
+ * thực sự đổi (đăng nhập mới/đổi tài khoản), không cần chạy lại mỗi lần
+ * refresh token nội bộ của Supabase (app tự có cơ chế refresh JWT riêng lazy
+ * theo 401, xem lib/swr-fetcher.ts) — tránh spam POST /api/auth/session.
  */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { mutate } = useSWRConfig();
 
   useEffect(() => {
     let cancelled = false;
+    let lastMintedUserId: string | null = null;
 
     const {
       data: { subscription },
     } = supabaseBrowser.auth.onAuthStateChange((_event, session) => {
       if (cancelled) return;
       mutate("auth-user", session?.user ?? null, { revalidate: false });
-      if (session?.user) void authRepository.mintApiSession();
+
+      const userId = session?.user?.id ?? null;
+      if (userId && userId !== lastMintedUserId) {
+        lastMintedUserId = userId;
+        void authRepository.mintApiSession();
+      } else if (!userId) {
+        lastMintedUserId = null;
+      }
     });
 
     return () => {

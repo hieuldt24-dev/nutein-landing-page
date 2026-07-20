@@ -14,6 +14,7 @@ export function AccountAddressList() {
   const {
     addresses,
     isLoading,
+    error,
     createAddress,
     updateAddress,
     removeAddress,
@@ -35,6 +36,14 @@ export function AccountAddressList() {
   if (isLoading) {
     return (
       <div className="h-40 animate-pulse rounded-[var(--radius-lg)] bg-ink/5" />
+    );
+  }
+
+  if (error) {
+    return (
+      <p className="rounded-[var(--radius-lg)] border border-red-200 bg-red-50 px-5 py-6 text-center text-sm font-semibold text-red-600">
+        Không tải được sổ địa chỉ. Thử tải lại trang.
+      </p>
     );
   }
 
