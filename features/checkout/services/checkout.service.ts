@@ -1,6 +1,9 @@
 import "server-only";
 
-import { buildCartSummary, resolveCheckoutShippingFee } from "@/features/cart/pricing";
+import {
+  buildCartSummary,
+  resolveCheckoutShippingFee,
+} from "@/features/cart/pricing";
 import { BadRequestError } from "@/src/errors/app.error";
 import { logger } from "@/src/logging/logger";
 import {
@@ -10,7 +13,11 @@ import {
   SHIPPING_FEES_VND,
 } from "../constants";
 import type { CreateOrderRequest } from "../schemas/checkout.schema";
-import type { CreateOrderResult, OrderStatus, PaymentInstructions } from "../types";
+import type {
+  CreateOrderResult,
+  OrderStatus,
+  PaymentInstructions,
+} from "../types";
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => {
@@ -26,33 +33,46 @@ function buildOrderCode(now = new Date()): string {
   return `NT-${y}${m}${d}-${suffix}`;
 }
 
-function estimatedDeliveryLabel(shippingMethod: CreateOrderRequest["shippingMethod"]): string {
+function estimatedDeliveryLabel(
+  shippingMethod: CreateOrderRequest["shippingMethod"],
+): string {
   return shippingMethod === "express"
     ? "Dự kiến giao trong 1–2 ngày làm việc"
     : "Dự kiến giao trong 3–5 ngày làm việc";
 }
 
-function resolvePayment(
-  paymentMethod: CreateOrderRequest["paymentMethod"]
-): { status: OrderStatus; paymentInstructions?: PaymentInstructions } {
+function resolvePayment(paymentMethod: CreateOrderRequest["paymentMethod"]): {
+  status: OrderStatus;
+  paymentInstructions?: PaymentInstructions;
+} {
   if (paymentMethod === "cod") {
     return { status: "pending" };
   }
   if (paymentMethod === "bank_transfer") {
-    return { status: "awaiting_payment", paymentInstructions: BANK_TRANSFER_INSTRUCTIONS };
+    return {
+      status: "awaiting_payment",
+      paymentInstructions: BANK_TRANSFER_INSTRUCTIONS,
+    };
   }
-  return { status: "awaiting_payment", paymentInstructions: EWALLET_INSTRUCTIONS };
+  return {
+    status: "awaiting_payment",
+    paymentInstructions: EWALLET_INSTRUCTIONS,
+  };
 }
 
 /**
  * Tạo đơn hàng — v1 mock (sinh mã, tính lại tiền).
  * Khi có backend: thêm nhánh remote, giữ chữ ký `createOrder`.
- * `saveInfo`: hiện client gọi `accountService.syncFromCheckout` sau order OK
- * khi logged in. Khi có session server: xử lý sync tại đây, client có thể bỏ bước đó.
+ * `saveInfo`: hiện client tự gọi `useAccountProfile().updateProfile` +
+ * `useAddresses().saveAsDefaultFromCheckout` sau order OK khi logged in.
+ * Khi có session server: xử lý sync tại đây, client có thể bỏ bước đó.
  */
 export const checkoutService = {
   async createOrder(input: CreateOrderRequest): Promise<CreateOrderResult> {
-    const serviceLogger = logger.child({ service: "checkoutService", action: "createOrder" });
+    const serviceLogger = logger.child({
+      service: "checkoutService",
+      action: "createOrder",
+    });
 
     await delay(CHECKOUT_MOCK_LATENCY_MS);
 
@@ -64,7 +84,7 @@ export const checkoutService = {
     const { shippingFee, shippingNote } = resolveCheckoutShippingFee(
       input.shippingMethod,
       cartSummary.voucherProgress,
-      SHIPPING_FEES_VND
+      SHIPPING_FEES_VND,
     );
 
     const merchandiseTotal = cartSummary.total;
@@ -117,7 +137,7 @@ export const checkoutService = {
         paymentMethod: result.paymentMethod,
         mode: "mock",
       },
-      "Mock order created"
+      "Mock order created",
     );
 
     return result;

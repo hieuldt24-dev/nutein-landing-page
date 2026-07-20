@@ -9,22 +9,51 @@ export interface FetchError extends Error {
   code?: string;
 }
 
-export const fetcher = async <T>(url: string): Promise<T> => {
-  const res = await fetch(url);
+async function toFetchError(res: Response): Promise<FetchError> {
+  const errorData: ApiResponse<null> = await res.json().catch(() => ({
+    success: false,
+    data: null,
+    error: null,
+  }));
 
-  // If HTTP status is not ok (200-299), throw an error with details
-  if (!res.ok) {
-    const errorData: ApiResponse<null> = await res.json().catch(() => ({
-      success: false,
-      data: null,
-      error: null,
-    }));
-    
-    const errorMessage = errorData.error?.message || "Đã xảy ra lỗi khi tải dữ liệu";
-    const error = new Error(errorMessage) as FetchError;
-    error.status = res.status;
-    error.code = errorData.error?.code || "HTTP_ERROR";
-    throw error;
+  const error = new Error(
+    errorData.error?.message || "Đã xảy ra lỗi khi tải dữ liệu"
+  ) as FetchError;
+  error.status = res.status;
+  error.code = errorData.error?.code || "HTTP_ERROR";
+  return error;
+}
+
+/**
+ * Access token (JWT riêng của app, cookie httpOnly) hết hạn giữa chừng ->
+ * gọi app/api/auth/refresh 1 lần để cấp lại rồi để fetcher retry, tránh văng
+ * lỗi 401 vô lý trong khi user vẫn còn đăng nhập hợp lệ (session Supabase +
+ * refresh token còn hạn). Xem src/middlewares/authenticate.middlware.ts.
+ */
+async function tryRefreshAccessToken(): Promise<boolean> {
+  try {
+    const res = await fetch("/api/auth/refresh", { method: "POST" });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+export const fetcher = async <T>(url: string): Promise<T> => {
+  let res = await fetch(url);
+
+  if (res.status === 401) {
+    const error = await toFetchError(res);
+    if (error.code === "TOKEN_EXPIRED" && (await tryRefreshAccessToken())) {
+      res = await fetch(url);
+      if (!res.ok) {
+        throw await toFetchError(res);
+      }
+    } else {
+      throw error;
+    }
+  } else if (!res.ok) {
+    throw await toFetchError(res);
   }
 
   const json: ApiResponse<T> = await res.json();
