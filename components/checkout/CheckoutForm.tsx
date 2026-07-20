@@ -29,9 +29,9 @@ import {
   CheckoutSubmitBlock,
   CheckoutSubmittingOverlay,
 } from "@/components/checkout/CheckoutSubmitBlock";
-import { accountService } from "@/features/account/services/account.service";
 import { isCheckoutContactComplete } from "@/features/checkout/contact-complete";
 import { useAccountProfile } from "@/lib/useAccountProfile";
+import { useAddresses } from "@/lib/useAddresses";
 import { useAuthStore } from "@/lib/useAuthStore";
 import { useCartStore } from "@/lib/useCartStore";
 import { useCheckoutSubmit } from "@/lib/useCheckoutSubmit";
@@ -44,7 +44,8 @@ export default function CheckoutForm() {
   const router = useRouter();
   const { mutate } = useSWRConfig();
   const { user, isLoggedIn, signOut } = useAuthStore();
-  const { syncFromCheckout, updateProfile, profile } = useAccountProfile();
+  const { updateProfile, profile } = useAccountProfile();
+  const { defaultAddress, saveAsDefaultFromCheckout } = useAddresses();
   const { quantity, summary, isEmpty, removeFromCart } = useCartStore();
   const { submitOrder, isSubmitting } = useCheckoutSubmit();
 
@@ -77,16 +78,25 @@ export default function CheckoutForm() {
       fullName: profile?.fullName || user?.fullName,
       phone: profile?.phone || user?.phone,
     });
-  }, [isLoggedIn, profile?.fullName, profile?.phone, user?.fullName, user?.phone]);
+  }, [
+    isLoggedIn,
+    profile?.fullName,
+    profile?.phone,
+    user?.fullName,
+    user?.phone,
+  ]);
 
   const shippingPreview = useMemo(() => {
     if (!addressReady) {
-      return { shippingFee: null as number | null, shippingNote: "Nhập địa chỉ giao hàng" };
+      return {
+        shippingFee: null as number | null,
+        shippingNote: "Nhập địa chỉ giao hàng",
+      };
     }
     return resolveCheckoutShippingFee(
       shippingMethod ?? "standard",
       summary.voucherProgress,
-      SHIPPING_FEES_VND
+      SHIPPING_FEES_VND,
     );
   }, [addressReady, shippingMethod, summary.voucherProgress]);
 
@@ -102,31 +112,41 @@ export default function CheckoutForm() {
 
   useEffect(() => {
     if (!user) return;
-    setValue("buyer.email", user.email, { shouldValidate: true, shouldDirty: true });
+    setValue("buyer.email", user.email, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
 
     const fullName = (profile?.fullName || user.fullName || "").trim();
     const phone = (profile?.phone || user.phone || "").trim();
     if (fullName) {
-      setValue("buyer.fullName", fullName, { shouldValidate: true, shouldDirty: true });
+      setValue("buyer.fullName", fullName, {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
     }
     if (phone) {
-      setValue("buyer.phone", phone, { shouldValidate: true, shouldDirty: true });
+      setValue("buyer.phone", phone, {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
     }
-
-    let cancelled = false;
-    void accountService.getDefaultAddress(user.email).then((addr) => {
-      if (cancelled || !addr) return;
-      setValue("address.provinceCode", addr.provinceCode, { shouldValidate: true });
-      setValue("address.province", addr.province, { shouldValidate: true });
-      setValue("address.wardCode", addr.wardCode, { shouldValidate: true });
-      setValue("address.ward", addr.ward, { shouldValidate: true });
-      setValue("address.street", addr.street, { shouldValidate: true });
-    });
-
-    return () => {
-      cancelled = true;
-    };
   }, [user, profile?.fullName, profile?.phone, setValue]);
+
+  useEffect(() => {
+    if (!defaultAddress) return;
+    setValue("address.provinceCode", defaultAddress.provinceCode, {
+      shouldValidate: true,
+    });
+    setValue("address.province", defaultAddress.province, {
+      shouldValidate: true,
+    });
+    setValue("address.wardCode", defaultAddress.wardCode, {
+      shouldValidate: true,
+    });
+    setValue("address.ward", defaultAddress.ward, { shouldValidate: true });
+    setValue("address.street", defaultAddress.street, { shouldValidate: true });
+  }, [defaultAddress, setValue]);
 
   const openAuth = () => mutate("auth-modal", true, { revalidate: false });
 
@@ -155,24 +175,23 @@ export default function CheckoutForm() {
         });
 
         try {
-          sessionStorage.setItem(CHECKOUT_ORDER_SNAPSHOT_KEY, JSON.stringify(result));
+          sessionStorage.setItem(
+            CHECKOUT_ORDER_SNAPSHOT_KEY,
+            JSON.stringify(result),
+          );
         } catch {
           /* private mode */
         }
 
         if (isLoggedIn && user?.email) {
           try {
+            // Luôn đồng bộ họ tên/SĐT về hồ sơ (kể cả không tick lưu địa chỉ).
+            await updateProfile({
+              fullName: values.buyer.fullName,
+              phone: values.buyer.phone,
+            });
             if (values.saveInfo) {
-              await syncFromCheckout({
-                buyer: values.buyer,
-                address: values.address,
-              });
-            } else {
-              // Luôn đồng bộ họ tên/SĐT về hồ sơ (kể cả không tick lưu địa chỉ).
-              await updateProfile({
-                fullName: values.buyer.fullName,
-                phone: values.buyer.phone,
-              });
+              await saveAsDefaultFromCheckout(values.address);
             }
           } catch {
             /* không chặn success flow nếu sync thất bại */
@@ -182,21 +201,29 @@ export default function CheckoutForm() {
         placingOrderRef.current = true;
         await removeFromCart();
         notify.success("Đặt hàng thành công!");
-        router.push(`/checkout/success?orderCode=${encodeURIComponent(result.orderCode)}`);
+        router.push(
+          `/checkout/success?orderCode=${encodeURIComponent(result.orderCode)}`,
+        );
       } catch (err) {
-        notify.error(err instanceof Error ? err.message : "Đặt hàng thất bại — vui lòng thử lại");
+        notify.error(
+          err instanceof Error
+            ? err.message
+            : "Đặt hàng thất bại — vui lòng thử lại",
+        );
       }
     },
     (formErrors) => {
       const path = getFirstCheckoutErrorPath(formErrors);
       if (path) scrollToCheckoutField(path);
-    }
+    },
   );
 
   if (isEmpty) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center px-6">
-        <p className="text-sm font-semibold text-text-muted">Đang chuyển hướng…</p>
+        <p className="text-sm font-semibold text-text-muted">
+          Đang chuyển hướng…
+        </p>
       </div>
     );
   }
