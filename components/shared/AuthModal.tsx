@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, type InputHTMLAttributes, type ReactNode } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import useSWR, { useSWRConfig } from "swr";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -75,6 +76,7 @@ function TextInput({
 }
 
 export default function AuthModal() {
+  const router = useRouter();
   const { mutate } = useSWRConfig();
   const { user, isLoggedIn, signIn, signOut } = useAuthStore();
   const { data: isOpen } = useSWR("auth-modal", () => false, { fallbackData: false });
@@ -138,7 +140,6 @@ export default function AuthModal() {
       // Mock auth — khi có API: đổi sang /api/auth/login rồi map user vào signIn.
       await new Promise((resolve) => setTimeout(resolve, 800));
       await signIn({ email: data.email });
-      toast.success("Đăng nhập thành công! Chào mừng bạn quay trở lại.");
       resetLoginForm();
       setIsOpen(false);
     } catch (err) {
@@ -152,11 +153,11 @@ export default function AuthModal() {
     setIsSubmittingForm(true);
     try {
       await new Promise((resolve) => setTimeout(resolve, 800));
-      // Auto sign-in sau đăng ký (mock) để checkout prefill ngay.
+      // Auto sign-in sau đăng ký (mock) — rồi vào /account bổ sung hồ sơ.
       await signIn({ email: data.email, fullName: data.fullName });
-      toast.success("Đăng ký thành công! Bạn đã được đăng nhập.");
       resetSignUpForm();
       setIsOpen(false);
+      router.push("/account");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Đăng ký thất bại");
     } finally {
@@ -166,7 +167,6 @@ export default function AuthModal() {
 
   const onLogoutFromModal = async () => {
     await signOut();
-    toast.success("Đã đăng xuất.");
     setIsOpen(false);
   };
 
@@ -188,14 +188,28 @@ export default function AuthModal() {
         aria-labelledby="auth-modal-title"
         className="animate-fade-in relative z-10 flex w-full max-w-[420px] max-h-[min(920px,calc(100vh-2.5rem))] flex-col overflow-hidden rounded-[var(--radius-xl)] border border-ink bg-bg shadow-xl"
       >
-        <div className="flex items-start justify-between gap-4 border-b border-ink/15 px-6 pt-6 pb-5">
-          <div className="min-w-0">
+        <div className="relative border-b border-ink/15 px-6 pt-6 pb-5">
+          <button
+            type="button"
+            onClick={() => setIsOpen(false)}
+            aria-label="Đóng"
+            className="group absolute top-5 right-5 z-[1] flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 border-ink bg-bg text-ink"
+          >
+            <X
+              size={18}
+              strokeWidth={2.2}
+              className="transition-transform duration-300 ease-out group-hover:rotate-90"
+            />
+          </button>
+
+          <div className="flex flex-col items-center px-8 text-center">
             <Image
               src="/images/logo-horizontal-2x_1.svg"
               alt="Nutein"
-              width={120}
-              height={32}
-              className="mb-4 h-7 w-auto"
+              width={180}
+              height={48}
+              className="mb-5 h-11 w-auto md:h-12"
+              priority
             />
             <p className="mb-1 text-[12px] font-bold uppercase tracking-[0.08em] text-primary">
               Tài khoản Nutein
@@ -218,19 +232,6 @@ export default function AuthModal() {
                   : "Gia nhập cộng đồng sống lành cùng protein thực vật."}
             </p>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setIsOpen(false)}
-            aria-label="Đóng"
-            className="group flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 border-ink bg-bg text-ink"
-          >
-            <X
-              size={18}
-              strokeWidth={2.2}
-              className="transition-transform duration-300 ease-out group-hover:rotate-90"
-            />
-          </button>
         </div>
 
         {!isLoggedIn ? (
@@ -355,26 +356,15 @@ export default function AuthModal() {
                 <div className="h-px flex-1 bg-ink/15" />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <FillButton
-                  type="button"
-                  variant="ink"
-                  onClick={() => toast.info("Đăng nhập bằng Google đang được tích hợp.")}
-                  className="h-11 w-full justify-center px-4 text-[13px] font-bold"
-                >
-                  <GoogleIcon />
-                  Google
-                </FillButton>
-                <FillButton
-                  type="button"
-                  variant="ink"
-                  onClick={() => toast.info("Đăng nhập bằng Facebook đang được tích hợp.")}
-                  className="h-11 w-full justify-center px-4 text-[13px] font-bold"
-                >
-                  <FacebookIcon />
-                  Facebook
-                </FillButton>
-              </div>
+              <FillButton
+                type="button"
+                variant="ink"
+                onClick={() => toast.info("Đăng nhập bằng Google đang được tích hợp.")}
+                className="h-11 w-full justify-center px-4 text-[13px] font-bold"
+              >
+                <GoogleIcon />
+                Google
+              </FillButton>
             </form>
           ) : (
             <form onSubmit={handleSignUpSubmit(onRegister)} className="flex flex-col gap-4">
@@ -493,14 +483,6 @@ function GoogleIcon() {
         fill="#EA4335"
         d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-5.136 4.114A5.62 5.62 0 0 1 8.35 12.9a5.62 5.62 0 0 1 5.641-5.614c2.25 0 4.093 1.258 4.981 3.102l3.65-2.127C20.89 4.984 17.525 3 13.99 3c-4.978 0-9 4.029-9 9s4.022 9 9 9c4.8 0 8.01-3.238 8.01-7.854 0-.482-.047-.949-.13-1.396l-9.63.035z"
       />
-    </svg>
-  );
-}
-
-function FacebookIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="#1877F2" aria-hidden>
-      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
     </svg>
   );
 }
