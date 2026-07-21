@@ -4,11 +4,11 @@ import {
   buildCartSummary,
   resolveCheckoutShippingFee,
 } from "@/features/cart/pricing";
+import { cartServerService } from "@/features/cart/services/cart.server.service";
 import { BadRequestError } from "@/src/errors/app.error";
 import { logger } from "@/src/logging/logger";
 import {
   BANK_TRANSFER_INSTRUCTIONS,
-  CHECKOUT_MOCK_LATENCY_MS,
   EWALLET_INSTRUCTIONS,
   SHIPPING_FEES_VND,
 } from "../constants";
@@ -18,20 +18,7 @@ import type {
   OrderStatus,
   PaymentInstructions,
 } from "../types";
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
-function buildOrderCode(now = new Date()): string {
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
-  return `NT-${y}${m}${d}-${suffix}`;
-}
+import { buildOrderCode, orderRepository } from "./order.repository";
 
 function estimatedDeliveryLabel(
   shippingMethod: CreateOrderRequest["shippingMethod"],
@@ -42,41 +29,38 @@ function estimatedDeliveryLabel(
 }
 
 function resolvePayment(paymentMethod: CreateOrderRequest["paymentMethod"]): {
-  status: OrderStatus;
+  uiStatus: OrderStatus;
   paymentInstructions?: PaymentInstructions;
 } {
   if (paymentMethod === "cod") {
-    return { status: "pending" };
+    return { uiStatus: "pending" };
   }
   if (paymentMethod === "bank_transfer") {
     return {
-      status: "awaiting_payment",
+      uiStatus: "awaiting_payment",
       paymentInstructions: BANK_TRANSFER_INSTRUCTIONS,
     };
   }
   return {
-    status: "awaiting_payment",
+    uiStatus: "awaiting_payment",
     paymentInstructions: EWALLET_INSTRUCTIONS,
   };
 }
 
 /**
- * Tạo đơn hàng — v1 mock (sinh mã, tính lại tiền).
- * Khi có backend: thêm nhánh remote, giữ chữ ký `createOrder`.
- * `saveInfo`: hiện client tự gọi `useAccountProfile().updateProfile` +
- * `useAddresses().saveAsDefaultFromCheckout` sau order OK khi logged in.
- * Khi có session server: xử lý sync tại đây, client có thể bỏ bước đó.
+ * Tạo đơn thật + clear giỏ DB. Yêu cầu migration E2E đã apply.
  */
 export const checkoutService = {
-  async createOrder(input: CreateOrderRequest): Promise<CreateOrderResult> {
+  async createOrder(
+    userId: string,
+    input: CreateOrderRequest,
+  ): Promise<CreateOrderResult> {
     const serviceLogger = logger.child({
       service: "checkoutService",
       action: "createOrder",
     });
 
-    await delay(CHECKOUT_MOCK_LATENCY_MS);
-
-    const cartSummary = buildCartSummary(input.quantity);
+    const cartSummary = buildCartSummary({ lines: input.lines });
     if (cartSummary.isEmpty) {
       throw new BadRequestError("Giỏ hàng trống — không thể đặt hàng.");
     }
@@ -89,20 +73,39 @@ export const checkoutService = {
 
     const merchandiseTotal = cartSummary.total;
     const total = merchandiseTotal + shippingFee;
-    const { status, paymentInstructions } = resolvePayment(input.paymentMethod);
+    const { uiStatus, paymentInstructions } = resolvePayment(input.paymentMethod);
 
     const note = input.note?.trim() ? input.note.trim() : undefined;
-    const orderId = crypto.randomUUID();
     const orderCode = buildOrderCode();
+    const primaryUnitPrice = cartSummary.lines[0]?.unitPrice ?? 0;
+
+    const row = await orderRepository.create(
+      userId,
+      input,
+      {
+        unitPrice: primaryUnitPrice,
+        subtotal: cartSummary.subtotal,
+        discountAmount: cartSummary.discountAmount,
+        shippingFee,
+        total,
+      },
+      {
+        orderCode,
+        status: "PENDING",
+        paymentStatus: "UNPAID",
+      },
+    );
+
+    await cartServerService.clear(userId);
 
     const result: CreateOrderResult = {
-      orderId,
-      orderCode,
-      status,
+      orderId: row.id,
+      orderCode: row.order_code,
+      status: uiStatus,
       estimatedDeliveryLabel: estimatedDeliveryLabel(input.shippingMethod),
       summary: {
         quantity: cartSummary.quantity,
-        unitPrice: cartSummary.unitPrice,
+        unitPrice: primaryUnitPrice,
         subtotal: cartSummary.subtotal,
         discountPercent: cartSummary.discountPercent,
         discountAmount: cartSummary.discountAmount,
@@ -130,14 +133,15 @@ export const checkoutService = {
 
     serviceLogger.info(
       {
-        orderId,
-        orderCode,
+        orderId: result.orderId,
+        orderCode: result.orderCode,
         quantity: result.summary.quantity,
+        lineCount: cartSummary.lines.length,
         total: result.summary.total,
         paymentMethod: result.paymentMethod,
-        mode: "mock",
+        mode: "db",
       },
-      "Mock order created",
+      "Order created",
     );
 
     return result;

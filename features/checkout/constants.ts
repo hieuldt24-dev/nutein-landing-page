@@ -20,7 +20,7 @@ export const CHECKOUT_FORM_DEFAULT_VALUES: CheckoutFormValues = {
 /** sessionStorage — snapshot đơn sau submit (chưa có GET /orders). */
 export const CHECKOUT_ORDER_SNAPSHOT_KEY = "nutein:checkout-order-snapshot";
 
-/** Delay giả lập khi mock createOrder. */
+/** Delay giả lập khi mock createOrder — không còn dùng sau khi gắn DB. */
 export const CHECKOUT_MOCK_LATENCY_MS = 450;
 
 /** Phí ship ước tính v1 (VND) — freeship voucher ghi đè về 0. */

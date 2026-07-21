@@ -25,13 +25,18 @@ export function CheckoutOrderSummary({
   const orderTotal =
     shippingFee === null ? merchandiseTotal : merchandiseTotal + shippingFee;
   const hasDiscount = summary.discountAmount > 0;
-  const catalog = productService.getCatalogProduct();
+  const detail = productService.getProductDetail();
+  const primary = summary.lines[0];
+  const catalog = productService.toCartProduct(
+    detail,
+    primary?.variantId,
+  );
 
   return (
     <aside
       className={cn(
         "rounded-[var(--radius-lg)] border border-ink/10 bg-[var(--color-surface)] p-6 md:p-8",
-        className
+        className,
       )}
     >
       <div className="flex items-start gap-4 border-b border-ink/10 pb-6">
@@ -44,16 +49,23 @@ export function CheckoutOrderSummary({
             className="object-cover"
           />
           <span className="absolute -top-1.5 -right-1.5 flex h-6 min-w-6 items-center justify-center rounded-full bg-ink px-1.5 text-[11px] font-extrabold text-[var(--color-bg)]">
-            {summary.quantity}
+            {summary.lines.length}
           </span>
         </div>
         <div className="min-w-0 flex-1">
           <p className="font-display text-[17px] font-bold tracking-[-0.02em] text-ink">
             {catalog.name}
           </p>
-          <p className="mt-0.5 text-[12px] font-semibold text-text-muted">
-            {catalog.unitLabel}
-          </p>
+          <ul className="mt-1.5 flex flex-col gap-0.5">
+            {summary.lines.map((line) => (
+              <li
+                key={line.variantId}
+                className="text-[12px] font-semibold text-text-muted"
+              >
+                {line.label} × {line.quantity}
+              </li>
+            ))}
+          </ul>
           <p className="mt-2 text-[14px] font-bold text-ink">
             {formatCurrencyVnd(merchandiseTotal)}
           </p>
@@ -93,7 +105,9 @@ export function CheckoutOrderSummary({
             Tổng
           </dt>
           <dd className="font-display text-[22px] font-bold tracking-[-0.03em] text-ink">
-            {shippingFee === null ? formatCurrencyVnd(merchandiseTotal) : formatCurrencyVnd(orderTotal)}
+            {shippingFee === null
+              ? formatCurrencyVnd(merchandiseTotal)
+              : formatCurrencyVnd(orderTotal)}
           </dd>
         </div>
 

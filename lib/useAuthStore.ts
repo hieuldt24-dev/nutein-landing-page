@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import type { User } from "@supabase/supabase-js";
 import { AUTH_USER_SWR_KEY, AUTH_READY_SWR_KEY } from "@/features/auth/constants";
@@ -40,7 +40,12 @@ export function useAuthStore() {
     revalidateOnReconnect: false,
   });
 
-  const user: AuthUser | null = rawUser ? toAuthUser(rawUser) : null;
+  // Memo theo reference rawUser từ SWR — tránh AuthUser mới mỗi render
+  // (CheckoutForm từng deps `[user]` + setValue → loop đứng máy khi validate).
+  const user: AuthUser | null = useMemo(
+    () => (rawUser ? toAuthUser(rawUser) : null),
+    [rawUser],
+  );
 
   const signIn = useCallback(
     async (email: string, password: string, rememberMe: boolean = true) => {

@@ -62,8 +62,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const userId = session?.user?.id ?? null;
       if (userId && userId !== lastMintedUserId) {
-        lastMintedUserId = userId;
-        void authRepository.mintApiSession();
+        // Chỉ đánh dấu đã mint khi thành công — nếu fail (mạng/cookie),
+        // lần event sau hoặc fetcher remint vẫn có cơ hội cấp lại JWT.
+        void authRepository.mintApiSession().then((ok) => {
+          if (ok && !cancelled) lastMintedUserId = userId;
+        });
       } else if (!userId) {
         lastMintedUserId = null;
       }

@@ -26,6 +26,8 @@ function normalizeRole(raw: unknown): AuthRole | null {
   return null;
 }
 
+let mintSessionInFlight: Promise<boolean> | null = null;
+
 /** Map Supabase `User` (auth.users) sang shape `AuthUser` app đang dùng. */
 export function toAuthUser(user: User): AuthUser {
   const meta = user.user_metadata ?? {};
@@ -98,22 +100,34 @@ export const authRepository = {
    * Cấp cặp JWT access/refresh riêng của app (httpOnly cookie) ngay sau khi
    * Supabase đã xác thực xong — app/api/** dùng cặp token này qua
    * src/middlewares/authenticate.middlware.ts, không cần verify lại Supabase
-   * mỗi request. Không throw nếu lỗi: mất JWT riêng không nên chặn luồng
-   * đăng nhập chính (vẫn còn session Supabase hợp lệ).
+   * mỗi request. Trả `true` nếu set cookie thành công. Không throw nếu lỗi:
+   * mất JWT riêng không nên chặn luồng đăng nhập chính (vẫn còn session
+   * Supabase hợp lệ); fetcher/api-client sẽ remint lại khi gặp 401.
+   *
+   * Single-flight: AuthProvider + nhiều apiRequest 401 cùng lúc chỉ mint 1 lần.
    *
    * `rememberMe` (mặc định true) quyết định refresh-token cookie sống qua
    * việc đóng trình duyệt (7 ngày) hay chỉ là session cookie — xem
    * app/api/auth/session/route.ts.
    */
-  async mintApiSession(rememberMe: boolean = true): Promise<void> {
-    try {
-      await fetch("/api/auth/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rememberMe }),
-      });
-    } catch {
-      // im lặng — xem docstring
-    }
+  async mintApiSession(rememberMe: boolean = true): Promise<boolean> {
+    if (mintSessionInFlight) return mintSessionInFlight;
+
+    mintSessionInFlight = (async () => {
+      try {
+        const res = await fetch("/api/auth/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ rememberMe }),
+        });
+        return res.ok;
+      } catch {
+        return false;
+      } finally {
+        mintSessionInFlight = null;
+      }
+    })();
+
+    return mintSessionInFlight;
   },
 };

@@ -46,7 +46,7 @@ export default function CheckoutForm() {
   const { user, isLoggedIn, signOut } = useAuthStore();
   const { updateProfile, profile } = useAccountProfile();
   const { defaultAddress, saveAsDefaultFromCheckout } = useAddresses();
-  const { quantity, summary, isEmpty, removeFromCart } = useCartStore();
+  const { lines, summary, isEmpty, removeFromCart } = useCartStore();
   const { submitOrder, isSubmitting } = useCheckoutSubmit();
 
   const {
@@ -111,42 +111,51 @@ export default function CheckoutForm() {
   }, [isEmpty, router]);
 
   useEffect(() => {
-    if (!user) return;
-    setValue("buyer.email", user.email, {
-      shouldValidate: true,
-      shouldDirty: true,
-    });
+    // Prefill từ session/profile — chỉ khi field còn trống, không
+    // shouldValidate (tránh loop với reValidateMode + object `user` đổi identity).
+    if (!user?.email) return;
+
+    const current = getValues();
+    if (!current.buyer.email?.trim()) {
+      setValue("buyer.email", user.email, { shouldDirty: false });
+    }
 
     const fullName = (profile?.fullName || user.fullName || "").trim();
     const phone = (profile?.phone || user.phone || "").trim();
-    if (fullName) {
-      setValue("buyer.fullName", fullName, {
-        shouldValidate: true,
-        shouldDirty: true,
-      });
+    if (fullName && !current.buyer.fullName?.trim()) {
+      setValue("buyer.fullName", fullName, { shouldDirty: false });
     }
-    if (phone) {
-      setValue("buyer.phone", phone, {
-        shouldValidate: true,
-        shouldDirty: true,
-      });
+    if (phone && !current.buyer.phone?.trim()) {
+      setValue("buyer.phone", phone, { shouldDirty: false });
     }
-  }, [user, profile?.fullName, profile?.phone, setValue]);
+  }, [
+    user?.email,
+    user?.fullName,
+    user?.phone,
+    profile?.fullName,
+    profile?.phone,
+    setValue,
+    getValues,
+  ]);
 
   useEffect(() => {
     if (!defaultAddress) return;
+    const current = getValues("address");
+    // Chỉ prefill lần đầu (form địa chỉ còn trống) — không đè khi user đang sửa / test validate.
+    const addressEmpty =
+      !current.provinceCode?.trim() &&
+      !current.wardCode?.trim() &&
+      !current.street?.trim();
+    if (!addressEmpty) return;
+
     setValue("address.provinceCode", defaultAddress.provinceCode, {
-      shouldValidate: true,
+      shouldDirty: false,
     });
-    setValue("address.province", defaultAddress.province, {
-      shouldValidate: true,
-    });
-    setValue("address.wardCode", defaultAddress.wardCode, {
-      shouldValidate: true,
-    });
-    setValue("address.ward", defaultAddress.ward, { shouldValidate: true });
-    setValue("address.street", defaultAddress.street, { shouldValidate: true });
-  }, [defaultAddress, setValue]);
+    setValue("address.province", defaultAddress.province, { shouldDirty: false });
+    setValue("address.wardCode", defaultAddress.wardCode, { shouldDirty: false });
+    setValue("address.ward", defaultAddress.ward, { shouldDirty: false });
+    setValue("address.street", defaultAddress.street, { shouldDirty: false });
+  }, [defaultAddress, setValue, getValues]);
 
   const openAuth = () => mutate("auth-modal", true, { revalidate: false });
 
@@ -163,9 +172,14 @@ export default function CheckoutForm() {
 
   const onSubmit = handleSubmit(
     async (values) => {
+      if (!isLoggedIn) {
+        openAuth();
+        notify.error("Vui lòng đăng nhập để đặt hàng.");
+        return;
+      }
       try {
         const result = await submitOrder({
-          quantity,
+          lines,
           buyer: values.buyer,
           address: values.address,
           note: values.note || undefined,
@@ -183,7 +197,7 @@ export default function CheckoutForm() {
           /* private mode */
         }
 
-        if (isLoggedIn && user?.email) {
+        if (user?.email) {
           try {
             // Luôn đồng bộ họ tên/SĐT về hồ sơ (kể cả không tick lưu địa chỉ).
             await updateProfile({
