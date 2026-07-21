@@ -29,7 +29,7 @@ export function ProductPurchasePanel({ product, className }: ProductPurchasePane
     if (isAdding) return;
     setIsAdding(true);
     try {
-      await addToCart(variant.units * qty, variant.id);
+      await addToCart(qty, variant.id);
     } finally {
       setIsAdding(false);
     }

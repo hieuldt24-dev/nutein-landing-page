@@ -48,14 +48,14 @@ export const productService = {
     return productService.packPrice(product, variant) * Math.max(1, qty);
   },
 
-  /** Snapshot Product cho cart line — gắn nhãn variant đang chọn. */
+  /** Snapshot Product cho cart line — gắn nhãn + giá / gói đang chọn. */
   toCartProduct(product: ProductDetail, variantId?: string | null): Product {
     const variant = productService.resolveVariant(product, variantId);
     return {
       id: product.id,
       name: product.name,
       unitLabel: variant.label,
-      price: product.unitPrice,
+      price: productService.packPrice(product, variant),
       image: product.image,
       imageAlt: product.imageAlt,
     };

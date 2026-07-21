@@ -1,10 +1,13 @@
+import { CART_LOCAL_LATENCY_MS } from "../constants";
 import {
-  CART_LOCAL_LATENCY_MS,
-  MIN_CART_QUANTITY,
-} from "../constants";
-import { buildCartSummary } from "../pricing";
+  addToCartLines,
+  buildCartSummary,
+  normalizeCartState,
+  setLineQuantityInCart,
+} from "../pricing";
 import type { CartState, CartSummary } from "../types";
 import { cartRepository } from "./cart.repository";
+import { DEFAULT_PRODUCT_VARIANT_ID } from "@/features/product/constants";
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => {
@@ -13,12 +16,12 @@ function delay(ms: number): Promise<void> {
 }
 
 function summaryFromState(state: CartState): CartSummary {
-  return buildCartSummary(state.quantity, undefined, undefined, state.variantId);
+  return buildCartSummary(state);
 }
 
 /**
- * Business logic giỏ hàng single-SKU — mutate qua repository.
- * Pure calc nằm ở `features/cart/pricing.ts` (checkout cũng import được).
+ * Business logic giỏ — multi-line theo gói (pack-1/3/6).
+ * Pure calc ở `features/cart/pricing.ts`.
  */
 export const cartService = {
   buildSummary: buildCartSummary,
@@ -30,40 +33,49 @@ export const cartService = {
 
   async setState(state: CartState): Promise<CartSummary> {
     await delay(CART_LOCAL_LATENCY_MS);
-    const next = cartRepository.setState(state);
+    const next = cartRepository.setState(normalizeCartState(state));
     return summaryFromState(next);
   },
 
-  async setQuantity(quantity: number): Promise<CartSummary> {
-    const { variantId } = cartRepository.getState();
-    return cartService.setState({ quantity, variantId });
-  },
-
-  async setVariant(variantId: string): Promise<CartSummary> {
-    const { quantity } = cartRepository.getState();
-    return cartService.setState({ quantity, variantId });
-  },
-
-  async add(amount: number = 1, variantId?: string): Promise<CartSummary> {
+  async add(
+    amount: number = 1,
+    variantId: string = DEFAULT_PRODUCT_VARIANT_ID,
+  ): Promise<CartSummary> {
     const current = cartRepository.getState();
     return cartService.setState({
-      quantity: current.quantity + amount,
-      variantId: variantId ?? current.variantId,
+      lines: addToCartLines(current.lines, amount, variantId),
     });
   },
 
-  async increment(): Promise<CartSummary> {
-    const { quantity, variantId } = cartRepository.getState();
-    return cartService.setState({ quantity: quantity + 1, variantId });
+  async setLineQuantity(
+    variantId: string,
+    quantity: number,
+  ): Promise<CartSummary> {
+    const current = cartRepository.getState();
+    return cartService.setState({
+      lines: setLineQuantityInCart(current.lines, variantId, quantity),
+    });
   },
 
-  async decrement(): Promise<CartSummary> {
-    const { quantity, variantId } = cartRepository.getState();
-    return cartService.setState({ quantity: quantity - 1, variantId });
+  async increment(variantId: string): Promise<CartSummary> {
+    const current = cartRepository.getState();
+    const line = current.lines.find((l) => l.variantId === variantId);
+    const qty = (line?.quantity ?? 0) + 1;
+    return cartService.setLineQuantity(variantId, qty);
   },
 
-  async remove(): Promise<CartSummary> {
-    const { variantId } = cartRepository.getState();
-    return cartService.setState({ quantity: MIN_CART_QUANTITY, variantId });
+  async decrement(variantId: string): Promise<CartSummary> {
+    const current = cartRepository.getState();
+    const line = current.lines.find((l) => l.variantId === variantId);
+    const qty = (line?.quantity ?? 0) - 1;
+    return cartService.setLineQuantity(variantId, qty);
+  },
+
+  async removeLine(variantId: string): Promise<CartSummary> {
+    return cartService.setLineQuantity(variantId, 0);
+  },
+
+  async clear(): Promise<CartSummary> {
+    return cartService.setState({ lines: [] });
   },
 };

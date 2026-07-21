@@ -44,7 +44,7 @@ export default function Navbar() {
   const setAuthOpen = (val: boolean) => mutate("auth-modal", val, { revalidate: false });
   const { isLoggedIn, isStaffOrAdmin } = useAuthStore();
   const cartDrawer = useCartDrawer();
-  const { quantity: cartQuantity } = useCartStore();
+  const { lineCount: cartQuantity } = useCartStore();
 
   useEffect(() => {
     setMenuOpen(false);

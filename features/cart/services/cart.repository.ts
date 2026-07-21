@@ -1,32 +1,41 @@
-import { DEFAULT_PRODUCT_VARIANT_ID } from "@/features/product/constants";
 import {
   CART_QUANTITY_STORAGE_KEY,
   CART_STATE_STORAGE_KEY,
-  MAX_CART_QUANTITY,
-  MIN_CART_QUANTITY,
 } from "../constants";
+import {
+  normalizeCartState,
+  totalPackQuantity,
+} from "../pricing";
 import type { CartState } from "../types";
 
-function clampQuantity(value: number): number {
-  return Math.min(MAX_CART_QUANTITY, Math.max(MIN_CART_QUANTITY, value));
-}
-
 function emptyState(): CartState {
-  return { quantity: MIN_CART_QUANTITY, variantId: DEFAULT_PRODUCT_VARIANT_ID };
+  return { lines: [] };
 }
 
-function normalizeState(partial: Partial<CartState>): CartState {
-  return {
-    quantity: clampQuantity(
-      typeof partial.quantity === "number" && Number.isFinite(partial.quantity)
-        ? partial.quantity
-        : MIN_CART_QUANTITY
-    ),
-    variantId:
-      typeof partial.variantId === "string" && partial.variantId.length > 0
-        ? partial.variantId
-        : DEFAULT_PRODUCT_VARIANT_ID,
-  };
+/** Migrate shape cũ `{ quantity, variantId }` → `{ lines }`. */
+function coerceState(raw: unknown): CartState {
+  if (!raw || typeof raw !== "object") return emptyState();
+  const obj = raw as Record<string, unknown>;
+
+  if (Array.isArray(obj.lines)) {
+    return normalizeCartState({ lines: obj.lines as CartState["lines"] });
+  }
+
+  // Legacy single-line
+  const quantity =
+    typeof obj.quantity === "number" && Number.isFinite(obj.quantity)
+      ? obj.quantity
+      : 0;
+  const variantId =
+    typeof obj.variantId === "string" && obj.variantId.length > 0
+      ? obj.variantId
+      : undefined;
+
+  if (quantity > 0 && variantId) {
+    return normalizeCartState({ lines: [{ variantId, quantity }] });
+  }
+
+  return emptyState();
 }
 
 function readLegacyQuantity(): number | null {
@@ -34,13 +43,12 @@ function readLegacyQuantity(): number | null {
   const raw = window.localStorage.getItem(CART_QUANTITY_STORAGE_KEY);
   if (raw == null) return null;
   const parsed = Number.parseInt(raw, 10);
-  return Number.isFinite(parsed) ? clampQuantity(parsed) : null;
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 /**
- * Nguồn dữ liệu giỏ hàng phía client — hiện persist localStorage (JSON state).
- * Khi có API: đổi thân `getState`/`setState` sang `fetch('/api/cart')`,
- * giữ nguyên chữ ký để service/UI không đổi.
+ * Nguồn dữ liệu giỏ hàng phía client — localStorage (guest + mirror).
+ * Logged-in: `useCartStore` ghi `/api/cart` (DB).
  */
 export const cartRepository = {
   getState(): CartState {
@@ -51,16 +59,17 @@ export const cartRepository = {
     const raw = window.localStorage.getItem(CART_STATE_STORAGE_KEY);
     if (raw) {
       try {
-        const parsed = JSON.parse(raw) as Partial<CartState>;
-        return normalizeState(parsed);
+        return coerceState(JSON.parse(raw));
       } catch {
-        // fall through to legacy / empty
+        // fall through
       }
     }
 
     const legacyQty = readLegacyQuantity();
-    if (legacyQty != null) {
-      const migrated = normalizeState({ quantity: legacyQty });
+    if (legacyQty != null && legacyQty > 0) {
+      const migrated = normalizeCartState({
+        lines: [{ variantId: "pack-1", quantity: legacyQty }],
+      });
       cartRepository.setState(migrated);
       return migrated;
     }
@@ -69,11 +78,13 @@ export const cartRepository = {
   },
 
   setState(state: CartState): CartState {
-    const next = normalizeState(state);
+    const next = normalizeCartState(state);
     if (typeof window !== "undefined") {
       window.localStorage.setItem(CART_STATE_STORAGE_KEY, JSON.stringify(next));
-      // Giữ key legacy đồng bộ quantity — tránh lệch nếu code cũ còn đọc.
-      window.localStorage.setItem(CART_QUANTITY_STORAGE_KEY, String(next.quantity));
+      window.localStorage.setItem(
+        CART_QUANTITY_STORAGE_KEY,
+        String(totalPackQuantity(next.lines)),
+      );
     }
     return next;
   },

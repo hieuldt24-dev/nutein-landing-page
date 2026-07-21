@@ -87,21 +87,16 @@ export default function CartDrawer() {
   const router = useRouter();
   const { isOpen, close } = useCartDrawer();
   const {
-    quantity,
-    variantId,
     summary,
     isUpdating,
     increment,
     decrement,
-    removeFromCart,
+    removeLine,
   } = useCartStore();
   const [isMounted, setIsMounted] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
 
-  const lineProduct = productService.toCartProduct(
-    productService.getProductDetail(),
-    variantId
-  );
+  const detail = productService.getProductDetail();
 
   const goCheckout = () => {
     close();
@@ -197,21 +192,24 @@ export default function CartDrawer() {
         {isEmpty ? (
           <CartEmptyState onContinueShopping={continueShopping} />
         ) : (
-          <div className="flex-1 overflow-y-auto px-7 py-8">
-            <CartLineItem
-              product={lineProduct}
-              quantity={quantity}
-              disabled={isUpdating}
-              onIncrement={() => {
-                void increment();
-              }}
-              onDecrement={() => {
-                void decrement();
-              }}
-              onRemove={() => {
-                void removeFromCart();
-              }}
-            />
+          <div className="flex flex-1 flex-col gap-8 overflow-y-auto px-7 py-8">
+            {summary.lines.map((line) => (
+              <CartLineItem
+                key={line.variantId}
+                product={productService.toCartProduct(detail, line.variantId)}
+                quantity={line.quantity}
+                disabled={isUpdating}
+                onIncrement={() => {
+                  void increment(line.variantId);
+                }}
+                onDecrement={() => {
+                  void decrement(line.variantId);
+                }}
+                onRemove={() => {
+                  void removeLine(line.variantId);
+                }}
+              />
+            ))}
           </div>
         )}
 
