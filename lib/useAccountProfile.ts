@@ -5,9 +5,15 @@ import useSWR from "swr";
 import { ACCOUNT_PROFILE_API_PATH } from "@/features/account/constants";
 import type { UpdateProfileInput } from "@/features/account/schemas/profile.schema";
 import type { AccountProfile } from "@/features/account/types";
+import { authRepository } from "@/features/auth/services/auth.repository";
 import { apiRequest } from "@/lib/api-client";
 import { fetcher } from "@/lib/swr-fetcher";
 import { useAuthStore } from "@/lib/useAuthStore";
+
+async function fetchAccountProfile(url: string): Promise<AccountProfile> {
+  await authRepository.waitForInFlightApiSession();
+  return fetcher<AccountProfile>(url);
+}
 
 /**
  * Hồ sơ user (fullName/phone) — SWR key URL thật `/api/account/profile`.
@@ -20,7 +26,7 @@ export function useAccountProfile() {
 
   const { data, error, isLoading, isValidating, mutate } = useSWR<AccountProfile>(
     key,
-    fetcher,
+    fetchAccountProfile,
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
@@ -30,6 +36,7 @@ export function useAccountProfile() {
   const updateProfile = useCallback(
     async (input: UpdateProfileInput) => {
       if (!isLoggedIn) throw new Error("Chưa đăng nhập");
+      await authRepository.waitForInFlightApiSession();
       const profile = await apiRequest<AccountProfile>(ACCOUNT_PROFILE_API_PATH, {
         method: "PATCH",
         body: JSON.stringify(input),

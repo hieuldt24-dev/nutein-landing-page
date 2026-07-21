@@ -130,4 +130,12 @@ export const authRepository = {
 
     return mintSessionInFlight;
   },
+
+  /**
+   * Cart/checkout: chờ mint AuthProvider đang bay (nếu có).
+   * Không gọi /session mới — tránh spam; thiếu cookie vẫn do apiRequest remint.
+   */
+  async waitForInFlightApiSession(): Promise<void> {
+    if (mintSessionInFlight) await mintSessionInFlight;
+  },
 };

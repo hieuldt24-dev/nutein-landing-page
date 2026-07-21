@@ -18,6 +18,7 @@ import { cartRepository } from "@/features/cart/services/cart.repository";
 import { cartService } from "@/features/cart/services/cart.service";
 import type { CartLine, CartState, CartSummary } from "@/features/cart/types";
 import { DEFAULT_PRODUCT_VARIANT_ID } from "@/features/product/constants";
+import { authRepository } from "@/features/auth/services/auth.repository";
 import { apiRequest } from "@/lib/api-client";
 import { useAuthStore } from "@/lib/useAuthStore";
 
@@ -26,6 +27,12 @@ import { useAuthStore } from "@/lib/useAuthStore";
  */
 let hydratePromise: Promise<CartSummary | null> | null = null;
 let hydrateLoggedIn = false;
+
+/** JWT app sẵn sàng trước khi gọi `/api/cart` (chờ mint AuthProvider nếu đang bay). */
+async function withApiSession<T>(run: () => Promise<T>): Promise<T> {
+  await authRepository.waitForInFlightApiSession();
+  return run();
+}
 
 async function hydrateCartOnce(
   syncFromSummary: (next: CartSummary) => Promise<CartSummary>,
@@ -38,7 +45,9 @@ async function hydrateCartOnce(
 
   hydratePromise = (async () => {
     try {
-      const remote = await apiRequest<CartSummary>(CART_API_PATH);
+      const remote = await withApiSession(() =>
+        apiRequest<CartSummary>(CART_API_PATH),
+      );
       const local = cartRepository.getState();
       if (remote.isEmpty && local.lines.length > 0) {
         const merged = await persistRemote(local);
@@ -109,10 +118,12 @@ export function useCartStore() {
   );
 
   const persistRemote = useCallback(async (state: CartState) => {
-    return apiRequest<CartSummary>(CART_API_PATH, {
-      method: "PUT",
-      body: JSON.stringify(normalizeCartState(state)),
-    });
+    return withApiSession(() =>
+      apiRequest<CartSummary>(CART_API_PATH, {
+        method: "PUT",
+        body: JSON.stringify(normalizeCartState(state)),
+      }),
+    );
   }, []);
 
   useEffect(() => {
