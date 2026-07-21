@@ -42,7 +42,7 @@ export default function Navbar() {
   const router = useRouter();
   const { mutate } = useSWRConfig();
   const setAuthOpen = (val: boolean) => mutate("auth-modal", val, { revalidate: false });
-  const { isLoggedIn } = useAuthStore();
+  const { isLoggedIn, isStaffOrAdmin } = useAuthStore();
   const cartDrawer = useCartDrawer();
   const { quantity: cartQuantity } = useCartStore();
 
@@ -238,6 +238,15 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
+          {isStaffOrAdmin ? (
+            <Link
+              href="/admin"
+              onClick={() => setMenuOpen(false)}
+              className="cursor-pointer rounded-lg border-b border-[color:var(--color-border-subtle)] px-2 py-2.5 text-[15px] font-medium text-text-body"
+            >
+              Quản Trị
+            </Link>
+          ) : null}
 
           <button
             type="button"

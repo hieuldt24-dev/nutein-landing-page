@@ -19,6 +19,7 @@ vi.mock("@/features/auth/services/auth.repository", () => ({
           ? user.user_metadata.full_name
           : undefined,
       phone: user.phone || undefined,
+      role: "user",
     })
   ),
 }));
@@ -81,6 +82,7 @@ describe("useAuthStore", () => {
       email: "user@example.com",
       fullName: "Nguyễn Văn A",
       phone: undefined,
+      role: "user",
     });
   });
 

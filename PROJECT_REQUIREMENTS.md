@@ -1,6 +1,6 @@
 # TÀI LIỆU YÊU CẦU WEBSITE — NUTEIN
 
-Tài liệu này ghi nhận mục tiêu dự án, cấu trúc sitemap, chi tiết các khối nội dung của từng trang, quy chuẩn UX và danh sách định tuyến các trang (Routing Pages) sẽ được triển khai trong ứng dụng Next.js.
+Tài liệu này ghi nhận mục tiêu dự án, cấu trúc sitemap, chi tiết các khối nội dung của từng trang, quy chuẩn UX, danh sách định tuyến các trang (Routing Pages) sẽ được triển khai trong ứng dụng Next.js, và đặc tả theo vai trò người dùng (User / Staff / Admin).
 
 ---
 
@@ -143,3 +143,79 @@ Hiển thị ở chân tất cả các trang trên website:
 1. **Tinh gọn Menu điều hướng:** Các trang phụ như Giỏ hàng chi tiết, Thanh toán, Thành công, Chính sách không đưa vào menu chính để tránh phân tâm người dùng. Menu chính chỉ giữ các trang dẫn hướng chính.
 2. **Landing Page bán hàng hiệu năng cao:** Trang `/product` đóng vai trò Landing Page chuyển đổi chính. Cần tối ưu tải trang cực nhanh, hình ảnh sản phẩm chất lượng cao, thông điệp USP rõ ràng ngay tại phần đầu trang (Hero Section).
 3. **Responsive Design:** Thiết kế tương thích hoàn hảo trên các thiết bị di động (Mobile First), vì tỷ lệ khách hàng mua sắm Healthy Lifestyle qua điện thoại chiếm >80%.
+
+---
+
+## 7. Đặc tả trang theo vai trò người dùng (User / Staff / Admin)
+
+Hệ thống phân 3 vai trò:
+
+| Vai trò | Mô tả |
+| :--- | :--- |
+| **User** | Khách hàng — phía cửa hàng công khai (mục 3). |
+| **Staff** | Nhân viên vận hành — xử lý vận hành hàng ngày. |
+| **Admin** | Quản trị cấp cao — giám sát hệ thống + quản lý nhân sự vận hành. |
+
+**Nguyên tắc truy cập:**
+
+* Staff và Admin **vào cùng storefront** Nutein như khách (mua hàng, account, blog…).
+* Đăng nhập **chung** AuthModal (popup Tài khoản) — **không** form login admin riêng.
+* Tài khoản Staff/Admin được **cấp sẵn**; sau khi login bằng email đó, mega **Khám phá** hiện thêm link **Quản Trị** → `/admin`. Khách thường không thấy link này.
+* Khu vực `/admin` không công khai với User; UI module vận hành ưu tiên bảng + form (xem roadmap `docs/admin-portal-roadmap.md`).
+
+### 7.1 User (Khách hàng)
+
+* Phạm vi trang: đã mô tả ở **mục 3** (Home, Product, Cart, Checkout, Blog/Khám phá, About, Contact, Policies, Account, Order Success).
+* Chỉ xem / thao tác **dữ liệu của chính mình** (giỏ hàng, đơn hàng, địa chỉ, wishlist nếu có, đánh giá mình viết).
+* **Không** truy cập khu vực quản trị.
+
+### 7.2 Staff (Nhân viên vận hành)
+
+**Mục tiêu chung:** Xử lý vận hành hàng ngày — đơn hàng, sản phẩm, nội dung, khuyến mãi, chăm sóc khách qua form liên hệ.
+
+| # | Trang | Mục tiêu | Nội dung / Chức năng chính |
+| :--- | :--- | :--- | :--- |
+| **S1** | Xác thực quản trị | Xác thực trước khi vào `/admin` | **Cùng AuthModal** với khách hàng. Tài khoản Staff/Admin cấp sẵn; login thành công gắn `role` → hiện link Quản Trị trong mega Khám phá. Không form login tách. |
+| **S2** | Dashboard tổng quan | Nắm nhanh tình trạng vận hành | Số đơn mới, đơn cần xử lý, tin Liên hệ chưa đọc, sản phẩm sắp hết hàng. |
+| **S3** | Quản lý đơn hàng | Xử lý đơn từ lúc đặt đến hoàn tất giao | Danh sách đơn (lọc trạng thái / ngày); chi tiết đơn; chuyển trạng thái: Chờ xử lý → Đang xử lý → Đang giao → Đã giao / Hủy / Trả hàng; xem lịch sử đổi trạng thái. |
+| **S4** | Quản lý sản phẩm | Cập nhật thông tin bán hàng | Danh sách SKU (biến thể hương vị / dung tích nếu có); sửa giá; cập nhật tồn kho; sửa mô tả / thành phần / dinh dưỡng; upload ảnh. ⚠️ Vẫn tôn trọng ràng buộc **1 sản phẩm chủ lực** (mục 1) — quản trị tập trung vào sản phẩm Nutein + biến thể gói, không xây catalog đa sản phẩm. |
+| **S5** | Quản lý mã giảm giá (Coupon) | Tạo chương trình khuyến mãi | Tạo / sửa / bật–tắt coupon; giảm theo % hoặc số tiền cố định; giới hạn lượt dùng; ngày hết hạn. |
+| **S6** | Quản lý Blog | Sản xuất nội dung trang Khám phá | Danh sách bài; soạn thảo; chọn chuyên mục / tag; lưu nháp hoặc xuất bản công khai. |
+| **S7** | Quản lý nội dung tĩnh | Cập nhật nội dung ít đổi | Sửa trực tiếp nội dung 5 trang Chính sách + trang Về Nutein qua CMS, không cần lập trình viên. |
+| **S8** | Hộp thư Liên hệ | Chăm sóc khách qua form Contact | Danh sách tin nhắn; đánh dấu đã đọc / đã xử lý; ghi chú nội bộ. |
+
+### 7.3 Admin (Quản trị cấp cao)
+
+**Mục tiêu chung:** Giám sát toàn hệ thống và quản lý nhân sự vận hành; **không** tập trung thao tác nội dung hàng ngày.
+
+Admin **kế thừa toàn bộ chức năng Staff (S2–S8)** và có thêm 2 trang riêng:
+
+| # | Trang | Mục tiêu | Nội dung / Chức năng chính |
+| :--- | :--- | :--- | :--- |
+| **A1** | Quản lý người dùng | Quản lý nhân sự vận hành và tài khoản khách | Danh sách toàn bộ user (khách + nhân viên); tìm kiếm / lọc theo vai trò; thăng / hạ quyền (User ↔ Staff ↔ Admin); khóa / mở khóa tài khoản. |
+| **A2** | Nhật ký hệ thống (Audit Log) | Theo dõi mọi thay đổi dữ liệu quan trọng | Xem lịch sử tạo / sửa / xóa trên các bảng quan trọng (sản phẩm, đơn hàng, coupon,…); lọc theo người thực hiện, thời gian, loại thao tác — hỗ trợ đối soát khi có sự cố. |
+
+### 7.4 Bảng tóm tắt quyền
+
+| Chức năng | User | Staff | Admin |
+| :--- | :---: | :---: | :---: |
+| Mua hàng, quản lý tài khoản của mình | ✅ | — | — |
+| Đổi trạng thái đơn hàng | ❌ | ✅ | ✅ |
+| Sửa giá / tồn kho sản phẩm | ❌ | ✅ | ✅ |
+| Tạo / sửa mã giảm giá | ❌ | ✅ | ✅ |
+| Đăng / sửa bài Blog | ❌ | ✅ | ✅ |
+| Sửa nội dung Policy / Về Nutein | ❌ | ✅ | ✅ |
+| Xem & xử lý form Liên hệ | ❌ | ✅ | ✅ |
+| Quản lý tài khoản người khác (đổi vai trò) | ❌ | ❌ | ✅ |
+| Xem Audit Log | ❌ | ❌ | ✅ |
+
+*(✅ = có quyền · ❌ = không · — = không áp dụng / ngoài phạm vi vai trò)*
+
+### 7.5 Ghi chú triển khai kỹ thuật (khu vực quản trị)
+
+* Entry UI: link **Quản Trị** trong mega **Khám phá** (chỉ khi `role` là Staff hoặc Admin).
+* Route quản trị: `/admin` (có thể tách `admin.nutein.vn` sau). Phase 0: shell + client gate; production: cookie/JWT + middleware (xem `docs/admin-portal-roadmap.md`).
+* Login: AuthModal chung; resolve role qua `auth.service` (mock allowlist → API sau).
+* Staff/Admin vẫn dùng toàn bộ flow khách (Product, Cart, Checkout, Account).
+* UI module admin: bảng + form, tối giản — không bắt buộc visual marketing như phía khách.
+* Lộ trình module S2–S8 / A1–A2: [`docs/admin-portal-roadmap.md`](docs/admin-portal-roadmap.md).

@@ -8,7 +8,16 @@ import { useAuthStore } from "@/lib/useAuthStore";
 import { notify } from "@/lib/toast";
 
 const TABS = [
-  { href: "/account", label: "Hồ sơ", match: (path: string) => path === "/account" },
+  {
+    href: "/account",
+    label: "Hồ sơ",
+    match: (path: string) => path === "/account",
+  },
+  {
+    href: "/account/addresses",
+    label: "Địa chỉ",
+    match: (path: string) => path.startsWith("/account/addresses"),
+  },
   {
     href: "/account/orders",
     label: "Đơn hàng",
@@ -23,7 +32,7 @@ interface AccountShellProps {
 }
 
 /**
- * Shell tab Hồ sơ / Đơn hàng / Đăng xuất — account portal.
+ * Shell tab Hồ sơ / Địa chỉ / Đơn hàng / Đăng xuất — account portal.
  */
 export function AccountShell({ children, title, description }: AccountShellProps) {
   const pathname = usePathname();

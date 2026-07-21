@@ -234,7 +234,7 @@ describe("AuthModal — đăng nhập", () => {
   it("đã đăng nhập: hiện thông tin user + nút Đăng xuất thay vì form", async () => {
     mocks.useAuthStore.mockReturnValue(
       authStoreState({
-        user: { email: "user@example.com", fullName: "Nguyễn Văn A" },
+        user: { email: "user@example.com", fullName: "Nguyễn Văn A", role: "user" },
         isLoggedIn: true,
       })
     );

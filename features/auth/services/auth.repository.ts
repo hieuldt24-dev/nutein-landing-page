@@ -1,6 +1,9 @@
 import type { AuthError, User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase-browser";
-import type { AuthUser } from "../types";
+import { authService } from "./auth.service";
+import type { AuthRole, AuthUser } from "../types";
+
+const ROLES: readonly AuthRole[] = ["user", "staff", "admin"];
 
 /** Map lỗi Supabase Auth (tiếng Anh) sang thông báo tiếng Việt cho UI. */
 function mapAuthError(error: AuthError): string {
@@ -16,9 +19,17 @@ function mapAuthError(error: AuthError): string {
   }
 }
 
+function normalizeRole(raw: unknown): AuthRole | null {
+  if (typeof raw === "string" && (ROLES as readonly string[]).includes(raw)) {
+    return raw as AuthRole;
+  }
+  return null;
+}
+
 /** Map Supabase `User` (auth.users) sang shape `AuthUser` app đang dùng. */
 export function toAuthUser(user: User): AuthUser {
   const meta = user.user_metadata ?? {};
+  const appMeta = user.app_metadata ?? {};
   const fullName =
     typeof meta.full_name === "string" && meta.full_name.trim()
       ? meta.full_name.trim()
@@ -26,10 +37,17 @@ export function toAuthUser(user: User): AuthUser {
         ? meta.name.trim()
         : undefined;
 
+  const email = user.email ?? "";
+  // Ưu tiên claims Supabase; phase 0 fallback allowlist email (auth.service).
+  const roleFromMeta =
+    normalizeRole(appMeta.role) ?? normalizeRole(meta.role) ?? null;
+  const role = roleFromMeta ?? authService.resolveRole(email);
+
   return {
-    email: user.email ?? "",
+    email,
     fullName,
     phone: user.phone || undefined,
+    role,
   };
 }
 

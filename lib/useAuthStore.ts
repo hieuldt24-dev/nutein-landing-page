@@ -5,6 +5,7 @@ import useSWR, { useSWRConfig } from "swr";
 import type { User } from "@supabase/supabase-js";
 import { AUTH_USER_SWR_KEY, AUTH_READY_SWR_KEY } from "@/features/auth/constants";
 import { authRepository, toAuthUser } from "@/features/auth/services/auth.repository";
+import { authService } from "@/features/auth/services/auth.service";
 import type { AuthUser } from "@/features/auth/types";
 
 /**
@@ -69,10 +70,16 @@ export function useAuthStore() {
     await mutate(AUTH_USER_SWR_KEY, null, { revalidate: false });
   }, [mutate]);
 
+  const role = user?.role ?? null;
+  const isStaffOrAdmin = authService.isStaffOrAdmin(role);
+
   return {
     user,
+    role,
     isLoggedIn: Boolean(user?.email),
     isReady: Boolean(isReady),
+    isStaffOrAdmin,
+    canAccessAdmin: authService.canAccessAdmin(user),
     signIn,
     signUp,
     signOut,
