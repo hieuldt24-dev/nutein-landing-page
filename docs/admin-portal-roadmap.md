@@ -1,62 +1,69 @@
 # Admin Portal Roadmap — Nutein
 
-Tài liệu này mô tả lộ trình khu vực quản trị (Staff / Admin) sau Phase 0.
-Đối chiếu yêu cầu gốc: [`PROJECT_REQUIREMENTS.md`](../PROJECT_REQUIREMENTS.md) mục 7.
+Tài liệu này mô tả lộ trình khu vực quản trị (Staff / Admin).
+Đối chiếu: [`PROJECT_REQUIREMENTS.md`](../PROJECT_REQUIREMENTS.md) mục 7.
 
-## Nguyên tắc sản phẩm (không đổi)
+## Nguyên tắc sản phẩm
 
-- Staff/Admin **vào cùng storefront** Nutein như khách (Home, Product, Cart, Checkout, Blog, Account…).
-- **Login chung** [`AuthModal`](../components/shared/AuthModal.tsx) — không form login admin riêng.
-- Tài khoản Staff/Admin **cấp sẵn** (allowlist / DB). Đăng ký công khai luôn là `role: user`.
-- Entry UI: mục **Quản Trị** trong mega **Khám phá** (chỉ hiện khi `staff|admin`).
-- Route quản trị: `/admin` (có thể tách subdomain sau).
+- Staff/Admin vào cùng storefront; login chung [`AuthModal`](../components/shared/AuthModal.tsx).
+- Entry: **Quản Trị** trong mega Khám phá khi `staff|admin`.
+- Route: `/admin` + shell sidebar [`AdminShell`](../components/admin/AdminShell.tsx) (không Navbar storefront). Nút **Về cửa hàng** → `/`.
+- **Tách quyền:** Staff = S2–S8 (vận hành). Admin = chỉ A1 Users + A2 Audit (không kế thừa staff). Gate: [`StaffOnlyGate`](../components/admin/StaffOnlyGate.tsx) / [`AdminOnlyGate`](../components/admin/AdminOnlyGate.tsx).
 
-## Phase 0 — Nền tảng (đã triển khai)
+## Phase 0 — Nền tảng (xong)
 
-| Hạng mục | Chi tiết |
-| :--- | :--- |
-| Role | `AuthUser.role`: `user` \| `staff` \| `admin` |
-| Seed mock | `features/auth/data/staff-accounts.mock.ts` (`staff@nutein.com`, `admin@nutein.com`) |
-| Service boundary | `authService.resolveRole` / `canAccessAdmin` — UI không import mock |
-| Nav | Link Quản Trị trong `NavExploreMega` + menu mobile |
-| Shell | `/admin` + `AdminAccessGate` (client session) |
-| Storefront | Staff/Admin vẫn dùng flow khách bình thường |
+Role + allowlist + `authService` + gate [`AdminAccessGate`](../components/admin/AdminAccessGate.tsx).
 
-**S1 (REQUIREMENTS):** hiểu là “xác thực trước khi vào `/admin`” qua AuthModal + role — **không** UI login thứ hai.
+## Phase 1 — S2 Dashboard (mock UI)
 
-## Phase tiếp theo (modules)
+[`/admin`](../app/(admin)/admin/page.tsx) · [`features/admin-dashboard/`](../features/admin-dashboard/) · [`AdminDashboardSummary`](../components/admin/AdminDashboardSummary.tsx)
 
-Thứ tự gợi ý — có thể song song khi có API:
+## Phase 2 — S3 Đơn hàng (mock UI)
 
-| Phase | Mã | Module | Ghi chú |
-| :--- | :--- | :--- | :--- |
-| 1 | S2 | Dashboard tổng quan | Số đơn mới, đơn cần xử lý, contact chưa đọc, tồn kho thấp |
-| 2 | S3 | Quản lý đơn hàng | List/filter, chi tiết, chuyển trạng thái, lịch sử |
-| 3 | S4 | Quản lý sản phẩm | Single-SKU Nutein + biến thể gói; giá, tồn, mô tả, ảnh |
-| 4 | S5 | Coupon | Tạo/sửa/bật–tắt; % hoặc số tiền; hạn dùng |
-| 5 | S6 | Blog CMS | Draft/publish, category/tag |
-| 6 | S7 | Nội dung tĩnh | Policy ×5 + About |
-| 7 | S8 | Hộp thư Liên hệ | Đọc/xử lý/ghi chú nội bộ |
-| 8 | A1 | Quản lý người dùng | **Admin only** — đổi role, khóa TK |
-| 9 | A2 | Audit log | **Admin only** — lịch sử CUD |
+[`/admin/orders`](../app/(admin)/admin/orders/page.tsx) · [`features/admin-orders/`](../features/admin-orders/)
 
-Mỗi module: `features/<name>/` + `app/(admin)/admin/<route>/` + API `app/api/admin/...` khi cần server.
+## Phase 3 — S4 Sản phẩm (mock UI)
 
-## API & production hardening
+[`/admin/products`](../app/(admin)/admin/products/page.tsx) · [`features/admin-products/`](../features/admin-products/) · single-SKU editor + variants + stock + URL ảnh (chưa Cloudinary).
 
-Phase 0 dùng **Supabase session + client gate + allowlist email** — đủ demo, **không** đủ security production.
+## Phase 4 — S5 Coupon (mock UI)
 
-Khi gắn API thật:
+[`/admin/coupons`](../app/(admin)/admin/coupons/page.tsx) · [`features/admin-coupons/`](../features/admin-coupons/) · CRUD + bật/tắt.
 
-1. Login AuthModal → `POST /api/auth/login` trả user + **role** (JWT/cookie httpOnly).
-2. Bỏ / cô lập mock allowlist; `authService.resolveRole` đọc từ response server (hoặc claims).
-3. Thêm **Next.js middleware** (hoặc server layout) chặn `/admin/**` nếu thiếu role `staff|admin`.
-4. UI ẩn link Quản Trị **không** thay thế kiểm tra server.
-5. RBAC theo endpoint (Staff không gọi A1/A2).
-6. Audit (A2) ghi khi mutate dữ liệu quan trọng.
+## Phase 5 — S6 Blog CMS (mock UI)
 
-## Kiểm thử nhanh Phase 0
+[`/admin/blog`](../app/(admin)/admin/blog/page.tsx) · [`features/admin-blog/`](../features/admin-blog/) · draft/publish. Storefront blog vẫn mock riêng cho đến API chung.
 
-- Login email thường → không thấy Quản Trị; `/admin` → redirect `/`.
-- Login `staff@nutein.com` / `admin@nutein.com` → thấy Quản Trị → shell; vẫn mua hàng / `/account`.
-- `npm run build` + smoke `next start`.
+## Phase 6 — S7 Nội dung tĩnh (mock UI)
+
+[`/admin/content`](../app/(admin)/admin/content/page.tsx) · [`features/admin-content/`](../features/admin-content/) · Policy ×5 (`privacy|terms|shipping|return|payment`) + About. Public policy routes gắn sau.
+
+## Phase 7 — S8 Liên hệ (mock UI)
+
+[`/admin/contact`](../app/(admin)/admin/contact/page.tsx) · [`features/admin-contact/`](../features/admin-contact/) · đọc / xử lý / ghi chú. Form storefront chưa ghi DB.
+
+## Phase 8 — A1 Users (mock UI, Admin only)
+
+[`/admin/users`](../app/(admin)/admin/users/page.tsx) · [`features/admin-users/`](../features/admin-users/) · [`AdminOnlyGate`](../components/admin/AdminOnlyGate.tsx) · đổi role + khóa. Chưa Supabase Auth Admin API.
+
+## Phase 9 — A2 Audit (mock UI, Admin only)
+
+[`/admin/audit`](../app/(admin)/admin/audit/page.tsx) · [`features/admin-audit/`](../features/admin-audit/) · list + lọc (read-only seed).
+
+## API & production hardening (chưa làm)
+
+Client gate + allowlist + mock services — đủ demo, **không** đủ production.
+
+Khi gắn thật:
+
+1. Role từ JWT/DB; middleware chặn `/admin/**`.
+2. Đổi thân từng `admin*Service` → `app/api/admin/**` / Supabase.
+3. Cloudinary upload (S4); đồng bộ storefront với nguồn admin (blog/product/contact).
+4. Audit ghi từ mutate thật (A2).
+
+## Kiểm thử nhanh
+
+- Staff: S2–S8 OK; A1/A2 redirect.
+- Admin: toàn bộ module.
+- UI không import `*.mock.ts`.
+- `npm run build`.

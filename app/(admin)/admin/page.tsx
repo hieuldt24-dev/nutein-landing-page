@@ -1,73 +1,79 @@
 "use client";
 
-import { useAuthStore } from "@/lib/useAuthStore";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { AdminDashboardSummary } from "@/components/admin/AdminDashboardSummary";
+import { AdminPageFrame } from "@/components/admin/AdminShell";
+import { StaffOnlyGate } from "@/components/admin/StaffOnlyGate";
 import { FillButton } from "@/components/ui/FillButton";
+import { useAuthStore } from "@/lib/useAuthStore";
 
-/**
- * /admin shell — phase 0 placeholder.
- * Modules vận hành sẽ thêm theo docs/admin-portal-roadmap.md.
- */
+/** /admin — S2 Dashboard (Staff). Admin → /admin/users. */
 export default function AdminHomePage() {
-  const { user, role } = useAuthStore();
+  const router = useRouter();
+  const { user, role, isReady } = useAuthStore();
 
-  const roleLabel =
-    role === "admin" ? "Admin" : role === "staff" ? "Staff" : "User";
+  useEffect(() => {
+    if (!isReady) return;
+    if (role === "admin") {
+      router.replace("/admin/users");
+    }
+  }, [isReady, role, router]);
+
+  if (!isReady || role === "admin") {
+    return (
+      <AdminPageFrame>
+        <div className="flex min-h-[40vh] items-center justify-center">
+          <p className="text-sm font-semibold text-text-muted">Đang chuyển hướng…</p>
+        </div>
+      </AdminPageFrame>
+    );
+  }
 
   return (
-    <div className="mx-auto w-full max-w-[960px] px-6 pt-28 pb-16 md:px-10 md:pt-32 md:pb-20">
-      <p className="text-[12px] font-bold tracking-[0.08em] text-primary uppercase">
-        Quản trị
-      </p>
-      <h1 className="mt-2 font-display text-[clamp(28px,4vw,40px)] font-bold tracking-[-0.03em] text-ink">
-        Khu vực quản trị
-      </h1>
-      <p className="mt-2 max-w-[560px] text-[15px] text-text-muted">
-        Các module vận hành (đơn hàng, sản phẩm, blog, liên hệ…) sẽ được bổ sung
-        theo roadmap. Staff và Admin vẫn dùng storefront Nutein như khách hàng.
-      </p>
-
-      <section className="mt-8 rounded-[var(--radius-lg)] border border-ink/15 bg-surface px-5 py-6 md:px-6">
-        <dl className="grid gap-4 sm:grid-cols-2">
+    <AdminPageFrame>
+      <StaffOnlyGate>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <dt className="text-[12px] font-bold uppercase tracking-[0.06em] text-text-muted">
-              Email
-            </dt>
-            <dd className="mt-1 text-[15px] font-semibold text-ink">
-              {user?.email ?? "—"}
-            </dd>
+            <p className="text-[12px] font-bold tracking-[0.08em] text-primary uppercase">
+              Vận hành
+            </p>
+            <h1 className="mt-1 font-display text-[clamp(28px,3.5vw,36px)] font-bold tracking-[-0.03em] text-ink">
+              Tổng quan
+            </h1>
+            <p className="mt-1 max-w-[520px] text-[14px] text-text-muted">
+              Nắm nhanh đơn hàng, liên hệ và tồn kho.
+            </p>
           </div>
-          <div>
-            <dt className="text-[12px] font-bold uppercase tracking-[0.06em] text-text-muted">
-              Vai trò
-            </dt>
-            <dd className="mt-1 text-[15px] font-semibold text-ink">{roleLabel}</dd>
-          </div>
-        </dl>
-
-        <div className="mt-6 flex flex-wrap gap-3">
           <FillButton
-            href="/"
-            variant="cream"
-            className="px-5 py-2.5 text-[13px] font-bold"
+            href="/admin/orders"
+            variant="ink-solid"
+            className="mt-3 h-11 shrink-0 px-5 text-[13px] font-bold sm:mt-0"
           >
-            Về trang chủ
-          </FillButton>
-          <FillButton
-            href="/account"
-            variant="ink"
-            className="px-5 py-2.5 text-[13px] font-bold"
-          >
-            Tài khoản khách
+            Quản lý đơn hàng
           </FillButton>
         </div>
-      </section>
 
-      <p className="mt-6 text-[13px] text-text-muted">
-        Chi tiết các phase tiếp theo xem trong repo:{" "}
-        <code className="rounded bg-ink/5 px-1.5 py-0.5 text-[12px] font-semibold text-ink">
-          docs/admin-portal-roadmap.md
-        </code>
-      </p>
-    </div>
+        <section className="mt-6 rounded-[var(--radius-lg)] border border-ink/10 bg-surface px-5 py-4">
+          <dl className="flex flex-wrap gap-x-8 gap-y-2 text-[14px]">
+            <div className="flex flex-wrap items-baseline gap-2">
+              <dt className="font-bold text-text-muted">Email</dt>
+              <dd className="font-semibold text-ink">{user?.email ?? "—"}</dd>
+            </div>
+            <div className="flex flex-wrap items-baseline gap-2">
+              <dt className="font-bold text-text-muted">Vai trò</dt>
+              <dd className="font-semibold text-ink">Staff</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section className="mt-8">
+          <h2 className="mb-4 font-display text-lg font-bold text-ink">
+            Chỉ số hôm nay
+          </h2>
+          <AdminDashboardSummary />
+        </section>
+      </StaffOnlyGate>
+    </AdminPageFrame>
   );
 }

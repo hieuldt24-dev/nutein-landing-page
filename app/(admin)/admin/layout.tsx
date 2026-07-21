@@ -1,10 +1,9 @@
-import Navbar from "@/components/layout/Navbar";
-import { FloatingActionDock } from "@/components/ui/FloatingActionDock";
 import { AdminAccessGate } from "@/components/admin/AdminAccessGate";
+import { AdminShell } from "@/components/admin/AdminShell";
 
 /**
- * Khu vực quản trị — cùng Navbar storefront; gate role staff/admin.
- * Modules S2–S8 / A1–A2 theo docs/admin-portal-roadmap.md.
+ * Khu vực quản trị — shell sidebar (không Navbar/FAB storefront).
+ * Gate role staff/admin; modules theo docs/admin-portal-roadmap.md.
  */
 export default function AdminGroupLayout({
   children,
@@ -12,10 +11,8 @@ export default function AdminGroupLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <>
-      <Navbar />
-      <AdminAccessGate>{children}</AdminAccessGate>
-      <FloatingActionDock />
-    </>
+    <AdminAccessGate>
+      <AdminShell>{children}</AdminShell>
+    </AdminAccessGate>
   );
 }
