@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
@@ -21,8 +21,17 @@ import {
   CheckoutTextInput,
 } from "@/components/checkout/CheckoutField";
 import { FillButton } from "@/components/ui/FillButton";
+import { useAccountProfile } from "@/lib/useAccountProfile";
 import type { ApiResponse } from "@/src/api/response";
 import type { FetchError } from "@/lib/swr-fetcher";
+
+const EMPTY_CONTACT_FORM: ContactFormData = {
+  name: "",
+  email: "",
+  phone: "",
+  subject: "",
+  message: "",
+};
 
 async function postContact(body: ContactFormData): Promise<ContactSubmissionResult> {
   const res = await fetch("/api/contact", {
@@ -42,7 +51,7 @@ async function postContact(body: ContactFormData): Promise<ContactSubmissionResu
 
   if (!res.ok || !json.success || !json.data) {
     const error = new Error(
-      json.error?.message || "Gửi liên hệ thất bại — vui lòng thử lại"
+      json.error?.message || "Gửi liên hệ thất bại — vui lòng thử lại",
     ) as FetchError;
     error.status = res.status;
     error.code = json.error?.code || "CONTACT_ERROR";
@@ -54,35 +63,64 @@ async function postContact(body: ContactFormData): Promise<ContactSubmissionResu
 
 /**
  * Form liên hệ — Joy Rush: name/email · subject · message · submit.
- * Gọi POST /api/contact (contactService).
+ * Logged-in: prefill từ `/api/account/profile`, vẫn chỉnh sửa được trước khi gửi.
  */
 export function ContactForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { profile, isLoggedIn } = useAccountProfile();
 
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
+    getValues,
     formState: { errors },
   } = useForm<ContactFormData>({
     resolver: zodResolver(contactFormSchema),
-    defaultValues: {
-      name: "",
-      email: "",
-      phone: "",
-      subject: "",
-      message: "",
-    },
+    defaultValues: EMPTY_CONTACT_FORM,
     mode: "onSubmit",
     reValidateMode: "onChange",
   });
+
+  useEffect(() => {
+    if (!isLoggedIn || !profile) return;
+
+    const current = getValues();
+    const fullName = (profile.fullName || "").trim();
+    const email = (profile.email || "").trim();
+    const phone = (profile.phone || "").trim();
+
+    // Chỉ điền field còn trống — không đè khi user đang sửa.
+    if (fullName && !current.name?.trim()) {
+      setValue("name", fullName, { shouldDirty: false });
+    }
+    if (email && !current.email?.trim()) {
+      setValue("email", email, { shouldDirty: false });
+    }
+    if (phone && !current.phone?.trim()) {
+      setValue("phone", phone, { shouldDirty: false });
+    }
+  }, [
+    isLoggedIn,
+    profile?.fullName,
+    profile?.email,
+    profile?.phone,
+    setValue,
+    getValues,
+  ]);
 
   const onSubmit = handleSubmit(async (values) => {
     setIsSubmitting(true);
     try {
       const result = await postContact(values);
       notify.success(result.message);
-      reset();
+      reset({
+        ...EMPTY_CONTACT_FORM,
+        name: (profile?.fullName || "").trim(),
+        email: (profile?.email || "").trim(),
+        phone: (profile?.phone || "").trim(),
+      });
     } catch (err) {
       notify.error(err instanceof Error ? err.message : "Gửi liên hệ thất bại");
     } finally {
