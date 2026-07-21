@@ -1,6 +1,6 @@
 /**
- * Account domain DTOs — shape ổn định cho UI + API tương lai.
- * Session auth vẫn ở `features/auth` (email/fullName/phone).
+ * Account domain DTOs — shape ổn định cho UI + API.
+ * Session auth vẫn ở `features/auth`; hồ sơ đọc từ `public.users`.
  */
 
 export interface AccountProfile {
@@ -20,13 +20,21 @@ export interface ShippingAddress {
   isDefault: boolean;
 }
 
-/** Snapshot local (repository) theo 1 user email — chỉ hồ sơ, sổ địa chỉ nay là dữ liệu thật (xem features/account/services/address.service.ts). */
+/** @deprecated Giữ type cho chỗ còn bọc `{ profile }` — ưu tiên dùng AccountProfile trực tiếp. */
 export interface AccountData {
   profile: AccountProfile;
 }
 
-/** Trạng thái đơn trên portal — khác checkout create (`pending` / `awaiting_payment`). */
-export type AccountOrderStatus = "processing" | "shipping" | "completed";
+/**
+ * Trạng thái đơn trên portal account — map từ enum DB `OrderStatus`
+ * (PENDING / PROCESSING / SHIPPED / DELIVERED / CANCELLED / RETURNED).
+ */
+export type AccountOrderStatus =
+  | "pending"
+  | "processing"
+  | "shipping"
+  | "completed"
+  | "cancelled";
 
 export interface AccountOrder {
   id: string;

@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { useSWRConfig } from "swr";
 import { LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ACCOUNT_LOGGING_OUT_SWR_KEY, OPEN_AUTH_MODAL_STORAGE_KEY } from "@/features/account/constants";
 import { useAuthStore } from "@/lib/useAuthStore";
 import { notify } from "@/lib/toast";
 
@@ -36,13 +38,20 @@ interface AccountShellProps {
  */
 export function AccountShell({ children, title, description }: AccountShellProps) {
   const pathname = usePathname();
-  const router = useRouter();
+  const { mutate } = useSWRConfig();
   const { signOut, user } = useAuthStore();
 
   const handleLogout = async () => {
+    // Bật cờ TRƯỚC signOut — layout guest-guard không ghi open-auth flag.
+    await mutate(ACCOUNT_LOGGING_OUT_SWR_KEY, true, { revalidate: false });
+    try {
+      sessionStorage.removeItem(OPEN_AUTH_MODAL_STORAGE_KEY);
+    } catch {
+      /* private mode */
+    }
     await signOut();
     notify.success("Đã đăng xuất.");
-    router.push("/");
+    window.location.replace("/");
   };
 
   return (
