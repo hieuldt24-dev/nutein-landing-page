@@ -18,7 +18,7 @@ const inputClass =
   "w-full rounded-[var(--radius-md)] border border-ink/20 bg-bg px-3 py-2 text-[14px] font-medium";
 
 export function AdminContentEditor() {
-  const [slug, setSlug] = useState<AdminStaticSlug>("privacy");
+  const [slug, setSlug] = useState<AdminStaticSlug>("bao-mat");
   const { mutate: globalMutate } = useSWRConfig();
   const { data, error, isLoading, mutate } = useSWR(
     adminContentPageSwrKey(slug),
@@ -77,8 +77,13 @@ export function AdminContentEditor() {
       {data ? (
         <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-ink/15 bg-surface px-5 py-5">
           <p className="text-[13px] text-text-muted">
-            Cập nhật {formatDate(data.updatedAt, { hour: "2-digit", minute: "2-digit" })} ·
-            Public pages gắn sau khi có route.
+            Cập nhật {formatDate(data.updatedAt, { hour: "2-digit", minute: "2-digit" })}
+            {ADMIN_STATIC_PAGE_META.find((m) => m.slug === slug)?.publicPath
+              ? ` · Public: ${ADMIN_STATIC_PAGE_META.find((m) => m.slug === slug)!.publicPath}`
+              : ""}
+            . Dùng dòng{" "}
+            <code className="rounded bg-ink/5 px-1">## Tiêu đề mục</code> để tách
+            section trên trang chính sách.
           </p>
           <label className="flex flex-col gap-1.5 text-[13px] font-bold">
             Tiêu đề

@@ -1,10 +1,7 @@
-export type AdminStaticSlug =
-  | "privacy"
-  | "terms"
-  | "shipping"
-  | "return"
-  | "payment"
-  | "about";
+import type { PolicySlug } from "@/features/policies/types";
+
+/** Admin CMS slug = public policy slug + `about` (trang /about riêng). */
+export type AdminStaticSlug = PolicySlug | "about";
 
 export interface AdminStaticPage {
   slug: AdminStaticSlug;
