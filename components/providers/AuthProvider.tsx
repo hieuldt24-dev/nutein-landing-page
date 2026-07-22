@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useSWRConfig } from "swr";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { authRepository } from "@/features/auth/services/auth.repository";
-import { AUTH_READY_SWR_KEY } from "@/features/auth/constants";
+import { AUTH_READY_SWR_KEY, AUTH_ROLE_SWR_KEY } from "@/features/auth/constants";
 
 /**
  * Đồng bộ Supabase auth session vào SWR-as-store key "auth-user" (xem
@@ -27,7 +27,7 @@ import { AUTH_READY_SWR_KEY } from "@/features/auth/constants";
  * Cũng tự cấp lại cặp JWT cookie riêng (app/api/auth/session) mỗi khi có
  * session Supabase hợp lệ — bắt các luồng KHÔNG đi qua useAuthStore.signIn
  * trực tiếp: reload trang khi đã đăng nhập từ trước, và OAuth callback
- * (app/auth/callback/route.ts).
+ * (app/auth/callback/route.ts). Role từ `public.users` ghi vào `auth-role`.
  *
  * De-dupe theo user id (`lastMintedUserId`): Supabase có thể bắn nhiều event
  * liên tiếp cho CÙNG 1 session (VD INITIAL_SESSION rồi SIGNED_IN, hoặc
@@ -58,17 +58,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = supabaseBrowser.auth.onAuthStateChange((_event, session) => {
       if (cancelled) return;
       mutate("auth-user", session?.user ?? null, { revalidate: false });
-      void mutate(AUTH_READY_SWR_KEY, true, { revalidate: false });
 
       const userId = session?.user?.id ?? null;
       if (userId && userId !== lastMintedUserId) {
-        // Chỉ đánh dấu đã mint khi thành công — nếu fail (mạng/cookie),
-        // lần event sau hoặc fetcher remint vẫn có cơ hội cấp lại JWT.
-        void authRepository.mintApiSession().then((ok) => {
-          if (ok && !cancelled) lastMintedUserId = userId;
+        // Chờ mint role từ public.users trước khi auth-ready — tránh
+        // AdminAccessGate đọc role mặc định "user" rồi đá khỏi /admin.
+        void authRepository.mintApiSession().then((result) => {
+          if (cancelled) return;
+          if (result.ok) lastMintedUserId = userId;
+          void mutate(AUTH_READY_SWR_KEY, true, { revalidate: false });
         });
       } else if (!userId) {
         lastMintedUserId = null;
+        void mutate(AUTH_ROLE_SWR_KEY, null, { revalidate: false });
+        void mutate(AUTH_READY_SWR_KEY, true, { revalidate: false });
+      } else {
+        void mutate(AUTH_READY_SWR_KEY, true, { revalidate: false });
       }
     });
 

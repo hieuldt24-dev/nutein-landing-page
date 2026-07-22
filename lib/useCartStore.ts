@@ -79,11 +79,16 @@ async function hydrateCartOnce(
         cartRepository.clearLegacy();
       }
 
+      // Bỏ qua nếu đã logout/login sang key khác trong lúc await.
+      if (hydrateKey !== authKey) return null;
+
       await syncFromSummary(remote);
       return remote;
     } catch {
-      hydratePromise = null;
-      hydrateKey = null;
+      if (hydrateKey === authKey) {
+        hydratePromise = null;
+        hydrateKey = null;
+      }
       return null;
     }
   })();

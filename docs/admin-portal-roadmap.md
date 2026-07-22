@@ -12,7 +12,7 @@ Tài liệu này mô tả lộ trình khu vực quản trị (Staff / Admin).
 
 ## Phase 0 — Nền tảng (xong)
 
-Role + allowlist + `authService` + gate [`AdminAccessGate`](../components/admin/AdminAccessGate.tsx).
+Role từ `public.users` qua `POST /api/auth/session` → SWR `auth-role` + gate [`AdminAccessGate`](../components/admin/AdminAccessGate.tsx). Không còn email allowlist mock.
 
 ## Phase 1 — S2 Dashboard (mock UI)
 
@@ -52,11 +52,11 @@ Role + allowlist + `authService` + gate [`AdminAccessGate`](../components/admin/
 
 ## API & production hardening (chưa làm)
 
-Client gate + allowlist + mock services — đủ demo, **không** đủ production.
+Client gate + role DB + mock admin data services — đủ demo UI admin, **không** đủ production data.
 
 Khi gắn thật:
 
-1. Role từ JWT/DB; middleware chặn `/admin/**`.
+1. Middleware chặn `/admin/**` bằng JWT role (bổ sung client gate).
 2. Đổi thân từng `admin*Service` → `app/api/admin/**` / Supabase.
 3. Cloudinary upload (S4); đồng bộ storefront với nguồn admin (blog/product/contact).
 4. Audit ghi từ mutate thật (A2).

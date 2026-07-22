@@ -36,7 +36,7 @@ export async function restoreApiSession(
   restoreInFlight = (async () => {
     try {
       if (!skipRefresh && (await tryRefreshAccessToken())) return true;
-      return await authRepository.mintApiSession(true);
+      return (await authRepository.mintApiSession(true)).ok;
     } finally {
       restoreInFlight = null;
     }

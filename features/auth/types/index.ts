@@ -1,11 +1,7 @@
 /**
- * Session user phía client — map từ Supabase Auth `User` (xem
- * features/auth/services/auth.repository.ts#toAuthUser). Shape giữ ổn định
- * để checkout prefill + Navbar dùng chung, không phụ thuộc trực tiếp
- * @supabase/supabase-js ở tầng UI.
- *
- * `role`: phase 0 resolve qua authService (allowlist email); sau này từ
- * app_metadata / JWT claims khi backend cấp.
+ * Session user phía client — map từ Supabase Auth `User` + role server
+ * (`public.users` qua `/api/auth/session`). Shape ổn định cho checkout /
+ * Navbar / admin gate.
  */
 export type AuthRole = "user" | "staff" | "admin";
 
@@ -13,6 +9,6 @@ export interface AuthUser {
   email: string;
   fullName?: string;
   phone?: string;
-  /** Mặc định `user` nếu thiếu (session cũ / đăng ký). */
+  /** Từ `public.users.role` — mặc định `user` nếu chưa mint session. */
   role: AuthRole;
 }
