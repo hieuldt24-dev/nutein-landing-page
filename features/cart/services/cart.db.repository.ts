@@ -3,7 +3,7 @@ import "server-only";
 import { NUTEIN_PRODUCT_DB_ID } from "@/features/product/constants";
 import { supabaseAdmin } from "@/lib/supabase";
 import { normalizeCartState } from "../pricing";
-import type { CartLine, CartState } from "../types";
+import type { CartLine, CartOwner, CartState } from "../types";
 
 interface CartRow {
   quantity: number;
@@ -17,16 +17,23 @@ function requireAdminClient() {
   return supabaseAdmin;
 }
 
+function ownerFilter(owner: CartOwner): { column: "user_id" | "session_id"; value: string } {
+  if (owner.kind === "user") {
+    return { column: "user_id", value: owner.userId };
+  }
+  return { column: "session_id", value: owner.sessionId };
+}
+
 /**
- * Giỏ hàng DB (`cart`) — nhiều dòng / user theo `variant_id`
- * (UNIQUE user_id + product_id + variant_id sau migration multi-line).
+ * Giỏ hàng DB (`cart`) — dual key: `user_id` (logged-in) hoặc `session_id` (guest).
  */
 export const cartDbRepository = {
-  async getState(userId: string): Promise<CartState> {
+  async getState(owner: CartOwner): Promise<CartState> {
+    const { column, value } = ownerFilter(owner);
     const { data, error } = await requireAdminClient()
       .from("cart")
       .select("quantity, variant_id")
-      .eq("user_id", userId)
+      .eq(column, value)
       .eq("product_id", NUTEIN_PRODUCT_DB_ID);
 
     if (error) {
@@ -41,15 +48,15 @@ export const cartDbRepository = {
     return normalizeCartState({ lines });
   },
 
-  async setState(userId: string, state: CartState): Promise<CartState> {
+  async setState(owner: CartOwner, state: CartState): Promise<CartState> {
     const next = normalizeCartState(state);
     const client = requireAdminClient();
+    const { column, value } = ownerFilter(owner);
 
-    // Replace toàn bộ dòng — tránh lệch khi đổi gói / xóa dòng.
     const { error: deleteError } = await client
       .from("cart")
       .delete()
-      .eq("user_id", userId)
+      .eq(column, value)
       .eq("product_id", NUTEIN_PRODUCT_DB_ID);
 
     if (deleteError) {
@@ -61,15 +68,27 @@ export const cartDbRepository = {
     }
 
     const now = new Date().toISOString();
-    const { error: insertError } = await client.from("cart").insert(
-      next.lines.map((line) => ({
-        user_id: userId,
-        product_id: NUTEIN_PRODUCT_DB_ID,
-        quantity: line.quantity,
-        variant_id: line.variantId,
-        updated_at: now,
-      })),
+    const rows = next.lines.map((line) =>
+      owner.kind === "user"
+        ? {
+            user_id: owner.userId,
+            session_id: null,
+            product_id: NUTEIN_PRODUCT_DB_ID,
+            quantity: line.quantity,
+            variant_id: line.variantId,
+            updated_at: now,
+          }
+        : {
+            user_id: null,
+            session_id: owner.sessionId,
+            product_id: NUTEIN_PRODUCT_DB_ID,
+            quantity: line.quantity,
+            variant_id: line.variantId,
+            updated_at: now,
+          },
     );
+
+    const { error: insertError } = await client.from("cart").insert(rows);
 
     if (insertError) {
       throw new Error(`Không cập nhật được giỏ hàng: ${insertError.message}`);
@@ -78,7 +97,7 @@ export const cartDbRepository = {
     return next;
   },
 
-  async clear(userId: string): Promise<void> {
-    await cartDbRepository.setState(userId, { lines: [] });
+  async clear(owner: CartOwner): Promise<void> {
+    await cartDbRepository.setState(owner, { lines: [] });
   },
 };

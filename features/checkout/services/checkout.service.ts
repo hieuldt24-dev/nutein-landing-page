@@ -54,6 +54,7 @@ export const checkoutService = {
   async createOrder(
     userId: string,
     input: CreateOrderRequest,
+    sessionId: string | null = null,
   ): Promise<CreateOrderResult> {
     const serviceLogger = logger.child({
       service: "checkoutService",
@@ -96,7 +97,7 @@ export const checkoutService = {
       },
     );
 
-    await cartServerService.clear(userId);
+    await cartServerService.clearUserAndSession(userId, sessionId);
 
     const result: CreateOrderResult = {
       orderId: row.id,

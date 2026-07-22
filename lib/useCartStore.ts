@@ -15,7 +15,6 @@ import {
   setLineQuantityInCart,
 } from "@/features/cart/pricing";
 import { cartRepository } from "@/features/cart/services/cart.repository";
-import { cartService } from "@/features/cart/services/cart.service";
 import type { CartLine, CartState, CartSummary } from "@/features/cart/types";
 import { DEFAULT_PRODUCT_VARIANT_ID } from "@/features/product/constants";
 import { authRepository } from "@/features/auth/services/auth.repository";
@@ -23,43 +22,68 @@ import { apiRequest } from "@/lib/api-client";
 import { useAuthStore } from "@/lib/useAuthStore";
 
 /**
- * Hydrate DB cart — module-level (không per-hook-instance).
+ * Hydrate `/api/cart` — module-level (không per-hook-instance).
+ * Key theo auth mode để login/logout re-fetch đúng (merge / session).
  */
 let hydratePromise: Promise<CartSummary | null> | null = null;
-let hydrateLoggedIn = false;
+let hydrateKey: string | null = null;
 
-/** JWT app sẵn sàng trước khi gọi `/api/cart` (chờ mint AuthProvider nếu đang bay). */
-async function withApiSession<T>(run: () => Promise<T>): Promise<T> {
-  await authRepository.waitForInFlightApiSession();
+async function withApiSessionIfLoggedIn<T>(
+  isLoggedIn: boolean,
+  run: () => Promise<T>,
+): Promise<T> {
+  if (isLoggedIn) {
+    await authRepository.waitForInFlightApiSession();
+  }
   return run();
 }
 
-async function hydrateCartOnce(
-  syncFromSummary: (next: CartSummary) => Promise<CartSummary>,
-  persistRemote: (state: CartState) => Promise<CartSummary>,
-): Promise<CartSummary | null> {
-  if (hydrateLoggedIn) {
-    return summaryFromRepo();
-  }
-  if (hydratePromise) return hydratePromise;
+async function fetchCartSummary(isLoggedIn: boolean): Promise<CartSummary> {
+  return withApiSessionIfLoggedIn(isLoggedIn, () =>
+    apiRequest<CartSummary>(CART_API_PATH),
+  );
+}
 
+async function putCartState(
+  isLoggedIn: boolean,
+  state: CartState,
+): Promise<CartSummary> {
+  return withApiSessionIfLoggedIn(isLoggedIn, () =>
+    apiRequest<CartSummary>(CART_API_PATH, {
+      method: "PUT",
+      body: JSON.stringify(normalizeCartState(state)),
+    }),
+  );
+}
+
+async function hydrateCartOnce(
+  authKey: string,
+  isLoggedIn: boolean,
+  syncFromSummary: (next: CartSummary) => Promise<CartSummary>,
+): Promise<CartSummary | null> {
+  if (hydrateKey === authKey && hydratePromise) {
+    return hydratePromise;
+  }
+
+  hydrateKey = authKey;
   hydratePromise = (async () => {
     try {
-      const remote = await withApiSession(() =>
-        apiRequest<CartSummary>(CART_API_PATH),
-      );
-      const local = cartRepository.getState();
-      if (remote.isEmpty && local.lines.length > 0) {
-        const merged = await persistRemote(local);
-        await syncFromSummary(merged);
-        hydrateLoggedIn = true;
-        return merged;
+      let remote = await fetchCartSummary(isLoggedIn);
+
+      // One-shot: localStorage legacy → session/user API rồi xoá local.
+      const legacy = cartRepository.readLegacyState();
+      if (legacy.lines.length > 0) {
+        if (remote.isEmpty) {
+          remote = await putCartState(isLoggedIn, legacy);
+        }
+        cartRepository.clearLegacy();
       }
+
       await syncFromSummary(remote);
-      hydrateLoggedIn = true;
       return remote;
     } catch {
       hydratePromise = null;
+      hydrateKey = null;
       return null;
     }
   })();
@@ -68,22 +92,22 @@ async function hydrateCartOnce(
 }
 
 function resetCartHydration() {
-  hydrateLoggedIn = false;
+  hydrateKey = null;
   hydratePromise = null;
 }
 
 /**
- * Global UI state giỏ hàng — multi-line theo gói.
- * Guest: localStorage. Logged-in: sync `/api/cart`.
+ * Global UI state giỏ — mọi mutate qua `/api/cart` (guest session + logged-in).
  */
 export function useCartStore() {
   const { mutate } = useSWRConfig();
   const { isLoggedIn, isReady } = useAuthStore();
   const inFlightRef = useRef(false);
+  const linesRef = useRef<CartLine[]>([]);
 
   const { data: lines } = useSWR(
     CART_LINES_SWR_KEY,
-    () => cartRepository.getState().lines,
+    () => linesRef.current,
     {
       fallbackData: [] as CartLine[],
       revalidateOnFocus: false,
@@ -98,6 +122,7 @@ export function useCartStore() {
   });
 
   const currentLines = lines ?? [];
+  linesRef.current = currentLines;
   const summary = buildCartSummary({ lines: currentLines });
   const quantity = summary.quantity;
   const lineCount = currentLines.length;
@@ -110,37 +135,27 @@ export function useCartStore() {
           quantity: line.quantity,
         })),
       });
-      cartRepository.setState(state);
+      linesRef.current = state.lines;
       await mutate(CART_LINES_SWR_KEY, state.lines, { revalidate: false });
       return next;
     },
     [mutate],
   );
 
-  const persistRemote = useCallback(async (state: CartState) => {
-    return withApiSession(() =>
-      apiRequest<CartSummary>(CART_API_PATH, {
-        method: "PUT",
-        body: JSON.stringify(normalizeCartState(state)),
-      }),
-    );
-  }, []);
-
   useEffect(() => {
     if (!isReady) return;
 
-    if (!isLoggedIn) {
+    const authKey = isLoggedIn ? "user" : "guest";
+    if (hydrateKey !== authKey) {
       resetCartHydration();
-      return;
     }
-
-    void hydrateCartOnce(syncFromSummary, persistRemote);
-  }, [isLoggedIn, isReady, persistRemote, syncFromSummary]);
+    void hydrateCartOnce(authKey, isLoggedIn, syncFromSummary);
+  }, [isLoggedIn, isReady, syncFromSummary]);
 
   const runMutation = useCallback(
     async (action: () => Promise<CartSummary>) => {
       if (inFlightRef.current) {
-        return summaryFromRepo();
+        return buildCartSummary({ lines: linesRef.current });
       }
 
       inFlightRef.current = true;
@@ -158,13 +173,8 @@ export function useCartStore() {
 
   const mutateState = useCallback(
     (state: CartState) =>
-      runMutation(async () => {
-        if (isLoggedIn) {
-          return persistRemote(state);
-        }
-        return cartService.setState(state);
-      }),
-    [isLoggedIn, persistRemote, runMutation],
+      runMutation(() => putCartState(isLoggedIn, state)),
+    [isLoggedIn, runMutation],
   );
 
   return {
@@ -213,8 +223,4 @@ export function useCartStore() {
       }),
     removeFromCart: () => mutateState({ lines: [] }),
   };
-}
-
-function summaryFromRepo(): CartSummary {
-  return cartService.buildSummary(cartRepository.getState());
 }

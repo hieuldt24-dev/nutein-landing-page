@@ -2,10 +2,7 @@ import {
   CART_QUANTITY_STORAGE_KEY,
   CART_STATE_STORAGE_KEY,
 } from "../constants";
-import {
-  normalizeCartState,
-  totalPackQuantity,
-} from "../pricing";
+import { normalizeCartState } from "../pricing";
 import type { CartState } from "../types";
 
 function emptyState(): CartState {
@@ -21,7 +18,6 @@ function coerceState(raw: unknown): CartState {
     return normalizeCartState({ lines: obj.lines as CartState["lines"] });
   }
 
-  // Legacy single-line
   const quantity =
     typeof obj.quantity === "number" && Number.isFinite(obj.quantity)
       ? obj.quantity
@@ -47,11 +43,12 @@ function readLegacyQuantity(): number | null {
 }
 
 /**
- * Nguồn dữ liệu giỏ hàng phía client — localStorage (guest + mirror).
- * Logged-in: `useCartStore` ghi `/api/cart` (DB).
+ * Legacy localStorage — chỉ đọc/xoá one-shot migrate sang session API.
+ * Không còn source of truth cho giỏ.
  */
 export const cartRepository = {
-  getState(): CartState {
+  /** Đọc giỏ local cũ (nếu còn) để PUT lên `/api/cart` một lần. */
+  readLegacyState(): CartState {
     if (typeof window === "undefined") {
       return emptyState();
     }
@@ -67,25 +64,17 @@ export const cartRepository = {
 
     const legacyQty = readLegacyQuantity();
     if (legacyQty != null && legacyQty > 0) {
-      const migrated = normalizeCartState({
+      return normalizeCartState({
         lines: [{ variantId: "pack-1", quantity: legacyQty }],
       });
-      cartRepository.setState(migrated);
-      return migrated;
     }
 
     return emptyState();
   },
 
-  setState(state: CartState): CartState {
-    const next = normalizeCartState(state);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(CART_STATE_STORAGE_KEY, JSON.stringify(next));
-      window.localStorage.setItem(
-        CART_QUANTITY_STORAGE_KEY,
-        String(totalPackQuantity(next.lines)),
-      );
-    }
-    return next;
+  clearLegacy(): void {
+    if (typeof window === "undefined") return;
+    window.localStorage.removeItem(CART_STATE_STORAGE_KEY);
+    window.localStorage.removeItem(CART_QUANTITY_STORAGE_KEY);
   },
 };
