@@ -10,8 +10,9 @@ function TierIcon({ tier }: { tier: VoucherTierProgress }) {
   return <Tag size={18} strokeWidth={2.2} />;
 }
 
+/** Label dưới node — rút gọn (bỏ “Giảm”) để khỏi dính nhau trên mobile. */
 function tierLabel(tier: VoucherTierProgress): string {
-  return tier.kind === "free_shipping" ? "Freeship" : `Giảm ${tier.discountPercent}%`;
+  return tier.kind === "free_shipping" ? "Freeship" : `${tier.discountPercent}%`;
 }
 
 interface CartVoucherProgressProps {
@@ -59,7 +60,7 @@ export function CartVoucherProgress({ progress, className }: CartVoucherProgress
           <span
             key={tier.id}
             className={cn(
-              "absolute top-0 w-[5.5rem] -translate-x-1/2 text-center text-[12px] font-bold uppercase leading-tight tracking-[-0.01em]",
+              "absolute top-0 w-16 -translate-x-1/2 text-center text-[12px] font-bold uppercase leading-tight tracking-[-0.01em]",
               tier.achieved ? "text-ink" : "text-text-muted"
             )}
             style={{ left: `${tier.positionPercent}%` }}

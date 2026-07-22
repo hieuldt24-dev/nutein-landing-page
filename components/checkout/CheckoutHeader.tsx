@@ -25,23 +25,25 @@ export function CheckoutHeader() {
           />
         </Link>
 
-        <button
-          type="button"
-          onClick={open}
-          aria-label={
-            lineCount > 0
-              ? `Mở giỏ hàng, ${lineCount} dòng sản phẩm`
-              : "Mở giỏ hàng"
-          }
-          className="relative flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-ink/15 bg-surface text-ink transition-colors hover:border-ink/35"
-        >
-          <ShoppingBag size={18} strokeWidth={2.2} />
-          {lineCount > 0 && (
-            <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-extrabold text-white">
+        <div className="relative pr-1 pt-1">
+          <button
+            type="button"
+            onClick={open}
+            aria-label={
+              lineCount > 0
+                ? `Mở giỏ hàng, ${lineCount} dòng sản phẩm`
+                : "Mở giỏ hàng"
+            }
+            className="relative flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-ink/15 bg-surface text-ink transition-colors hover:border-ink/35"
+          >
+            <ShoppingBag size={18} strokeWidth={2.2} />
+          </button>
+          {lineCount > 0 ? (
+            <span className="pointer-events-none absolute top-0 right-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-extrabold text-white">
               {lineCount}
             </span>
-          )}
-        </button>
+          ) : null}
+        </div>
       </div>
     </header>
   );

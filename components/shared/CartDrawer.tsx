@@ -149,22 +149,27 @@ export default function CartDrawer() {
   const isEmpty = summary.isEmpty;
 
   return (
-    <div id="cart-drawer-root" className="fixed inset-0 z-[100] flex justify-end p-5 md:p-8">
+    <div id="cart-drawer-root" className="fixed inset-0 z-[100] flex justify-end p-0 md:p-8">
       <div
         id="cart-drawer-backdrop"
         onClick={close}
         className={cn(
           "absolute inset-0 cursor-pointer bg-ink/40 transition-opacity duration-[380ms] ease-[cubic-bezier(0.645,0.045,0.355,1)]",
-          isVisible ? "opacity-100" : "opacity-0"
+          isVisible ? "opacity-100" : "opacity-0",
+          /* Mobile full-bleed — backdrop ẩn (panel đã phủ cả viewport) */
+          "md:block max-md:opacity-0 max-md:pointer-events-none",
         )}
       />
 
       <aside
         className={cn(
-          "relative flex h-full w-full max-w-[560px] flex-col overflow-hidden rounded-[var(--radius-xl)] border border-ink bg-bg shadow-xl",
+          "relative flex h-full w-full flex-col overflow-hidden bg-bg",
+          /* Mobile: lấp đầy như Joy Rush; desktop: panel bo góc + viền */
+          "max-w-none rounded-none border-0",
+          "md:max-w-[560px] md:rounded-[var(--radius-xl)] md:border md:border-ink md:shadow-xl",
           "transition-transform duration-[380ms] ease-[cubic-bezier(0.645,0.045,0.355,1)] will-change-transform",
-          isVisible ? "translate-x-0" : "translate-x-[calc(100%+2rem)]",
-          isUpdating && "cursor-wait"
+          isVisible ? "translate-x-0" : "translate-x-full md:translate-x-[calc(100%+2rem)]",
+          isUpdating && "cursor-wait",
         )}
       >
         <div className="flex items-center justify-between border-b border-ink/25 px-7 py-7">

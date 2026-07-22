@@ -245,7 +245,16 @@ export default function CheckoutForm() {
   return (
     <form onSubmit={onSubmit} className="relative">
       <div className="mx-auto grid max-w-[1100px] gap-10 px-5 py-8 md:px-8 lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-12 lg:py-12">
-        <div className="flex flex-col gap-10">
+        {/* Mobile: summary trên đầu; desktop: cột phải sticky */}
+        <div className="order-1 lg:order-2 lg:sticky lg:top-8 lg:self-start">
+          <CheckoutOrderSummary
+            summary={summary}
+            shippingFee={shippingPreview.shippingFee}
+            shippingNote={shippingPreview.shippingNote}
+          />
+        </div>
+
+        <div className="order-2 flex flex-col gap-10 lg:order-1">
           <CheckoutContactSection
             register={register}
             errors={errors}
@@ -280,14 +289,6 @@ export default function CheckoutForm() {
             isSubmitting={isSubmitting}
           />
           <CheckoutSubmitBlock isSubmitting={isSubmitting} />
-        </div>
-
-        <div className="lg:sticky lg:top-8 lg:self-start">
-          <CheckoutOrderSummary
-            summary={summary}
-            shippingFee={shippingPreview.shippingFee}
-            shippingNote={shippingPreview.shippingNote}
-          />
         </div>
       </div>
 
