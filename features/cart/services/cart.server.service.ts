@@ -18,7 +18,9 @@ function sessionOwner(sessionId: string): CartOwner {
 
 /**
  * Cart server — `/api/cart`.
- * Guest: session cookie. Logged-in: user rows + mirror session (logout giữ giỏ).
+ * Guest: session cookie. Logged-in: user rows + mirror session (đồng bộ tab
+ * khi còn đăng nhập). Logout **xoá** session cart — tránh leak giỏ user A →
+ * guest → user B (merge empty-user ← session).
  */
 export const cartServerService = {
   async getSummary(owner: CartOwner): Promise<CartSummary> {
@@ -34,7 +36,8 @@ export const cartServerService = {
   },
 
   /**
-   * Logged-in mutate: ghi user + mirror session (Joy Rush logout giữ giỏ).
+   * Logged-in mutate: ghi user + mirror session (đồng bộ multi-tab khi còn
+   * đăng nhập). Session được clear khi logout — xem `clearSession`.
    */
   async setStateForLoggedIn(
     userId: string,
@@ -48,10 +51,13 @@ export const cartServerService = {
   },
 
   /**
-   * Joy Rush merge khi có JWT + session:
+   * Merge khi có JWT + session:
    * 1) User non-empty → replace session = user (discard guest)
    * 2) User empty + session non-empty → copy session → user
    * 3) Cả hai empty → noop
+   *
+   * An toàn với account switch vì logout đã clear session (không còn hàng
+   * của user trước trên cookie `nutein_cart_sid`).
    */
   async mergeOnLogin(
     userId: string,
@@ -82,7 +88,12 @@ export const cartServerService = {
     await cartDbRepository.clear(userOwner(userId));
   },
 
-  /** Clear user + session sau đặt hàng (tránh logout còn hàng cũ). */
+  /** Clear session cart (logout / privacy — không để guest kế thừa giỏ user). */
+  async clearSession(sessionId: string): Promise<void> {
+    await cartDbRepository.clear(sessionOwner(sessionId));
+  },
+
+  /** Clear user + session sau đặt hàng. */
   async clearUserAndSession(
     userId: string,
     sessionId: string | null,

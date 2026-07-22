@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "@/lib/useAuthStore";
 import { cn } from "@/lib/utils";
+import { UserAvatar } from "@/components/ui/UserAvatar";
 
 const COMPACT_STORAGE_KEY = "nutein:admin-sidebar-compact";
 const SIDEBAR_EXPANDED_W = 260;
@@ -295,7 +296,6 @@ function SidebarUserCard({
   roleLabel: string;
   compactUi: boolean;
 }) {
-  const initial = (email?.[0] ?? "N").toUpperCase();
   return (
     <div
       className={cn(
@@ -305,9 +305,7 @@ function SidebarUserCard({
       title={compactUi ? `${roleLabel} · ${email}` : undefined}
     >
       <div className={cn("flex items-center gap-3", compactUi && "justify-center")}>
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-ink text-[13px] font-extrabold text-bg">
-          {initial}
-        </span>
+        <UserAvatar email={email} size="md" />
         {!compactUi ? (
           <div className="min-w-0">
             <p className="truncate text-[13px] font-bold text-ink">{roleLabel}</p>

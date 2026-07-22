@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState, type InputHTMLAttributes, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type InputHTMLAttributes, type ReactNode } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import useSWR, { useSWRConfig } from "swr";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,7 +16,15 @@ import {
   type LoginFormValues,
   type RegisterFormValues,
 } from "@/features/auth/schemas/auth.schema";
+import {
+  AUTH_MODAL_OPTIONS_DEFAULT,
+  AUTH_MODAL_OPTIONS_SWR_KEY,
+  AUTH_MODAL_SWR_KEY,
+  type AuthModalOptions,
+} from "@/features/auth/constants";
 import { OPEN_AUTH_MODAL_STORAGE_KEY } from "@/features/account/constants";
+import { closeAuthModal } from "@/lib/openAuthModal";
+import { apiRequest } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 
 function Field({
@@ -59,33 +67,54 @@ function TextInput({
 
 export default function AuthModal() {
   const router = useRouter();
+  const pathname = usePathname();
   const { mutate } = useSWRConfig();
   const { isLoggedIn, signIn, signUp } = useAuthStore();
   // revalidateOnMount/OnFocus/OnReconnect: false — key này chỉ là cờ mở/đóng
   // UI (SWR-as-store), không phải server data. Không tắt sẽ có nguy cơ race
   // giống useAuthStore: fetcher no-op tự chạy lại (VD mỗi lần tab focus lại)
   // rồi ghi đè `true` thật về `false`, tự đóng modal ngoài ý muốn.
-  const { data: isOpen } = useSWR("auth-modal", () => false, {
+  const { data: isOpen } = useSWR(AUTH_MODAL_SWR_KEY, () => false, {
     fallbackData: false,
     revalidateOnMount: false,
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
   });
 
+  const { data: modalOptions } = useSWR<AuthModalOptions>(
+    AUTH_MODAL_OPTIONS_SWR_KEY,
+    () => AUTH_MODAL_OPTIONS_DEFAULT,
+    {
+      fallbackData: AUTH_MODAL_OPTIONS_DEFAULT,
+      revalidateOnMount: false,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+    },
+  );
+
   const setIsOpen = useCallback(
-    (val: boolean) => mutate("auth-modal", val, { revalidate: false }),
-    [mutate]
+    (val: boolean) => {
+      if (val) {
+        void mutate(AUTH_MODAL_SWR_KEY, true, { revalidate: false });
+      } else {
+        closeAuthModal(mutate);
+      }
+    },
+    [mutate],
   );
 
   const [activeTab, setActiveTab] = useState<"login" | "register">("login");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmittingForm, setIsSubmittingForm] = useState(false);
+  const returnToRef = useRef<string | null>(null);
+  const appliedOpenRef = useRef(false);
 
   const {
     register: registerLogin,
     handleSubmit: handleLoginSubmit,
     formState: { errors: loginErrors },
     reset: resetLoginForm,
+    setValue: setLoginValue,
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "", rememberMe: false },
@@ -96,6 +125,7 @@ export default function AuthModal() {
     handleSubmit: handleSignUpSubmit,
     formState: { errors: signUpErrors },
     reset: resetSignUpForm,
+    setValue: setSignUpValue,
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -140,15 +170,60 @@ export default function AuthModal() {
     }
   }, [setIsOpen]);
 
+  // Áp options mỗi lần mở modal (tab / email / returnTo).
+  useEffect(() => {
+    if (!isOpen) {
+      appliedOpenRef.current = false;
+      return;
+    }
+    if (appliedOpenRef.current) return;
+    appliedOpenRef.current = true;
+
+    const opts = modalOptions ?? AUTH_MODAL_OPTIONS_DEFAULT;
+    returnToRef.current = opts.returnTo;
+    setActiveTab(opts.tab);
+    if (opts.email) {
+      setLoginValue("email", opts.email, { shouldDirty: false });
+      setSignUpValue("email", opts.email, { shouldDirty: false });
+    }
+  }, [isOpen, modalOptions, setLoginValue, setSignUpValue]);
+
   if (!isOpen) return null;
+
+  const resolveAfterAuthPath = (): string | null => {
+    const fromOptions = returnToRef.current;
+    if (fromOptions) return fromOptions;
+    if (pathname?.startsWith("/checkout")) return "/checkout";
+    return null;
+  };
+
+  const switchToRegisterWithEmail = (email: string) => {
+    setActiveTab("register");
+    setSignUpValue("email", email, { shouldDirty: true, shouldValidate: false });
+    setLoginValue("email", email, { shouldDirty: false });
+  };
 
   const onLogin = async (data: LoginFormValues) => {
     setIsSubmittingForm(true);
     try {
+      const status = await apiRequest<{ exists: boolean }>("/api/auth/email-status", {
+        method: "POST",
+        body: JSON.stringify({ email: data.email }),
+      });
+      if (!status.exists) {
+        notify.error("Tài khoản chưa tồn tại, mời bạn đăng ký.");
+        switchToRegisterWithEmail(data.email);
+        return;
+      }
+
       await signIn(data.email, data.password, data.rememberMe);
       resetLoginForm();
+      const next = resolveAfterAuthPath();
       setIsOpen(false);
       notify.success("Đăng nhập thành công! Chào mừng bạn quay trở lại.");
+      if (next && pathname !== next) {
+        router.push(next);
+      }
     } catch (err) {
       notify.error(err instanceof Error ? err.message : "Đăng nhập thất bại");
     } finally {
@@ -159,16 +234,31 @@ export default function AuthModal() {
   const onRegister = async (data: RegisterFormValues) => {
     setIsSubmittingForm(true);
     try {
-      const { needsEmailConfirmation } = await signUp(data.email, data.password, data.fullName);
+      const next = resolveAfterAuthPath() ?? "/";
+      const emailRedirectTo =
+        typeof window !== "undefined"
+          ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
+          : undefined;
+
+      const { needsEmailConfirmation } = await signUp(
+        data.email,
+        data.password,
+        data.fullName,
+        emailRedirectTo ? { emailRedirectTo } : undefined,
+      );
       resetSignUpForm();
       setIsOpen(false);
       notify.success(
         needsEmailConfirmation
           ? "Đăng ký thành công! Vui lòng kiểm tra email để xác nhận tài khoản."
-          : "Đăng ký thành công! Bạn đã được đăng nhập."
+          : "Đăng ký thành công! Bạn đã được đăng nhập.",
       );
       if (!needsEmailConfirmation) {
-        router.push("/account");
+        if (next === "/checkout" || pathname?.startsWith("/checkout")) {
+          if (pathname !== "/checkout") router.push("/checkout");
+        } else {
+          router.push("/account");
+        }
       }
     } catch (err) {
       notify.error(err instanceof Error ? err.message : "Đăng ký thất bại");

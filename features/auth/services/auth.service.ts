@@ -1,31 +1,20 @@
-import { PROVISIONED_STAFF_ACCOUNTS } from "../data/staff-accounts.mock";
 import type { AuthRole, AuthUser } from "../types";
 
-function normalizeEmail(email: string): string {
-  return email.trim().toLowerCase();
-}
-
 /**
- * Auth domain — phase 0: resolve role từ mock allowlist.
- * Khi gắn API: đổi thân `resolveRole` / login (giữ chữ ký cho UI).
+ * Auth domain helpers — role thật từ `public.users` (qua `/api/auth/session`).
+ * Không còn allowlist email mock.
  */
 export const authService = {
-  /** Role theo email cấp sẵn; không khớp → `user`. */
-  resolveRole(email: string): AuthRole {
-    const key = normalizeEmail(email);
-    const hit = PROVISIONED_STAFF_ACCOUNTS.find((a) => a.email === key);
-    return hit?.role ?? "user";
-  },
-
-  /** Profile seed kèm role (fullName từ allowlist nếu có). */
-  resolveProvisionedProfile(email: string): {
-    role: AuthRole;
-    fullName?: string;
-  } {
-    const key = normalizeEmail(email);
-    const hit = PROVISIONED_STAFF_ACCOUNTS.find((a) => a.email === key);
-    if (!hit) return { role: "user" };
-    return { role: hit.role, fullName: hit.fullName };
+  /** Map role DB/JWT (`USER`|`STAFF`|`ADMIN`) → AuthRole client. */
+  fromDbRole(raw: string | null | undefined): AuthRole {
+    switch ((raw ?? "USER").toUpperCase()) {
+      case "ADMIN":
+        return "admin";
+      case "STAFF":
+        return "staff";
+      default:
+        return "user";
+    }
   },
 
   canAccessAdmin(user: AuthUser | null | undefined): boolean {

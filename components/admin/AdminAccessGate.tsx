@@ -7,8 +7,8 @@ import { useAuthStore } from "@/lib/useAuthStore";
 import { notify } from "@/lib/toast";
 
 /**
- * Client gate — phase 0: chờ AuthProvider (`isReady`) rồi kiểm tra role.
- * Production thật: bổ sung middleware + cookie (xem docs/admin-portal-roadmap.md).
+ * Client gate — chờ AuthProvider (`isReady`, gồm mint role từ DB) rồi kiểm tra role.
+ * Production: có thể bổ sung middleware + cookie (docs/admin-portal-roadmap.md).
  */
 export function AdminAccessGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();

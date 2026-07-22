@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -30,6 +30,7 @@ import {
   CheckoutSubmittingOverlay,
 } from "@/components/checkout/CheckoutSubmitBlock";
 import { isCheckoutContactComplete } from "@/features/checkout/contact-complete";
+import { openAuthModal } from "@/lib/openAuthModal";
 import { useAccountProfile } from "@/lib/useAccountProfile";
 import { useAddresses } from "@/lib/useAddresses";
 import { useAuthStore } from "@/lib/useAuthStore";
@@ -38,14 +39,17 @@ import { useCheckoutSubmit } from "@/lib/useCheckoutSubmit";
 
 /**
  * Form checkout — compose sections (soft limit ~300 dòng).
- * Logic submit / prefill / guard giữ tại đây.
+ * Guest: ẩn field Liên hệ (giữ heading + Đăng nhập); vẫn điền giao hàng /
+ * vận chuyển / thanh toán. Submit guest → Auth trước validate Liên hệ.
  */
 export default function CheckoutForm() {
   const router = useRouter();
   const { mutate } = useSWRConfig();
   const { user, isLoggedIn, signOut } = useAuthStore();
   const { updateProfile, profile } = useAccountProfile();
-  const { defaultAddress, saveAsDefaultFromCheckout } = useAddresses();
+  const { addresses, defaultAddress, isLoading: addressesLoading, saveAsDefaultFromCheckout } =
+    useAddresses();
+  const [selectedSavedAddressId, setSelectedSavedAddressId] = useState("");
   const { lines, summary, isEmpty, removeFromCart } = useCartStore();
   const { submitOrder, isSubmitting } = useCheckoutSubmit();
 
@@ -155,14 +159,17 @@ export default function CheckoutForm() {
     setValue("address.wardCode", defaultAddress.wardCode, { shouldDirty: false });
     setValue("address.ward", defaultAddress.ward, { shouldDirty: false });
     setValue("address.street", defaultAddress.street, { shouldDirty: false });
+    setSelectedSavedAddressId(defaultAddress.id);
   }, [defaultAddress, setValue, getValues]);
 
-  const openAuth = () => mutate("auth-modal", true, { revalidate: false });
+  const openCheckoutAuth = () =>
+    openAuthModal(mutate, { tab: "login", returnTo: "/checkout" });
 
   const handleLogout = async () => {
     if (isSubmitting) return;
     const current = getValues();
     await signOut();
+    setSelectedSavedAddressId("");
     reset({
       ...current,
       buyer: { fullName: "", phone: "", email: "" },
@@ -170,13 +177,8 @@ export default function CheckoutForm() {
     notify.success("Đã đăng xuất.");
   };
 
-  const onSubmit = handleSubmit(
+  const placeOrder = handleSubmit(
     async (values) => {
-      if (!isLoggedIn) {
-        openAuth();
-        notify.error("Vui lòng đăng nhập để đặt hàng.");
-        return;
-      }
       try {
         const result = await submitOrder({
           lines,
@@ -232,6 +234,16 @@ export default function CheckoutForm() {
     },
   );
 
+  const onFormSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!isLoggedIn) {
+      openCheckoutAuth();
+      notify.error("Vui lòng đăng nhập hoặc đăng ký để đặt hàng.");
+      return;
+    }
+    void placeOrder();
+  };
+
   if (isEmpty) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center px-6">
@@ -243,7 +255,7 @@ export default function CheckoutForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="relative">
+    <form onSubmit={onFormSubmit} className="relative">
       <div className="mx-auto grid max-w-[1100px] gap-10 px-5 py-8 md:px-8 lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-12 lg:py-12">
         {/* Mobile: summary trên đầu; desktop: cột phải sticky */}
         <div className="order-1 lg:order-2 lg:sticky lg:top-8 lg:self-start">
@@ -262,7 +274,7 @@ export default function CheckoutForm() {
             isLoggedIn={isLoggedIn}
             contactLocked={contactLocked}
             user={user}
-            onOpenAuth={openAuth}
+            onOpenAuth={openCheckoutAuth}
             onLogout={() => {
               void handleLogout();
             }}
@@ -274,6 +286,11 @@ export default function CheckoutForm() {
             isSubmitting={isSubmitting}
             provinceCode={provinceCode}
             wardCode={wardCode}
+            isLoggedIn={isLoggedIn}
+            savedAddresses={isLoggedIn ? addresses : []}
+            savedAddressesLoading={isLoggedIn && addressesLoading}
+            selectedSavedAddressId={selectedSavedAddressId}
+            onSelectedSavedAddressIdChange={setSelectedSavedAddressId}
           />
           <CheckoutShippingSection
             addressReady={addressReady}

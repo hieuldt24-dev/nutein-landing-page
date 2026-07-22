@@ -15,6 +15,7 @@ import {
   REFRESH_TOKEN_MAX_AGE,
   type JwtPayload,
 } from "@/features/auth/services/jwt.service";
+import { authService } from "@/features/auth/services/auth.service";
 import { refreshTokenService } from "@/features/auth/services/refresh-token.service";
 import { auditLogService } from "@/features/auth/services/audit-log.service";
 
@@ -50,10 +51,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     .eq("id", user.id)
     .single();
 
+  const dbRole = (profile?.role as JwtPayload["role"] | undefined) ?? "USER";
   const payload: JwtPayload = {
     sub: user.id,
     email: user.email,
-    role: (profile?.role as JwtPayload["role"] | undefined) ?? "USER",
+    role: dbRole,
   };
 
   const accessToken = jwtService.signAccessToken(payload);
@@ -68,7 +70,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     userAgent: getUserAgent(req),
   });
 
-  const response = successResponse({ expiresIn: ACCESS_TOKEN_MAX_AGE });
+  const response = successResponse({
+    expiresIn: ACCESS_TOKEN_MAX_AGE,
+    role: authService.fromDbRole(dbRole),
+  });
   response.cookies.set(ACCESS_TOKEN_COOKIE, accessToken, {
     ...AUTH_COOKIE_OPTIONS,
     maxAge: ACCESS_TOKEN_MAX_AGE,

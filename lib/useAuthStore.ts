@@ -3,25 +3,23 @@
 import { useCallback, useMemo } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import type { User } from "@supabase/supabase-js";
-import { AUTH_USER_SWR_KEY, AUTH_READY_SWR_KEY } from "@/features/auth/constants";
+import {
+  AUTH_USER_SWR_KEY,
+  AUTH_READY_SWR_KEY,
+  AUTH_ROLE_SWR_KEY,
+} from "@/features/auth/constants";
+import { CART_LINES_SWR_KEY } from "@/features/cart/constants";
 import { authRepository, toAuthUser } from "@/features/auth/services/auth.repository";
 import { authService } from "@/features/auth/services/auth.service";
-import type { AuthUser } from "@/features/auth/types";
+import type { AuthRole, AuthUser } from "@/features/auth/types";
 
 /**
  * Session auth toàn cục — SWR-as-store (docs/state-management.md mục 3).
- * Nguồn dữ liệu thật do AuthProvider ghi vào key "auth-user" qua
- * supabase.auth.onAuthStateChange; hook này chỉ ĐỌC lại (fetcher no-op,
- * không tự gọi Supabase) rồi map sang AuthUser cho Navbar/CheckoutForm/AuthModal.
+ * User từ AuthProvider (Supabase); role từ POST /api/auth/session (public.users).
  */
 export function useAuthStore() {
   const { mutate } = useSWRConfig();
 
-  // revalidateOnMount/OnFocus/OnReconnect: false — key này không phải server
-  // data, chỉ là cache dùng chung (AuthProvider/signIn/signUp/signOut tự
-  // mutate). Nếu để SWR tự gọi lại fetcher no-op (VD khi mount, hoặc — bug
-  // thật đã gặp — mỗi lần tab được focus lại), promise `null` đó ghi đè lên
-  // session thật vừa set, gây "tự đăng xuất" khi chuyển tab đi rồi quay lại.
   const { data: rawUser } = useSWR<User | null>(AUTH_USER_SWR_KEY, () => null, {
     fallbackData: null,
     revalidateOnMount: false,
@@ -29,10 +27,13 @@ export function useAuthStore() {
     revalidateOnReconnect: false,
   });
 
-  // true khi AuthProvider đã xác định xong session thật (xem constants.ts) —
-  // dùng cho UI guard cần phân biệt "chưa biết" với "chắc chắn chưa đăng
-  // nhập". Cùng lý do trên: fetcher no-op không được tự chạy lại khi focus,
-  // nếu không sẽ ghi đè `isReady` về false mãi mãi sau khi chuyển tab.
+  const { data: serverRole } = useSWR<AuthRole | null>(AUTH_ROLE_SWR_KEY, () => null, {
+    fallbackData: null,
+    revalidateOnMount: false,
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+  });
+
   const { data: isReady } = useSWR<boolean>(AUTH_READY_SWR_KEY, () => false, {
     fallbackData: false,
     revalidateOnMount: false,
@@ -40,32 +41,41 @@ export function useAuthStore() {
     revalidateOnReconnect: false,
   });
 
-  // Memo theo reference rawUser từ SWR — tránh AuthUser mới mỗi render
-  // (CheckoutForm từng deps `[user]` + setValue → loop đứng máy khi validate).
   const user: AuthUser | null = useMemo(
-    () => (rawUser ? toAuthUser(rawUser) : null),
-    [rawUser],
+    () => (rawUser ? toAuthUser(rawUser, serverRole) : null),
+    [rawUser, serverRole],
   );
 
   const signIn = useCallback(
     async (email: string, password: string, rememberMe: boolean = true) => {
       const signedInUser = await authRepository.signInWithPassword(email, password);
       await mutate(AUTH_USER_SWR_KEY, signedInUser, { revalidate: false });
-      await authRepository.mintApiSession(rememberMe);
-      return toAuthUser(signedInUser);
+      const { role } = await authRepository.mintApiSession(rememberMe);
+      return toAuthUser(signedInUser, role);
     },
     [mutate]
   );
 
   const signUp = useCallback(
-    async (email: string, password: string, fullName: string) => {
+    async (
+      email: string,
+      password: string,
+      fullName: string,
+      options?: { emailRedirectTo?: string },
+    ) => {
       const { user: signedUpUser, needsEmailConfirmation } =
-        await authRepository.signUpWithPassword(email, password, fullName);
+        await authRepository.signUpWithPassword(
+          email,
+          password,
+          fullName,
+          options,
+        );
       if (!needsEmailConfirmation) {
         await mutate(AUTH_USER_SWR_KEY, signedUpUser, { revalidate: false });
-        await authRepository.mintApiSession();
+        const { role } = await authRepository.mintApiSession();
+        return { user: toAuthUser(signedUpUser, role), needsEmailConfirmation };
       }
-      return { user: toAuthUser(signedUpUser), needsEmailConfirmation };
+      return { user: toAuthUser(signedUpUser, "user"), needsEmailConfirmation };
     },
     [mutate]
   );
@@ -73,6 +83,10 @@ export function useAuthStore() {
   const signOut = useCallback(async () => {
     await authRepository.signOut();
     await mutate(AUTH_USER_SWR_KEY, null, { revalidate: false });
+    await mutate(AUTH_ROLE_SWR_KEY, null, { revalidate: false });
+    // Logout API đã clear session cart trên server — sync UI ngay, tránh
+    // flash giỏ user cũ trước khi hydrate guest trả về empty.
+    await mutate(CART_LINES_SWR_KEY, [], { revalidate: false });
   }, [mutate]);
 
   const role = user?.role ?? null;

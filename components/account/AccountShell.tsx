@@ -7,6 +7,8 @@ import { LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ACCOUNT_LOGGING_OUT_SWR_KEY, OPEN_AUTH_MODAL_STORAGE_KEY } from "@/features/account/constants";
 import { useAuthStore } from "@/lib/useAuthStore";
+import { useAccountProfile } from "@/lib/useAccountProfile";
+import { UserAvatar } from "@/components/ui/UserAvatar";
 import { notify } from "@/lib/toast";
 
 const TABS = [
@@ -40,6 +42,8 @@ export function AccountShell({ children, title, description }: AccountShellProps
   const pathname = usePathname();
   const { mutate } = useSWRConfig();
   const { signOut, user } = useAuthStore();
+  const { profile } = useAccountProfile();
+  const displayName = profile?.fullName || user?.fullName;
 
   const handleLogout = async () => {
     // Bật cờ TRƯỚC signOut — layout guest-guard không ghi open-auth flag.
@@ -60,15 +64,25 @@ export function AccountShell({ children, title, description }: AccountShellProps
         <p className="text-[12px] font-bold tracking-[0.08em] text-primary uppercase">
           Tài khoản
         </p>
-        <h1 className="mt-2 font-display text-[clamp(28px,4vw,40px)] font-bold tracking-[-0.03em] text-ink">
-          {title}
-        </h1>
-        {description ? (
-          <p className="mt-2 max-w-[520px] text-[15px] text-text-muted">{description}</p>
-        ) : null}
-        {user?.email ? (
-          <p className="mt-1 text-[13px] font-medium text-text-muted">{user.email}</p>
-        ) : null}
+        <div className="mt-3 flex items-start gap-4">
+          <UserAvatar
+            fullName={displayName}
+            email={user?.email}
+            size="lg"
+            className="mt-1"
+          />
+          <div className="min-w-0 flex-1">
+            <h1 className="font-display text-[clamp(28px,4vw,40px)] font-bold tracking-[-0.03em] text-ink">
+              {title}
+            </h1>
+            {description ? (
+              <p className="mt-2 max-w-[520px] text-[15px] text-text-muted">{description}</p>
+            ) : null}
+            {user?.email ? (
+              <p className="mt-1 text-[13px] font-medium text-text-muted">{user.email}</p>
+            ) : null}
+          </div>
+        </div>
       </header>
 
       <div className="mb-8 flex flex-wrap items-center gap-2 border-b border-ink/10 pb-4">

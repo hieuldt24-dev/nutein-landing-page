@@ -201,16 +201,15 @@ describe("toAuthUser", () => {
     expect(toAuthUser(user).email).toBe("");
   });
 
-  it("role từ app_metadata ưu tiên hơn allowlist email", () => {
-    const user = makeUser({
-      email: "user@example.com",
-      app_metadata: { role: "staff" },
-    });
-    expect(toAuthUser(user).role).toBe("staff");
+  it("role lấy từ tham số serverRole (public.users)", () => {
+    const user = makeUser({ email: "anyone@example.com", user_metadata: {} });
+    expect(toAuthUser(user, "admin").role).toBe("admin");
+    expect(toAuthUser(user, "staff").role).toBe("staff");
+    expect(toAuthUser(user).role).toBe("user");
   });
 
-  it("role fallback allowlist khi metadata không có role", () => {
+  it("không dùng email allowlist — thiếu serverRole luôn là user", () => {
     const user = makeUser({ email: "admin@nutein.com", user_metadata: {} });
-    expect(toAuthUser(user).role).toBe("admin");
+    expect(toAuthUser(user).role).toBe("user");
   });
 });

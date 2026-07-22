@@ -7,15 +7,20 @@ import { usePathname, useRouter } from "next/navigation";
 import { useSWRConfig } from "swr";
 import { ShoppingBag, User } from "lucide-react";
 import { FillButton } from "@/components/ui/FillButton";
+import { UserAvatar } from "@/components/ui/UserAvatar";
 import { EXPLORE_LINKS, NavExploreMega } from "@/components/layout/NavExploreMega";
 import { useAuthStore } from "@/lib/useAuthStore";
+import { useAccountProfile } from "@/lib/useAccountProfile";
 import { useCartDrawer } from "@/lib/useCartDrawer";
 import { useCartStore } from "@/lib/useCartStore";
+import { openAuthModal } from "@/lib/openAuthModal";
+import { AUTH_MODAL_SWR_KEY } from "@/features/auth/constants";
 import { cn } from "@/lib/utils";
 
 const PRODUCT_LINK = { label: "Sản phẩm", href: "/product" };
 
-const navFillClass = "py-2 px-3.5 text-[13px] font-bold shadow-sm";
+const navFillClass =
+  "inline-flex items-center gap-2 py-2 px-3.5 text-[13px] font-bold shadow-sm";
 const navEase = "duration-[400ms] ease-[cubic-bezier(0.215,0.61,0.355,1)]";
 
 /** Tam giác ▼ đặc — motif Joy Rush caret. */
@@ -86,8 +91,13 @@ export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { mutate } = useSWRConfig();
-  const setAuthOpen = (val: boolean) => mutate("auth-modal", val, { revalidate: false });
-  const { isLoggedIn, isStaffOrAdmin } = useAuthStore();
+  const setAuthOpen = (val: boolean) => {
+    if (val) openAuthModal(mutate);
+    else void mutate(AUTH_MODAL_SWR_KEY, false, { revalidate: false });
+  };
+  const { isLoggedIn, isStaffOrAdmin, user } = useAuthStore();
+  const { profile } = useAccountProfile();
+  const avatarName = profile?.fullName || user?.fullName;
   const cartDrawer = useCartDrawer();
   const { lineCount: cartQuantity } = useCartStore();
 
@@ -230,7 +240,15 @@ export default function Navbar() {
               aria-label={isLoggedIn ? "Tài khoản" : "Đăng nhập"}
               className={cn(navFillClass, "hidden md:inline-flex")}
             >
-              <User size={16} strokeWidth={2.2} />
+              {isLoggedIn ? (
+                <UserAvatar
+                  fullName={avatarName}
+                  email={user?.email}
+                  size="sm"
+                />
+              ) : (
+                <User size={16} strokeWidth={2.2} />
+              )}
               {isLoggedIn ? "Tài khoản" : "Đăng nhập"}
             </FillButton>
           </div>
@@ -324,8 +342,15 @@ export default function Navbar() {
                     closeMenu();
                     handleUserClick();
                   }}
-                  className="h-14 w-full justify-center text-[15px] font-bold uppercase tracking-[-0.01em]"
+                  className="h-14 w-full justify-center gap-2.5 text-[15px] font-bold uppercase tracking-[-0.01em]"
                 >
+                  {isLoggedIn ? (
+                    <UserAvatar
+                      fullName={avatarName}
+                      email={user?.email}
+                      size="sm"
+                    />
+                  ) : null}
                   {isLoggedIn ? "Tài khoản" : "Đăng nhập"}
                 </FillButton>
                 <FillButton

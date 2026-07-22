@@ -1,9 +1,15 @@
 import type { AuthError, User } from "@supabase/supabase-js";
+import { mutate } from "swr";
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { AUTH_ROLE_SWR_KEY } from "../constants";
 import { authService } from "./auth.service";
 import type { AuthRole, AuthUser } from "../types";
 
-const ROLES: readonly AuthRole[] = ["user", "staff", "admin"];
+/** Kết quả mint JWT app + role từ `public.users`. */
+export type MintApiSessionResult = {
+  ok: boolean;
+  role: AuthRole | null;
+};
 
 /** Map lỗi Supabase Auth (tiếng Anh) sang thông báo tiếng Việt cho UI. */
 function mapAuthError(error: AuthError): string {
@@ -19,19 +25,17 @@ function mapAuthError(error: AuthError): string {
   }
 }
 
-function normalizeRole(raw: unknown): AuthRole | null {
-  if (typeof raw === "string" && (ROLES as readonly string[]).includes(raw)) {
-    return raw as AuthRole;
-  }
-  return null;
-}
+let mintSessionInFlight: Promise<MintApiSessionResult> | null = null;
 
-let mintSessionInFlight: Promise<boolean> | null = null;
-
-/** Map Supabase `User` (auth.users) sang shape `AuthUser` app đang dùng. */
-export function toAuthUser(user: User): AuthUser {
+/**
+ * Map Supabase `User` + role server → `AuthUser`.
+ * `serverRole` từ POST `/api/auth/session` (`public.users.role`).
+ */
+export function toAuthUser(
+  user: User,
+  serverRole: AuthRole | null | undefined = undefined,
+): AuthUser {
   const meta = user.user_metadata ?? {};
-  const appMeta = user.app_metadata ?? {};
   const fullName =
     typeof meta.full_name === "string" && meta.full_name.trim()
       ? meta.full_name.trim()
@@ -39,25 +43,17 @@ export function toAuthUser(user: User): AuthUser {
         ? meta.name.trim()
         : undefined;
 
-  const email = user.email ?? "";
-  // Ưu tiên claims Supabase; phase 0 fallback allowlist email (auth.service).
-  const roleFromMeta =
-    normalizeRole(appMeta.role) ?? normalizeRole(meta.role) ?? null;
-  const role = roleFromMeta ?? authService.resolveRole(email);
-
   return {
-    email,
+    email: user.email ?? "",
     fullName,
     phone: user.phone || undefined,
-    role,
+    role: serverRole ?? "user",
   };
 }
 
 /**
- * Nguồn session auth phía client — Supabase Auth thật (auth.users), KHÔNG
- * còn mock localStorage. Session hiện tại được AuthProvider đồng bộ vào SWR
- * key "auth-user" qua onAuthStateChange; các hàm dưới đây chỉ gọi Supabase
- * SDK và trả user mới nhất, việc ghi cache SWR do lib/useAuthStore.ts lo.
+ * Nguồn session auth phía client — Supabase Auth thật (auth.users).
+ * Role admin/staff lấy từ server khi mint JWT, không dùng allowlist mock.
  */
 export const authRepository = {
   async signInWithPassword(email: string, password: string): Promise<User> {
@@ -71,12 +67,18 @@ export const authRepository = {
   async signUpWithPassword(
     email: string,
     password: string,
-    fullName: string
+    fullName: string,
+    options?: { emailRedirectTo?: string },
   ): Promise<{ user: User; needsEmailConfirmation: boolean }> {
     const { data, error } = await supabaseBrowser.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName } },
+      options: {
+        data: { full_name: fullName },
+        ...(options?.emailRedirectTo
+          ? { emailRedirectTo: options.emailRedirectTo }
+          : {}),
+      },
     });
     if (error) {
       throw new Error(mapAuthError(error));
@@ -92,25 +94,15 @@ export const authRepository = {
     if (error) {
       throw new Error(mapAuthError(error));
     }
-    // Best-effort — cookie JWT hết hạn tự nhiên theo maxAge dù call này lỗi mạng.
     await fetch("/api/auth/logout", { method: "POST" }).catch(() => undefined);
+    await mutate(AUTH_ROLE_SWR_KEY, null, { revalidate: false });
   },
 
   /**
-   * Cấp cặp JWT access/refresh riêng của app (httpOnly cookie) ngay sau khi
-   * Supabase đã xác thực xong — app/api/** dùng cặp token này qua
-   * src/middlewares/authenticate.middlware.ts, không cần verify lại Supabase
-   * mỗi request. Trả `true` nếu set cookie thành công. Không throw nếu lỗi:
-   * mất JWT riêng không nên chặn luồng đăng nhập chính (vẫn còn session
-   * Supabase hợp lệ); fetcher/api-client sẽ remint lại khi gặp 401.
-   *
-   * Single-flight: AuthProvider + nhiều apiRequest 401 cùng lúc chỉ mint 1 lần.
-   *
-   * `rememberMe` (mặc định true) quyết định refresh-token cookie sống qua
-   * việc đóng trình duyệt (7 ngày) hay chỉ là session cookie — xem
-   * app/api/auth/session/route.ts.
+   * Cấp JWT app + đồng bộ role từ `public.users` vào SWR `auth-role`.
+   * Single-flight: AuthProvider + apiRequest 401 chỉ mint 1 lần.
    */
-  async mintApiSession(rememberMe: boolean = true): Promise<boolean> {
+  async mintApiSession(rememberMe: boolean = true): Promise<MintApiSessionResult> {
     if (mintSessionInFlight) return mintSessionInFlight;
 
     mintSessionInFlight = (async () => {
@@ -120,9 +112,21 @@ export const authRepository = {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ rememberMe }),
         });
-        return res.ok;
+        if (!res.ok) {
+          return { ok: false, role: null };
+        }
+        const json = (await res.json().catch(() => null)) as {
+          success?: boolean;
+          data?: { role?: string };
+        } | null;
+        if (!json?.success) {
+          return { ok: false, role: null };
+        }
+        const role = authService.fromDbRole(json.data?.role);
+        await mutate(AUTH_ROLE_SWR_KEY, role, { revalidate: false });
+        return { ok: true, role };
       } catch {
-        return false;
+        return { ok: false, role: null };
       } finally {
         mintSessionInFlight = null;
       }
@@ -131,10 +135,6 @@ export const authRepository = {
     return mintSessionInFlight;
   },
 
-  /**
-   * Cart/checkout: chờ mint AuthProvider đang bay (nếu có).
-   * Không gọi /session mới — tránh spam; thiếu cookie vẫn do apiRequest remint.
-   */
   async waitForInFlightApiSession(): Promise<void> {
     if (mintSessionInFlight) await mintSessionInFlight;
   },

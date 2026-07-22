@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   notifyError: vi.fn(),
   notifyInfo: vi.fn(),
   routerPush: vi.fn(),
+  apiRequest: vi.fn(),
 }));
 
 vi.mock("@/lib/useAuthStore", () => ({
@@ -34,6 +35,11 @@ vi.mock("@/lib/toast", () => ({
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mocks.routerPush }),
+  usePathname: () => "/",
+}));
+
+vi.mock("@/lib/api-client", () => ({
+  apiRequest: mocks.apiRequest,
 }));
 
 import AuthModal from "./AuthModal";
@@ -85,6 +91,7 @@ describe("AuthModal — đăng nhập", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.useAuthStore.mockReturnValue(authStoreState());
+    mocks.apiRequest.mockResolvedValue({ exists: true });
   });
 
   it("mở ở tab Đăng nhập theo mặc định với email + mật khẩu", async () => {
@@ -162,6 +169,28 @@ describe("AuthModal — đăng nhập", () => {
     await waitFor(() =>
       expect(signIn).toHaveBeenCalledWith("user@example.com", "matkhau123", true)
     );
+  });
+
+  it("email chưa tồn tại: toast + chuyển tab Đăng ký, không gọi signIn", async () => {
+    mocks.apiRequest.mockResolvedValue({ exists: false });
+    const signIn = vi.fn();
+    mocks.useAuthStore.mockReturnValue(authStoreState({ signIn }));
+
+    const user = userEvent.setup();
+    renderAuthModal();
+    await screen.findByRole("dialog");
+
+    await user.type(screen.getByPlaceholderText("tenban@example.com"), "new@example.com");
+    await user.type(screen.getByPlaceholderText("••••••••"), "matkhau123");
+    await user.click(getSubmitButton());
+
+    await waitFor(() =>
+      expect(mocks.notifyError).toHaveBeenCalledWith(
+        "Tài khoản chưa tồn tại, mời bạn đăng ký.",
+      ),
+    );
+    expect(signIn).not.toHaveBeenCalled();
+    expect(await screen.findByText("Tạo tài khoản mới")).toBeInTheDocument();
   });
 
   it("submit sai mật khẩu: hiển thị toast lỗi từ Supabase, modal vẫn mở", async () => {

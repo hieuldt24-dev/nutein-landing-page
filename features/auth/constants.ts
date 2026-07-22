@@ -1,6 +1,30 @@
 /** SWR-as-store key — user đang đăng nhập (không phải URL API). */
 export const AUTH_USER_SWR_KEY = "auth-user";
 
+/** SWR-as-store — mở/đóng AuthModal (`true`/`false`). */
+export const AUTH_MODAL_SWR_KEY = "auth-modal";
+
+/**
+ * SWR-as-store — options khi mở AuthModal (tab, returnTo, email prefill).
+ * Đọc khi `auth-modal` chuyển sang `true`; clear khi đóng.
+ */
+export const AUTH_MODAL_OPTIONS_SWR_KEY = "auth-modal-options";
+
+export type AuthModalTab = "login" | "register";
+
+export type AuthModalOptions = {
+  tab: AuthModalTab;
+  /** Path nội bộ sau auth thành công / sau verify email (VD `/checkout`). */
+  returnTo: string | null;
+  email: string | null;
+};
+
+export const AUTH_MODAL_OPTIONS_DEFAULT: AuthModalOptions = {
+  tab: "login",
+  returnTo: null,
+  email: null,
+};
+
 /**
  * SWR-as-store key — true khi AuthProvider đã nhận sự kiện onAuthStateChange
  * đầu tiên (session Supabase đã được xác định thật, dù là có hay không có
@@ -10,6 +34,12 @@ export const AUTH_USER_SWR_KEY = "auth-user";
  * async kịp resolve, gây flash/flip sai giữa các lần load trang.
  */
 export const AUTH_READY_SWR_KEY = "auth-ready";
+
+/**
+ * SWR-as-store — role từ server (`public.users` qua POST /api/auth/session).
+ * Tách khỏi Supabase User vì metadata không chứa role DB.
+ */
+export const AUTH_ROLE_SWR_KEY = "auth-role";
 
 /** Tên cookie httpOnly chứa JWT access/refresh token riêng của app (bảo vệ app/api/**). */
 export const ACCESS_TOKEN_COOKIE = "nutein_access_token";

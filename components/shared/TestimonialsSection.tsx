@@ -1,8 +1,11 @@
 "use client";
 
 import { type CSSProperties } from "react";
+import Image from "next/image";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { StarRating } from "@/components/ui/StarRating";
+
+const TESTIMONIAL_STAR_SRC = "/images/element_stars_4@216x.png";
 
 const REVIEWS = [
   {
@@ -34,20 +37,45 @@ const REVIEWS = [
 export default function TestimonialsSection() {
   return (
     <section id="testimonials" className="relative overflow-hidden bg-surface py-24">
-      <div className="max-w-[1200px] mx-auto px-6">
-        <SectionHeading eyebrow="Đánh giá khách hàng" align="left" className="text-[clamp(44px,6.5vw,88px)] tracking-[-0.04em] mb-4">
-          Khách hàng nói gì<br />về Nutein?
-        </SectionHeading>
-        <p className="text-text-muted text-base max-w-[600px] mb-8 leading-relaxed">
-          Hơn 50,000+ khách hàng đã tin tưởng và thay đổi thói quen dinh dưỡng cùng Nutein để hướng tới cuộc sống khỏe mạnh mỗi ngày.
-        </p>
+      <div className="mx-auto max-w-[1200px] px-6">
+        <div className="relative mb-10 sm:mb-12 md:flex md:items-start md:justify-between md:gap-10">
+          <div className="relative z-[1] min-w-0 md:flex-1">
+            <SectionHeading
+              eyebrow="Đánh giá khách hàng"
+              align="left"
+              className="mb-4 text-[clamp(36px,7vw,88px)] tracking-[-0.04em]"
+            >
+              Khách hàng nói gì<br />về Nutein?
+            </SectionHeading>
+            <p className="max-w-[600px] text-base leading-relaxed text-text-muted">
+              Hơn 50,000+ khách hàng đã tin tưởng và thay đổi thói quen dinh dưỡng cùng Nutein để hướng tới cuộc sống khỏe mạnh mỗi ngày.
+            </p>
+          </div>
+
+          {/*
+            Mobile: absolute sau heading (trang trí, không chen flow).
+            Desktop: cột phải đối diện heading, to hơn.
+          */}
+          <div
+            className="pointer-events-none absolute top-6 right-0 z-0 size-36 -translate-y-2 translate-x-[12%] opacity-55 animate-float-slow sm:size-44 md:relative md:top-auto md:right-auto md:mt-1 md:size-56 md:translate-x-0 md:translate-y-0 md:opacity-100 lg:size-64 xl:size-72"
+            aria-hidden
+          >
+            <Image
+              src={TESTIMONIAL_STAR_SRC}
+              alt=""
+              fill
+              sizes="(max-width: 768px) 176px, (max-width: 1280px) 256px, 288px"
+              className="object-contain"
+            />
+          </div>
+        </div>
 
         <div className="scrollbar-hide flex gap-6 overflow-x-auto snap-x snap-mandatory pb-4 md:grid md:grid-cols-3 md:overflow-visible">
           {REVIEWS.map((review, idx) => (
             <div
               key={idx}
               suppressHydrationWarning
-              className="animate-fade-up flex flex-col gap-5 p-8 rounded-[40px] bg-surface w-[300px] md:w-auto shrink-0 snap-start"
+              className="animate-fade-up flex w-[300px] shrink-0 snap-start flex-col gap-5 rounded-[40px] bg-surface p-8 md:w-auto"
               style={{
                 animationDelay: `${idx * 0.15}s`,
                 border: "2px solid var(--color-ink)",
@@ -55,21 +83,21 @@ export default function TestimonialsSection() {
             >
               <div className="flex items-center justify-between">
                 <StarRating rating={review.rating} size={15} />
-                <span className="font-display text-primary/25 text-5xl leading-none select-none">&ldquo;</span>
+                <span className="select-none font-display text-5xl leading-none text-primary/25">&ldquo;</span>
               </div>
 
-              <p className="text-[14.5px] text-text-body leading-relaxed italic grow">{review.comment}</p>
+              <p className="grow text-[14.5px] italic leading-relaxed text-text-body">{review.comment}</p>
 
-              <div className="pt-4 border-t border-[color:var(--color-border)] flex items-center gap-3.5" suppressHydrationWarning>
+              <div className="flex items-center gap-3.5 border-t border-[color:var(--color-border)] pt-4" suppressHydrationWarning>
                 <div
                   suppressHydrationWarning
-                  className="w-11 h-11 rounded-2xl bg-primary-soft text-primary-deep font-display font-extrabold text-[15px] flex items-center justify-center shrink-0"
+                  className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary-soft font-display text-[15px] font-extrabold text-primary-deep"
                 >
                   {review.avatar}
                 </div>
                 <div suppressHydrationWarning>
-                  <h4 className="font-display font-extrabold text-[15px] text-ink">{review.name}</h4>
-                  <p className="text-xs text-text-muted mt-0.5">{review.age} • {review.role}</p>
+                  <h4 className="font-display text-[15px] font-extrabold text-ink">{review.name}</h4>
+                  <p className="mt-0.5 text-xs text-text-muted">{review.age} • {review.role}</p>
                 </div>
               </div>
             </div>

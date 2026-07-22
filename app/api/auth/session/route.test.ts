@@ -67,6 +67,12 @@ describe("POST /api/auth/session", () => {
     const response = await POST(fakeRequest());
     expect(response.status).toBe(200);
 
+    const body = await response.json();
+    expect(body).toMatchObject({
+      success: true,
+      data: { role: "staff" },
+    });
+
     const accessToken = response.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
     const refreshToken = response.cookies.get(REFRESH_TOKEN_COOKIE)?.value;
     expect(accessToken).toBeTruthy();

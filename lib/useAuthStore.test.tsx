@@ -9,7 +9,7 @@ vi.mock("@/features/auth/services/auth.repository", () => ({
     signInWithPassword: vi.fn(),
     signUpWithPassword: vi.fn(),
     signOut: vi.fn(),
-    mintApiSession: vi.fn().mockResolvedValue(true),
+    mintApiSession: vi.fn().mockResolvedValue({ ok: true, role: "user" }),
   },
   toAuthUser: vi.fn(
     (user: User): AuthUser => ({

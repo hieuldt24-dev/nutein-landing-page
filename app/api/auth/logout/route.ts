@@ -10,13 +10,14 @@ import {
 import { jwtService } from "@/features/auth/services/jwt.service";
 import { refreshTokenService } from "@/features/auth/services/refresh-token.service";
 import { auditLogService } from "@/features/auth/services/audit-log.service";
+import { cartServerService } from "@/features/cart/services/cart.server.service";
+import { resolveCartActor } from "@/features/cart/services/cart-session.server";
 
 /**
  * POST /api/auth/logout
- * Thu hồi refresh token thật sự trong DB (không chỉ xoá cookie) — nếu cookie
- * từng bị đánh cắp trước đó, token cũ không còn dùng được nữa dù chưa hết
- * hạn tự nhiên. Supabase signOut() được gọi riêng phía client (xem
- * features/auth/services/auth.repository.ts#signOut) — 2 việc độc lập.
+ * Thu hồi refresh token trong DB + xoá JWT cookies. Đồng thời clear session
+ * cart (cookie `nutein_cart_sid`) để guest / account mới không kế thừa giỏ
+ * của user vừa logout. Supabase signOut() gọi riêng phía client.
  */
 export const POST = withErrorHandler(async (req: NextRequest) => {
   const refreshToken = req.cookies.get(REFRESH_TOKEN_COOKIE)?.value;
@@ -35,6 +36,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       // im lặng — xem docstring
     }
   }
+
+  // Xoá hàng trên session cookie trước khi client hydrate lại như guest.
+  // User cart (cart.user_id) giữ nguyên — chỉ mất mirror session.
+  const { sessionId } = resolveCartActor(req);
+  await cartServerService.clearSession(sessionId).catch(() => undefined);
 
   const response = successResponse(null);
   response.cookies.set(ACCESS_TOKEN_COOKIE, "", { ...AUTH_COOKIE_OPTIONS, maxAge: 0 });
