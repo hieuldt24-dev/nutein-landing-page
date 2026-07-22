@@ -1,6 +1,7 @@
 "use client";
 
 import useSWR from "swr";
+import { ACCOUNT_ORDERS_API_PATH } from "@/features/account/constants";
 import { fetcher } from "@/lib/swr-fetcher";
 import { formatCurrencyVnd } from "@/lib/utils";
 import type { AccountOrder } from "@/features/account/types";
@@ -20,11 +21,8 @@ function formatOrderDate(iso: string): string {
 }
 
 export function AccountOrderList() {
-  const { user } = useAuthStore();
-  const email = user?.email;
-  const key = email
-    ? `/api/account/orders?email=${encodeURIComponent(email)}`
-    : null;
+  const { isLoggedIn } = useAuthStore();
+  const key = isLoggedIn ? ACCOUNT_ORDERS_API_PATH : null;
 
   const { data, error, isLoading } = useSWR<AccountOrder[]>(key, fetcher);
 
@@ -73,7 +71,7 @@ export function AccountOrderList() {
                 {order.orderCode}
               </p>
               <p className="mt-1 text-[13px] text-text-body">
-                Nutein · {order.variantLabel} · SL {order.quantity}
+                Nutein · {order.variantLabel} · {order.quantity} hũ
               </p>
               {order.estimatedDeliveryLabel ? (
                 <p className="mt-1 text-[12px] text-text-muted">

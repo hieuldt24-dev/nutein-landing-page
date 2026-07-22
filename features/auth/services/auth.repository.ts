@@ -1,6 +1,9 @@
 import type { AuthError, User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase-browser";
-import type { AuthUser } from "../types";
+import { authService } from "./auth.service";
+import type { AuthRole, AuthUser } from "../types";
+
+const ROLES: readonly AuthRole[] = ["user", "staff", "admin"];
 
 /** Map lỗi Supabase Auth (tiếng Anh) sang thông báo tiếng Việt cho UI. */
 function mapAuthError(error: AuthError): string {
@@ -16,9 +19,19 @@ function mapAuthError(error: AuthError): string {
   }
 }
 
+function normalizeRole(raw: unknown): AuthRole | null {
+  if (typeof raw === "string" && (ROLES as readonly string[]).includes(raw)) {
+    return raw as AuthRole;
+  }
+  return null;
+}
+
+let mintSessionInFlight: Promise<boolean> | null = null;
+
 /** Map Supabase `User` (auth.users) sang shape `AuthUser` app đang dùng. */
 export function toAuthUser(user: User): AuthUser {
   const meta = user.user_metadata ?? {};
+  const appMeta = user.app_metadata ?? {};
   const fullName =
     typeof meta.full_name === "string" && meta.full_name.trim()
       ? meta.full_name.trim()
@@ -26,10 +39,17 @@ export function toAuthUser(user: User): AuthUser {
         ? meta.name.trim()
         : undefined;
 
+  const email = user.email ?? "";
+  // Ưu tiên claims Supabase; phase 0 fallback allowlist email (auth.service).
+  const roleFromMeta =
+    normalizeRole(appMeta.role) ?? normalizeRole(meta.role) ?? null;
+  const role = roleFromMeta ?? authService.resolveRole(email);
+
   return {
-    email: user.email ?? "",
+    email,
     fullName,
     phone: user.phone || undefined,
+    role,
   };
 }
 
@@ -80,22 +100,42 @@ export const authRepository = {
    * Cấp cặp JWT access/refresh riêng của app (httpOnly cookie) ngay sau khi
    * Supabase đã xác thực xong — app/api/** dùng cặp token này qua
    * src/middlewares/authenticate.middlware.ts, không cần verify lại Supabase
-   * mỗi request. Không throw nếu lỗi: mất JWT riêng không nên chặn luồng
-   * đăng nhập chính (vẫn còn session Supabase hợp lệ).
+   * mỗi request. Trả `true` nếu set cookie thành công. Không throw nếu lỗi:
+   * mất JWT riêng không nên chặn luồng đăng nhập chính (vẫn còn session
+   * Supabase hợp lệ); fetcher/api-client sẽ remint lại khi gặp 401.
+   *
+   * Single-flight: AuthProvider + nhiều apiRequest 401 cùng lúc chỉ mint 1 lần.
    *
    * `rememberMe` (mặc định true) quyết định refresh-token cookie sống qua
    * việc đóng trình duyệt (7 ngày) hay chỉ là session cookie — xem
    * app/api/auth/session/route.ts.
    */
-  async mintApiSession(rememberMe: boolean = true): Promise<void> {
-    try {
-      await fetch("/api/auth/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rememberMe }),
-      });
-    } catch {
-      // im lặng — xem docstring
-    }
+  async mintApiSession(rememberMe: boolean = true): Promise<boolean> {
+    if (mintSessionInFlight) return mintSessionInFlight;
+
+    mintSessionInFlight = (async () => {
+      try {
+        const res = await fetch("/api/auth/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ rememberMe }),
+        });
+        return res.ok;
+      } catch {
+        return false;
+      } finally {
+        mintSessionInFlight = null;
+      }
+    })();
+
+    return mintSessionInFlight;
+  },
+
+  /**
+   * Cart/checkout: chờ mint AuthProvider đang bay (nếu có).
+   * Không gọi /session mới — tránh spam; thiếu cookie vẫn do apiRequest remint.
+   */
+  async waitForInFlightApiSession(): Promise<void> {
+    if (mintSessionInFlight) await mintSessionInFlight;
   },
 };

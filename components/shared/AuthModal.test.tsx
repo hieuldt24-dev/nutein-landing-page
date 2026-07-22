@@ -231,21 +231,18 @@ describe("AuthModal — đăng nhập", () => {
     expect(screen.getByRole("button", { name: "Quên mật khẩu?" })).toBeDisabled();
   });
 
-  it("đã đăng nhập: hiện thông tin user + nút Đăng xuất thay vì form", async () => {
+  it("đã đăng nhập + mở modal: tự đóng (không còn panel Xin chào / Đăng xuất)", async () => {
     mocks.useAuthStore.mockReturnValue(
       authStoreState({
-        user: { email: "user@example.com", fullName: "Nguyễn Văn A" },
+        user: { email: "user@example.com", fullName: "Nguyễn Văn A", role: "user" },
         isLoggedIn: true,
       })
     );
 
     renderAuthModal();
-    await screen.findByRole("dialog");
 
-    expect(screen.queryByPlaceholderText("tenban@example.com")).not.toBeInTheDocument();
-    // Email hiện 2 lần (subtitle header + khối thông tin tài khoản) — hợp lệ.
-    expect(screen.getAllByText("user@example.com").length).toBe(2);
-    expect(screen.getByText("Nguyễn Văn A")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Đăng xuất" })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
   });
 });

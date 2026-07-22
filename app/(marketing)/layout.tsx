@@ -5,7 +5,7 @@ import { FloatingActionDock } from "@/components/ui/FloatingActionDock";
 /**
  * Layout marketing (Home, About, …): Navbar + Footer mount một lần,
  * soft-navigate không remount — giảm jank và giữ state UI (menu, BounceChars).
- * FAB Cart nổi toàn marketing (không gắn checkout — checkout có header riêng).
+ * FAB: scroll-to-top mọi size; cart FAB chỉ desktop (mobile cart ở header).
  */
 export default function MarketingLayout({
   children,

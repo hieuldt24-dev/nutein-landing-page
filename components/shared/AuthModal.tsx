@@ -16,6 +16,7 @@ import {
   type LoginFormValues,
   type RegisterFormValues,
 } from "@/features/auth/schemas/auth.schema";
+import { OPEN_AUTH_MODAL_STORAGE_KEY } from "@/features/account/constants";
 import { cn } from "@/lib/utils";
 
 function Field({
@@ -59,7 +60,7 @@ function TextInput({
 export default function AuthModal() {
   const router = useRouter();
   const { mutate } = useSWRConfig();
-  const { user, isLoggedIn, signIn, signUp, signOut } = useAuthStore();
+  const { isLoggedIn, signIn, signUp } = useAuthStore();
   // revalidateOnMount/OnFocus/OnReconnect: false — key này chỉ là cờ mở/đóng
   // UI (SWR-as-store), không phải server data. Không tắt sẽ có nguy cơ race
   // giống useAuthStore: fetcher no-op tự chạy lại (VD mỗi lần tab focus lại)
@@ -122,6 +123,23 @@ export default function AuthModal() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, setIsOpen]);
 
+  // Modal chỉ dành login/register — đã login thì đóng (tránh panel "Xin chào"
+  // + email trùng + Đăng xuất; tài khoản quản lý qua /account).
+  useEffect(() => {
+    if (isOpen && isLoggedIn) setIsOpen(false);
+  }, [isOpen, isLoggedIn, setIsOpen]);
+
+  // Guest bị chặn ở /account* → layout ghi flag rồi về `/`; mở modal 1 lần tại home.
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(OPEN_AUTH_MODAL_STORAGE_KEY) !== "1") return;
+      sessionStorage.removeItem(OPEN_AUTH_MODAL_STORAGE_KEY);
+      setIsOpen(true);
+    } catch {
+      /* private mode */
+    }
+  }, [setIsOpen]);
+
   if (!isOpen) return null;
 
   const onLogin = async (data: LoginFormValues) => {
@@ -157,12 +175,6 @@ export default function AuthModal() {
     } finally {
       setIsSubmittingForm(false);
     }
-  };
-
-  const onLogoutFromModal = async () => {
-    await signOut();
-    setIsOpen(false);
-    notify.success("Đã đăng xuất.");
   };
 
   return (
@@ -213,69 +225,42 @@ export default function AuthModal() {
               id="auth-modal-title"
               className="font-display text-[22px] font-bold leading-tight tracking-[-0.03em] text-ink"
             >
-              {isLoggedIn
-                ? "Xin chào"
-                : activeTab === "login"
-                  ? "Chào mừng trở lại"
-                  : "Tạo tài khoản mới"}
+              {activeTab === "login" ? "Chào mừng trở lại" : "Tạo tài khoản mới"}
             </h2>
             <p className="mt-1 text-sm text-text-muted">
-              {isLoggedIn
-                ? user?.email || "Bạn đã đăng nhập."
-                : activeTab === "login"
-                  ? "Đăng nhập để theo dõi đơn hàng và ưu đãi."
-                  : "Gia nhập cộng đồng sống lành cùng protein thực vật."}
+              {activeTab === "login"
+                ? "Đăng nhập để theo dõi đơn hàng và ưu đãi."
+                : "Gia nhập cộng đồng sống lành cùng protein thực vật."}
             </p>
           </div>
         </div>
 
-        {!isLoggedIn ? (
-          <div className="flex gap-6 border-b border-ink/15 px-6">
-            {(
-              [
-                { id: "login", label: "Đăng nhập" },
-                { id: "register", label: "Đăng ký" },
-              ] as const
-            ).map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                disabled={isSubmittingForm}
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  "cursor-pointer border-b-2 py-3 text-[14px] font-bold uppercase tracking-[-0.01em] transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-                  activeTab === tab.id
-                    ? "border-ink text-ink"
-                    : "border-transparent text-text-muted hover:text-ink"
-                )}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        ) : null}
+        <div className="flex gap-6 border-b border-ink/15 px-6">
+          {(
+            [
+              { id: "login", label: "Đăng nhập" },
+              { id: "register", label: "Đăng ký" },
+            ] as const
+          ).map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              disabled={isSubmittingForm}
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                "cursor-pointer border-b-2 py-3 text-[14px] font-bold uppercase tracking-[-0.01em] transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                activeTab === tab.id
+                  ? "border-ink text-ink"
+                  : "border-transparent text-text-muted hover:text-ink"
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
         <div className="overflow-y-auto px-6 py-6">
-          {isLoggedIn ? (
-            <div className="flex flex-col gap-4">
-              <div className="rounded-[var(--radius-md)] border border-ink/10 bg-surface px-4 py-3">
-                {user?.fullName ? (
-                  <p className="text-[15px] font-bold text-ink">{user.fullName}</p>
-                ) : null}
-                <p className="text-[13px] font-semibold text-text-muted">{user?.email}</p>
-              </div>
-              <FillButton
-                type="button"
-                variant="ink-solid"
-                onClick={() => {
-                  void onLogoutFromModal();
-                }}
-                className="h-[52px] w-full justify-center text-[15px] font-bold uppercase tracking-[-0.01em]"
-              >
-                Đăng xuất
-              </FillButton>
-            </div>
-          ) : activeTab === "login" ? (
+          {activeTab === "login" ? (
             <form onSubmit={handleLoginSubmit(onLogin)} className="flex flex-col gap-4">
               <Field label="Email" error={loginErrors.email?.message}>
                 <TextInput

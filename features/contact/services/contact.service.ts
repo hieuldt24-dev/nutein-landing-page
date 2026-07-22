@@ -1,40 +1,34 @@
 import "server-only";
+
 import { logger } from "@/src/logging/logger";
+import { EXPECTED_RESPONSE_TIME_HOURS } from "../constants";
 import type { ContactFormData, ContactSubmissionResult } from "../types";
+import { contactRepository } from "./contact.repository";
 
 /**
- * contactService - Logic nghiệp vụ xử lý form liên hệ.
- *
- * Đây là nơi thực thi:
- * - Lưu dữ liệu vào database
- * - Gửi email notification
- * - Tích hợp CRM
+ * contactService — lưu form liên hệ vào `contact_messages`.
+ * Email/CRM: chưa wire (TODO sau).
  */
 export const contactService = {
-  /**
-   * Xử lý và lưu thông tin liên hệ từ form.
-   *
-   * @param data - Dữ liệu đã được validate bởi contactFormSchema
-   * @returns Kết quả sau khi tạo thành công
-   */
   async submit(data: ContactFormData): Promise<ContactSubmissionResult> {
-    const serviceLogger = logger.child({ service: "contactService", action: "submit" });
+    const serviceLogger = logger.child({
+      service: "contactService",
+      action: "submit",
+    });
     serviceLogger.info({ email: data.email }, "Processing contact form submission");
 
-    // TODO: Thay thế bằng logic thực tế:
-    // - await db.contactSubmissions.create({ data })
-    // - await emailService.sendNotification({ to: "admin@nutein.com", ...data })
-
-    // Placeholder logic
-    await new Promise((resolve) => setTimeout(resolve, 100)); // Simulate async work
+    const row = await contactRepository.create(data);
 
     const result: ContactSubmissionResult = {
-      id: crypto.randomUUID(),
-      submittedAt: new Date(),
-      message: "Cảm ơn bạn đã liên hệ! Chúng tôi sẽ phản hồi trong vòng 24 giờ.",
+      id: row.id,
+      submittedAt: new Date(row.created_at),
+      message: `Cảm ơn bạn đã liên hệ! Chúng tôi sẽ phản hồi trong vòng ${EXPECTED_RESPONSE_TIME_HOURS} giờ.`,
     };
 
-    serviceLogger.info({ id: result.id, email: data.email }, "Contact form submitted successfully");
+    serviceLogger.info(
+      { id: result.id, email: data.email },
+      "Contact form submitted successfully",
+    );
 
     return result;
   },

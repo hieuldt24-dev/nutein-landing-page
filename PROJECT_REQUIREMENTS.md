@@ -143,3 +143,122 @@ Hiển thị ở chân tất cả các trang trên website:
 1. **Tinh gọn Menu điều hướng:** Các trang phụ như Giỏ hàng chi tiết, Thanh toán, Thành công, Chính sách không đưa vào menu chính để tránh phân tâm người dùng. Menu chính chỉ giữ các trang dẫn hướng chính.
 2. **Landing Page bán hàng hiệu năng cao:** Trang `/product` đóng vai trò Landing Page chuyển đổi chính. Cần tối ưu tải trang cực nhanh, hình ảnh sản phẩm chất lượng cao, thông điệp USP rõ ràng ngay tại phần đầu trang (Hero Section).
 3. **Responsive Design:** Thiết kế tương thích hoàn hảo trên các thiết bị di động (Mobile First), vì tỷ lệ khách hàng mua sắm Healthy Lifestyle qua điện thoại chiếm >80%.
+
+---
+
+## 6. Đặc Tả Vai Trò Người Dùng & Khu Vực Quản Trị (User / Staff / Admin)
+
+> Nguồn: bổ sung từ `TÀI LIỆU YÊU CẦU WEBSITE — NUTEIN (1).docx` (mục 7), đối chiếu với schema đã có ở `supabase/migrations/20260718000000_init_schema.sql`.
+
+Hệ thống có 3 role: **User** (khách hàng — đã đặc tả đủ ở Mục 2–3), **Staff** (nhân viên vận hành), **Admin** (quản trị cấp cao). Khu vực Staff/Admin nằm ngoài menu công khai, không public, yêu cầu đăng nhập bằng tài khoản có role tương ứng.
+
+**Nguyên tắc quyền hạn:**
+- User: chỉ xem/thao tác dữ liệu của chính mình (giỏ hàng, đơn hàng, địa chỉ, wishlist, đánh giá đã viết) — không vào được khu vực quản trị.
+- Staff: vận hành hàng ngày — đơn hàng, sản phẩm (SKU/variant, không phải catalog đa sản phẩm — xem ⚠️ ở Mục 1), coupon, blog, nội dung tĩnh, hộp thư liên hệ.
+- Admin: kế thừa toàn bộ quyền Staff + quản lý người dùng (đổi role, khóa/mở khóa) + xem audit log.
+
+> ⚠️ **Đã sẵn sàng ở tầng backend, chưa có ở tầng UI/route:** `Role` enum (`USER`/`STAFF`/`ADMIN`), RLS policy `"Staff/Admin manage products/coupons/orders/blog_posts/static_pages"`, `"Admin can update any profile"`, `"Only admin can view audit log"` đã tồn tại trong DB; JWT (`features/auth/services/jwt.service.ts`) đã có claim `role`. **Chưa có** bất kỳ route `app/admin/**` hay `app/api/admin/**` nào — toàn bộ bảng dưới đây đang ở trạng thái ⏳ (chưa triển khai).
+
+### 6.1 Staff — Trang vận hành (S1–S8)
+
+| # | Trạng thái | Trang | Mục tiêu | Route Path | Next.js File Path | Ghi chú |
+| :--- | :---: | :--- | :--- | :--- | :--- | :--- |
+| S1 | ⏳ | Đăng nhập quản trị | Xác thực nhân viên | `/admin/login` | `app/admin/login/page.tsx` | Form login riêng biệt với `AuthModal.tsx` của khách hàng — không tái dùng |
+| S2 | ⏳ | Dashboard tổng quan | Nắm nhanh tình hình vận hành | `/admin` | `app/admin/page.tsx` | Đơn mới, đơn cần xử lý, tin nhắn liên hệ chưa đọc, sản phẩm sắp hết hàng |
+| S3 | ⏳ | Quản lý đơn hàng | Xử lý đơn từ đặt tới giao xong | `/admin/orders`, `/admin/orders/[id]` | `app/admin/orders/page.tsx`, `app/admin/orders/[id]/page.tsx` | Lọc theo trạng thái/ngày, đổi trạng thái (Chờ xử lý → Đang xử lý → Đang giao → Đã giao/Hủy/Trả hàng), lịch sử đổi trạng thái (`order_status_logs` đã có) |
+| S4 | ⏳ | Quản lý sản phẩm | Cập nhật thông tin bán hàng | `/admin/products` | `app/admin/products/page.tsx` | ⚠️ Single-SKU: quản lý **SKU/variant** (hương vị/dung tích) của 1 sản phẩm Nutein, không phải catalog đa sản phẩm |
+| S5 | ⏳ | Quản lý coupon | Tạo chương trình khuyến mãi | `/admin/coupons` | `app/admin/coupons/page.tsx` | Tạo/sửa/tắt, % hoặc số tiền giảm, giới hạn lượt dùng, ngày hết hạn |
+| S6 | ⏳ | Quản lý Blog | Sản xuất nội dung Khám phá | `/admin/blog`, `/admin/blog/[id]` | `app/admin/blog/page.tsx`, `app/admin/blog/[id]/page.tsx` | Soạn thảo, chọn chuyên mục/tag, lưu nháp hoặc đăng công khai |
+| S7 | ⏳ | Quản lý nội dung tĩnh | Cập nhật nội dung ít thay đổi | `/admin/content/[slug]` | `app/admin/content/[slug]/page.tsx` | 5 trang Chính sách + trang Về Nutein qua CMS, không cần dev sửa code |
+| S8 | ⏳ | Hộp thư Liên hệ | Chăm sóc khách qua form liên hệ | `/admin/messages` | `app/admin/messages/page.tsx` | Đánh dấu đã đọc/đã xử lý, ghi chú nội bộ (`contact_messages` đã có) |
+
+### 6.2 Admin — Trang độc quyền (kế thừa toàn bộ S2–S8 + A1–A2)
+
+| # | Trạng thái | Trang | Mục tiêu | Route Path | Next.js File Path | Ghi chú |
+| :--- | :---: | :--- | :--- | :--- | :--- | :--- |
+| A1 | ⏳ | Quản lý người dùng | Quản lý nhân sự + tài khoản khách | `/admin/users` | `app/admin/users/page.tsx` | Tìm/lọc theo role, thăng/hạ cấp role (User↔Staff↔Admin), khóa/mở khóa tài khoản |
+| A2 | ⏳ | Nhật ký hệ thống (Audit Log) | Giám sát thay đổi dữ liệu quan trọng | `/admin/audit-log` | `app/admin/audit-log/page.tsx` | Lọc theo người thực hiện/thời gian/loại thao tác — bảng `audit_log` + RLS đã có sẵn |
+
+### 6.3 Bảng tổng hợp quyền hạn
+
+| Chức năng | User | Staff | Admin |
+| :--- | :---: | :---: | :---: |
+| Mua hàng, quản lý tài khoản của chính mình | ✅ | – | – |
+| Đổi trạng thái đơn hàng | ❌ | ✅ | ✅ |
+| Sửa giá / tồn kho sản phẩm | ❌ | ✅ | ✅ |
+| Tạo / sửa mã giảm giá | ❌ | ✅ | ✅ |
+| Đăng / sửa bài Blog | ❌ | ✅ | ✅ |
+| Sửa nội dung Chính sách / Về Nutein | ❌ | ✅ | ✅ |
+| Xem & xử lý form Liên hệ | ❌ | ✅ | ✅ |
+| Quản lý tài khoản người dùng khác (đổi role) | ❌ | ❌ | ✅ |
+| Xem Audit Log | ❌ | ❌ | ✅ |
+
+> Khu vực quản trị nên tách route riêng khỏi `(marketing)`/`(account)` (ví dụ `app/admin/` với `layout.tsx` guard role STAFF/ADMIN riêng), giao diện tối giản, tập trung bảng dữ liệu/form — không cần đầu tư visual như trang User-facing.
+
+### 6.4 Đặc tả API quản trị (đề xuất — chưa triển khai, chưa có code)
+
+Chưa có route nào trong `app/api/admin/**` tồn tại — đây là spec để dùng làm checklist khi bắt đầu code. Mọi route theo đúng convention hiện có trong `app/api/**`:
+- Bọc `withErrorHandler` (`src/middlewares/error-handler.middleware.ts`), trả `ApiResponse<T>` qua `successResponse`/`createdResponse`/`errorResponse` (`src/api/response.ts`).
+- Guard 2 bước đã có sẵn, chỉ cần gọi, không cần viết mới: `const user = await authenticate(req)` rồi `requireRole(user, "STAFF", "ADMIN")` (hoặc chỉ `"ADMIN"` với A1/A2) — xem `src/middlewares/authenticate.middlware.ts:36`.
+- Lỗi chuẩn hoá qua `AppError`/`NotFoundError`/`ValidationError`/`ForbiddenError` (`src/errors/app.error.ts`) — 401 chưa đăng nhập/token hết hạn, 403 sai role, 404 không tìm thấy record, 400 Zod parse fail.
+
+| Method | Endpoint | Phục vụ trang | Role |
+| :--- | :--- | :--- | :---: |
+| GET | `/api/admin/dashboard` | S2 | STAFF, ADMIN |
+| GET | `/api/admin/orders`, `/api/admin/orders/[id]` | S3 | STAFF, ADMIN |
+| PATCH | `/api/admin/orders/[id]/status` | S3 | STAFF, ADMIN |
+| GET, POST | `/api/admin/products` | S4 | STAFF, ADMIN |
+| PATCH | `/api/admin/products/[id]` | S4 | STAFF, ADMIN |
+| GET, POST | `/api/admin/coupons` | S5 | STAFF, ADMIN |
+| PATCH, DELETE | `/api/admin/coupons/[id]` | S5 | STAFF, ADMIN |
+| GET, POST | `/api/admin/blog` | S6 | STAFF, ADMIN |
+| PATCH, DELETE | `/api/admin/blog/[id]` | S6 | STAFF, ADMIN |
+| GET, PATCH | `/api/admin/static-pages/[slug]` | S7 | STAFF, ADMIN |
+| GET | `/api/admin/contact-messages` | S8 | STAFF, ADMIN |
+| PATCH | `/api/admin/contact-messages/[id]` | S8 | STAFF, ADMIN |
+| GET | `/api/admin/users` | A1 | ADMIN |
+| PATCH | `/api/admin/users/[id]/role`, `/api/admin/users/[id]/status` | A1 | ADMIN |
+| GET | `/api/admin/audit-log` | A2 | ADMIN |
+
+Chi tiết request/response theo cột thật của schema (`supabase/migrations/20260718000000_init_schema.sql`):
+
+**S2 — Dashboard**
+- `GET /api/admin/dashboard` → `data: { newOrders: number; pendingOrders: number; unreadMessages: number; lowStockProducts: { id, sku, name, stock }[] }`
+
+**S3 — Đơn hàng** (`orders`, `order_items`, `order_status_logs`)
+- `GET /api/admin/orders?status=&from=&to=&page=&limit=` → `data: Order[]`, `meta: { page, limit, total }`. `Order` = `{ id, user_id, status, payment_method, payment_status, shipping_method, total_price, shipping_fee, discount_amount, final_price, created_at }`.
+- `GET /api/admin/orders/[id]` → order đầy đủ + `items: OrderItem[]` + `shipping_address` (JSONB snapshot) + `statusLogs: OrderStatusLog[]`.
+- `PATCH /api/admin/orders/[id]/status` — body `{ status: OrderStatus; note?: string }` (`OrderStatus` = `PENDING|PROCESSING|SHIPPED|DELIVERED|CANCELLED|RETURNED`). Service phải validate transition hợp lệ (không cho nhảy `DELIVERED` → `PENDING`), update `orders.status` + insert `order_status_logs` với `changed_by = user.userId`. 404 nếu order không tồn tại.
+
+**S4 — Sản phẩm** ⚠️ single-SKU — đây là quản lý **SKU/variant** của 1 sản phẩm Nutein (`flavor`/`size`), không phải catalog đa sản phẩm.
+- `GET /api/admin/products?includeDeleted=` → toàn bộ SKU kể cả `is_deleted=true` nếu có query — khác `GET /api/product` public (chỉ SKU active).
+- `POST /api/admin/products` — tạo SKU/variant mới, body khớp cột `products` (`sku, name, slug, description?, flavor?, size?, price, stock, images?, nutrition_facts?, ingredients?`).
+- `PATCH /api/admin/products/[id]` — partial update (giá, tồn kho, nội dung, ảnh, hoặc `is_deleted: true` để soft-delete SKU).
+
+**S5 — Coupon**
+- `GET /api/admin/coupons?active=` → list.
+- `POST /api/admin/coupons` — body `{ code, discount_type: "FIXED"|"PERCENTAGE", discount, min_order_value?, usage_limit?, expires_at? }`.
+- `PATCH /api/admin/coupons/[id]` — partial + toggle `is_active`.
+- `DELETE /api/admin/coupons/[id]` — ⚠️ `orders.coupon_id` reference `coupons(id)` không có `ON DELETE CASCADE/SET NULL`, nên hard-delete sẽ lỗi FK nếu coupon đã từng được dùng trong đơn. Khuyến nghị dùng `PATCH { is_active: false }` (soft-delete) làm hành vi chính; DELETE thật chỉ nên cho phép khi `used_count = 0`.
+
+**S6 — Blog**
+- `GET /api/admin/blog?category=&published=&q=` → list kể cả bản nháp (khác `GET /api/blog` public chỉ `is_published=true`).
+- `POST /api/admin/blog` — body khớp cột `blog_posts` (`category, tags[], title, slug, thumbnail?, excerpt?, content, author?, is_published?`).
+- `PATCH /api/admin/blog/[id]` — partial; khi set `is_published: true` mà `published_at` đang null thì service tự set `published_at = now()`.
+- `DELETE /api/admin/blog/[id]`.
+
+**S7 — Nội dung tĩnh (CMS)**
+- `GET /api/admin/static-pages/[slug]` → `{ slug, title, content, updated_at }`.
+- `PATCH /api/admin/static-pages/[slug]` — body `{ title?, content }`. Không có `POST` — 5 trang Chính sách + Về Nutein seed sẵn qua migration, endpoint này chỉ sửa nội dung record có sẵn.
+
+**S8 — Hộp thư liên hệ**
+- `GET /api/admin/contact-messages?isRead=&page=&limit=` → list `{ id, name, email, phone, message, is_read, handled_by, created_at }`.
+- `PATCH /api/admin/contact-messages/[id]` — body `{ is_read?: boolean }`, tự set `handled_by = user.userId`. ⚠️ **Gap cần xác nhận:** docx yêu cầu "ghi chú nội bộ" nhưng bảng `contact_messages` hiện **không có cột note** — cần thêm migration (`ALTER TABLE contact_messages ADD COLUMN internal_note TEXT`) nếu giữ yêu cầu này.
+
+**A1 — Quản lý người dùng**
+- `GET /api/admin/users?role=&q=&page=&limit=` → `{ id, email, name, phone, role, is_deleted, created_at }[]`.
+- `PATCH /api/admin/users/[id]/role` — body `{ role: "USER"|"STAFF"|"ADMIN" }`. Service phải chặn admin tự hạ role chính mình (RLS không chặn việc này, phải validate ở tầng service).
+- `PATCH /api/admin/users/[id]/status` — body `{ is_deleted: boolean }` (khóa = `true`). ⚠️ **Cần xác nhận:** cột `is_deleted` hiện dùng chung cho cả "xóa" và ý định "khóa tài khoản" của A1 — nếu 2 khái niệm cần tách biệt (khóa tạm thời khác xóa vĩnh viễn), cần thêm cột riêng (VD: `is_locked`) qua migration mới.
+
+**A2 — Audit log**
+- `GET /api/admin/audit-log?tableName=&userId=&action=&from=&to=&page=&limit=` → `{ id, user_id, action, table_name, record_id, old_data, new_data, ip_address, created_at }[]`. `action` = `CREATE|UPDATE|DELETE|LOGIN_SUCCESS|LOGOUT|TOKEN_REFRESH|TOKEN_REUSE_DETECTED`.

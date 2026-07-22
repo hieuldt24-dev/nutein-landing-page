@@ -71,6 +71,8 @@ html, body {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Chặn kéo ngang do absolute/transform lòi mép (marquee đã clip; FAB/star/process). */
+  overflow-x: clip;
 }
 
 body {
@@ -578,12 +580,16 @@ h1, h2, h3, h4, h5, h6 {
     grid-template-columns: 1fr !important;
   }
   .diff-frame-cluster {
+    /* % width con cần parent có chiều ngang thật — thiếu width → collapse 0 trên mobile */
+    width: 100%;
     max-width: 320px;
-    margin: 0 auto;
+    margin-inline: auto;
   }
   .diff-row {
-    grid-template-columns: 40px 52px 1fr !important;
-    row-gap: 10px !important;
+    /* Số + icon | copy — rộng hơn 40|52|1fr; !important vì utility/md:grid-cols cũng set columns */
+    grid-template-columns: 2.5rem 3.5rem minmax(0, 1fr) !important;
+    column-gap: 1rem !important;
+    row-gap: 0.75rem !important;
   }
 }
 

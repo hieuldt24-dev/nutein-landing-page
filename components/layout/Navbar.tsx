@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 const PRODUCT_LINK = { label: "Sản phẩm", href: "/product" };
 
 const navFillClass = "py-2 px-3.5 text-[13px] font-bold shadow-sm";
+const navEase = "duration-[400ms] ease-[cubic-bezier(0.215,0.61,0.355,1)]";
 
 /** Tam giác ▼ đặc — motif Joy Rush caret. */
 function NavCaret({ open }: { open?: boolean }) {
@@ -24,15 +25,59 @@ function NavCaret({ open }: { open?: boolean }) {
       aria-hidden
       className={cn(
         "inline-block size-0 border-x-[4px] border-x-transparent border-t-[5px] border-t-current opacity-90 transition-transform duration-200",
-        open && "rotate-180"
+        open && "rotate-180",
       )}
     />
   );
 }
 
 /**
- * Navbar — Joy Rush shell liền mạch:
- * một khối cream chứa nav + mega; mở bằng height (grid-rows) + fade nội dung.
+ * 3 gạch → gộp giữa → X.
+ * Top/bottom dịch về giữa rồi xoay ±45°; gạch giữa fade.
+ */
+function MenuIcon({ open }: { open: boolean }) {
+  return (
+    <span className="relative block h-3.5 w-[18px] shrink-0" aria-hidden>
+      <span
+        className={cn(
+          "absolute left-0 top-0 block h-0.5 w-full origin-center rounded-full bg-current transition-[top,transform] duration-300 ease-[cubic-bezier(0.215,0.61,0.355,1)]",
+          open && "top-[6px] rotate-45",
+        )}
+      />
+      <span
+        className={cn(
+          "absolute left-0 top-[6px] block h-0.5 w-full rounded-full bg-current transition-[opacity,transform] duration-200 ease-[cubic-bezier(0.215,0.61,0.355,1)]",
+          open && "scale-x-0 opacity-0",
+        )}
+      />
+      <span
+        className={cn(
+          "absolute left-0 top-[12px] block h-0.5 w-full origin-center rounded-full bg-current transition-[top,transform] duration-300 ease-[cubic-bezier(0.215,0.61,0.355,1)]",
+          open && "top-[6px] -rotate-45",
+        )}
+      />
+    </span>
+  );
+}
+
+function CartBadge({ count, className }: { count: number; className?: string }) {
+  if (count <= 0) return null;
+  return (
+    <span
+      className={cn(
+        "pointer-events-none absolute -top-1.5 -right-1.5 z-20 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-extrabold text-white",
+        className,
+      )}
+    >
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
+
+/**
+ * Navbar — Joy Rush shell:
+ * Desktop: Products / Khám phá | Logo | Giỏ / Tài khoản
+ * Mobile: Menu | Logo | Giỏ — panel expand (grid-rows) giống mega desktop
  */
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -42,9 +87,9 @@ export default function Navbar() {
   const router = useRouter();
   const { mutate } = useSWRConfig();
   const setAuthOpen = (val: boolean) => mutate("auth-modal", val, { revalidate: false });
-  const { isLoggedIn } = useAuthStore();
+  const { isLoggedIn, isStaffOrAdmin } = useAuthStore();
   const cartDrawer = useCartDrawer();
-  const { quantity: cartQuantity } = useCartStore();
+  const { lineCount: cartQuantity } = useCartStore();
 
   useEffect(() => {
     setMenuOpen(false);
@@ -71,6 +116,19 @@ export default function Navbar() {
     };
   }, [exploreOpen]);
 
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = "";
+    };
+  }, [menuOpen]);
+
   const handleUserClick = () => {
     if (isLoggedIn) {
       router.push("/account");
@@ -83,30 +141,47 @@ export default function Navbar() {
     setExploreOpen(true);
   };
 
+  const closeMenu = () => setMenuOpen(false);
+
+  const openCart = () => {
+    setMenuOpen(false);
+    cartDrawer.open();
+  };
+
+  const shellExpanded = menuOpen || exploreOpen;
+
   return (
     <header id="navbar" className="absolute top-0 left-0 right-0 z-30">
-      {/*
-        Một shell duy nhất (Joy Rush): khi mở → bg cream + bo góc dưới + shadow.
-        Nav và mega cùng nằm trong shell — không tách 2 khối trắng.
-      */}
       <div
         ref={shellRef}
         className={cn(
-          "relative w-full overflow-hidden transition-[background-color,box-shadow,border-radius] duration-[400ms] ease-[cubic-bezier(0.215,0.61,0.355,1)]",
-          exploreOpen
+          "relative w-full transition-[background-color,box-shadow,border-radius]",
+          navEase,
+          shellExpanded
             ? "rounded-b-[28px] bg-bg shadow-[0_28px_56px_rgba(53,30,41,0.14)] md:rounded-b-[40px]"
-            : "rounded-none bg-transparent shadow-none"
+            : "rounded-none bg-transparent shadow-none",
         )}
         onMouseLeave={() => setExploreOpen(false)}
       >
-        <nav className="relative mx-auto flex h-[92px] max-w-[1200px] items-center justify-between px-6 md:px-10">
+        <nav className="relative mx-auto flex h-[92px] max-w-[1200px] items-center justify-between px-5 md:px-10">
+          {/* Mobile: Menu — icon morph ☰ → X */}
+          <div className="relative z-[1] flex md:hidden">
+            <FillButton
+              variant="ink"
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-expanded={menuOpen}
+              aria-label={menuOpen ? "Đóng menu" : "Mở menu"}
+              className={navFillClass}
+            >
+              <MenuIcon open={menuOpen} />
+              {menuOpen ? "Đóng" : "Menu"}
+            </FillButton>
+          </div>
+
+          {/* Desktop: Products + Explore */}
           <ul className="relative z-[1] hidden list-none items-center gap-2 md:flex">
             <li>
-              <FillButton
-                href={PRODUCT_LINK.href}
-                variant="ink"
-                className={navFillClass}
-              >
+              <FillButton href={PRODUCT_LINK.href} variant="ink" className={navFillClass}>
                 {PRODUCT_LINK.label}
               </FillButton>
             </li>
@@ -128,6 +203,7 @@ export default function Navbar() {
             href="/"
             id="nav-logo"
             className="absolute left-1/2 top-1/2 z-[1] flex -translate-x-1/2 -translate-y-1/2 items-center"
+            onClick={closeMenu}
           >
             <Image
               src="/images/logo-horizontal-2x_1.svg"
@@ -135,140 +211,140 @@ export default function Navbar() {
               width={200}
               height={54}
               priority
-              className="h-12 w-auto md:h-[60px]"
+              className="h-10 w-auto md:h-[60px]"
             />
           </Link>
 
           <div className="relative z-[1] ml-auto flex shrink-0 items-center gap-2">
-            <FillButton
-              variant="ink"
-              onClick={cartDrawer.open}
-              className="hidden py-2 pr-4 pl-3.5 text-[13px] font-bold shadow-sm md:inline-flex"
-            >
-              <span className="relative inline-flex">
-                <ShoppingBag size={16} strokeWidth={2.2} />
-                {cartQuantity > 0 && (
-                  <span className="absolute -top-2 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-extrabold text-white">
-                    {cartQuantity}
-                  </span>
-                )}
-              </span>
-              Giỏ hàng
-            </FillButton>
+            <div className="relative">
+              <FillButton variant="ink" onClick={openCart} className={navFillClass}>
+                <ShoppingBag size={16} strokeWidth={2.2} aria-hidden />
+                Giỏ
+              </FillButton>
+              <CartBadge count={cartQuantity} />
+            </div>
 
             <FillButton
               variant="ink"
               onClick={handleUserClick}
               aria-label={isLoggedIn ? "Tài khoản" : "Đăng nhập"}
-              className="hidden py-2 pr-4 pl-3.5 text-[13px] font-bold shadow-sm md:inline-flex"
+              className={cn(navFillClass, "hidden md:inline-flex")}
             >
               <User size={16} strokeWidth={2.2} />
               {isLoggedIn ? "Tài khoản" : "Đăng nhập"}
             </FillButton>
-
-            <button
-              id="nav-burger"
-              aria-label="Mở menu"
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="flex cursor-pointer flex-col gap-[5px] p-2 text-ink md:hidden"
-            >
-              {[0, 1, 2].map((i) => (
-                <span
-                  key={i}
-                  className="block h-0.5 w-5 rounded-sm bg-current transition-transform duration-200"
-                  style={{
-                    transform: menuOpen
-                      ? i === 0
-                        ? "rotate(45deg) translateY(7px)"
-                        : i === 2
-                          ? "rotate(-45deg) translateY(-7px)"
-                          : "none"
-                      : "none",
-                    opacity: menuOpen && i === 1 ? 0 : 1,
-                  }}
-                />
-              ))}
-            </button>
           </div>
         </nav>
 
-        {/* Mega luôn mount — height expand (grid-rows) + opacity fade 0.4s như Joy Rush */}
+        {/* Desktop mega — height expand + fade */}
         <div
           className={cn(
-            "hidden grid transition-[grid-template-rows] duration-[400ms] ease-[cubic-bezier(0.215,0.61,0.355,1)] md:grid",
-            exploreOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+            "hidden grid transition-[grid-template-rows]",
+            navEase,
+            "md:grid",
+            exploreOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
           )}
           aria-hidden={!exploreOpen}
         >
           <div className="min-h-0 overflow-hidden">
             <div
               className={cn(
-                "transition-opacity duration-[400ms] ease-[cubic-bezier(0.215,0.61,0.355,1)]",
+                "transition-opacity",
+                navEase,
                 exploreOpen
                   ? "pointer-events-auto opacity-100"
-                  : "pointer-events-none opacity-0"
+                  : "pointer-events-none opacity-0",
               )}
             >
               <NavExploreMega onNavigate={() => setExploreOpen(false)} />
             </div>
           </div>
         </div>
-      </div>
 
-      {menuOpen && (
-        <div className="flex flex-col gap-0.5 border-t border-[color:var(--color-border)] bg-bg/97 px-6 py-3 backdrop-blur-xl md:hidden">
-          <Link
-            href={PRODUCT_LINK.href}
-            onClick={() => setMenuOpen(false)}
-            className="cursor-pointer rounded-lg border-b border-[color:var(--color-border-subtle)] px-2 py-2.5 text-[15px] font-medium text-text-body"
-          >
-            {PRODUCT_LINK.label}
-          </Link>
-
-          <p className="px-2 pt-2 pb-1 text-[11px] font-bold uppercase tracking-[0.08em] text-primary">
-            Khám phá
-          </p>
-          {EXPLORE_LINKS.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              onClick={() => setMenuOpen(false)}
-              className="cursor-pointer rounded-lg border-b border-[color:var(--color-border-subtle)] px-2 py-2.5 text-[15px] font-medium text-text-body"
+        {/* Mobile menu — cùng pattern grid-rows / fade như mega desktop */}
+        <div
+          className={cn(
+            "grid transition-[grid-template-rows] md:hidden",
+            navEase,
+            menuOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+          )}
+          aria-hidden={!menuOpen}
+        >
+          <div className="min-h-0 overflow-hidden">
+            <div
+              className={cn(
+                "flex min-h-[calc(100svh-92px)] flex-col transition-opacity",
+                navEase,
+                menuOpen
+                  ? "pointer-events-auto opacity-100"
+                  : "pointer-events-none opacity-0",
+              )}
+              role="dialog"
+              aria-modal={menuOpen}
+              aria-label="Menu điều hướng"
             >
-              {link.label}
-            </Link>
-          ))}
+              <div className="flex-1 overflow-y-auto px-6 pt-2 pb-6">
+                <Link
+                  href={PRODUCT_LINK.href}
+                  onClick={closeMenu}
+                  className="font-display flex items-center justify-between border-b border-ink/10 py-5 text-[28px] font-bold tracking-[-0.03em] text-ink"
+                >
+                  {PRODUCT_LINK.label}
+                </Link>
 
-          <button
-            type="button"
-            onClick={() => {
-              setMenuOpen(false);
-              cartDrawer.open();
-            }}
-            className="flex w-full cursor-pointer items-center gap-2 rounded-lg border-b border-[color:var(--color-border-subtle)] px-2 py-2.5 text-left text-[15px] font-medium text-text-body"
-          >
-            <ShoppingBag size={18} strokeWidth={2} />
-            Giỏ hàng
-            {cartQuantity > 0 && (
-              <span className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-extrabold text-white">
-                {cartQuantity}
-              </span>
-            )}
-          </button>
+                <p className="pt-6 pb-2 text-[11px] font-bold uppercase tracking-[0.12em] text-primary">
+                  Khám phá
+                </p>
+                {EXPLORE_LINKS.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={closeMenu}
+                    className="font-display block border-b border-ink/10 py-4 text-[22px] font-bold tracking-[-0.02em] text-ink"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
 
-          <button
-            type="button"
-            onClick={() => {
-              setMenuOpen(false);
-              handleUserClick();
-            }}
-            className="flex w-full cursor-pointer items-center gap-2 rounded-lg border-b border-[color:var(--color-border-subtle)] px-2 py-2.5 text-left text-[15px] font-medium text-text-body"
-          >
-            <User size={18} strokeWidth={2} />
-            {isLoggedIn ? "Tài khoản" : "Đăng nhập"}
-          </button>
+                {isStaffOrAdmin ? (
+                  <Link
+                    href="/admin"
+                    onClick={closeMenu}
+                    className="mt-6 block py-3 text-[13px] font-extrabold uppercase tracking-[0.08em] text-ink"
+                  >
+                    Quản trị
+                  </Link>
+                ) : null}
+              </div>
+
+              <div className="flex flex-col gap-3 border-t border-ink/10 px-6 py-5">
+                <FillButton
+                  variant="ink"
+                  onClick={() => {
+                    closeMenu();
+                    handleUserClick();
+                  }}
+                  className="h-14 w-full justify-center text-[15px] font-bold uppercase tracking-[-0.01em]"
+                >
+                  {isLoggedIn ? "Tài khoản" : "Đăng nhập"}
+                </FillButton>
+                <FillButton
+                  href="/product"
+                  variant="ink-solid"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    closeMenu();
+                    router.push("/product");
+                  }}
+                  className="h-14 w-full justify-center text-[15px] font-bold uppercase tracking-[-0.01em]"
+                >
+                  Mua ngay
+                </FillButton>
+              </div>
+            </div>
+          </div>
         </div>
-      )}
+      </div>
     </header>
   );
 }

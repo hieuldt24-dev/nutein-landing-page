@@ -3,12 +3,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
+import { useAuthStore } from "@/lib/useAuthStore";
 
 export const EXPLORE_LINKS = [
   { label: "Về chúng tôi", href: "/about" },
   { label: "Kiến thức", href: "/blog" },
   { label: "Liên hệ", href: "/contact" },
 ] as const;
+
+const ADMIN_LINK = { label: "Quản Trị", href: "/admin" } as const;
 
 const PROMO_CARDS = [
   {
@@ -38,8 +41,11 @@ type NavExploreMegaProps = {
 /**
  * Nội dung mega "Khám phá" — nằm trong shell navbar (không tự có bg/absolute).
  * Animation do parent: grid-rows height + opacity (Joy Rush ~0.4s).
+ * Link Quản Trị chỉ hiện khi session staff/admin (client store — tránh lệch SSR).
  */
 export function NavExploreMega({ onNavigate }: NavExploreMegaProps) {
+  const { isStaffOrAdmin } = useAuthStore();
+
   return (
     <div id="nav-explore-mega" role="region" aria-label="Khám phá Nutein">
       <div className="mx-auto max-w-[1200px] px-6 pb-6 pt-1 md:px-10 md:pb-8">
@@ -56,6 +62,17 @@ export function NavExploreMega({ onNavigate }: NavExploreMegaProps) {
                 </Link>
               </li>
             ))}
+            {isStaffOrAdmin ? (
+              <li>
+                <Link
+                  href={ADMIN_LINK.href}
+                  onClick={onNavigate}
+                  className="font-display text-[28px] font-bold leading-[1.15] tracking-[-0.03em] text-ink transition-colors hover:text-primary md:text-[32px] lg:text-[36px]"
+                >
+                  {ADMIN_LINK.label}
+                </Link>
+              </li>
+            ) : null}
           </ul>
 
           {PROMO_CARDS.map((card) => (

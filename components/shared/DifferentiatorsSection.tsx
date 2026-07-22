@@ -51,14 +51,14 @@ export default function DifferentiatorsSection() {
           Vì sao Protein Nutein<br />khác biệt?
         </SectionHeading>
 
-        {/* Cụm ảnh khung mây/bông hoa (cloud) — đúng motif collage của reference */}
-        <div className="diff-brand grid gap-10 md:gap-16 items-center mb-20" style={{ gridTemplateColumns: "0.9fr 1.1fr" }}>
+        {/* Cụm ảnh + quote — 1 cột mobile, 2 cột desktop (không inline grid — tránh đè CSS). */}
+        <div className="diff-brand mb-20 grid grid-cols-1 items-center gap-10 md:grid-cols-[0.9fr_1.1fr] md:gap-16">
           {/* Product image + rotating text ring ở góc sau */}
-          <div className="diff-frame-cluster relative h-[360px] md:h-[500px] flex items-center justify-center overflow-visible">
+          <div className="diff-frame-cluster relative mx-auto flex h-[360px] w-full max-w-[320px] items-center justify-center overflow-visible md:mx-0 md:h-[500px] md:max-w-none">
             {/* Ambient glow */}
             <div
               aria-hidden
-              className="absolute w-[70%] h-[70%] rounded-full blur-[40px] z-0"
+              className="absolute z-0 h-[70%] w-[70%] rounded-full blur-[40px]"
               style={{ background: "radial-gradient(circle, rgba(226,165,80,0.28) 0%, transparent 70%)" }}
             />
 
@@ -68,13 +68,11 @@ export default function DifferentiatorsSection() {
               fontSize={10.5}
               duration={18}
               color="rgba(192,134,53,0.75)"
-              className="absolute bottom-[-16px] right-[-20px] z-[1]"
+              className="absolute right-[-20px] bottom-[-16px] z-[1]"
             />
 
             {/* Product visual — z-[2] để nổi trên vòng chữ */}
-            <div
-              className="relative w-[84%] aspect-square z-[2] animate-float-slow"
-            >
+            <div className="relative z-[2] aspect-square w-[84%] animate-float-slow">
               <Image
                 src="/images/herosection.png"
                 alt="Nutein Protein thực vật"
@@ -90,10 +88,10 @@ export default function DifferentiatorsSection() {
             </div>
           </div>
           <div>
-            <p className="font-display text-xl md:text-2xl text-ink leading-snug tracking-[-0.01em] mb-6">
+            <p className="font-display mb-6 text-xl leading-snug tracking-[-0.01em] text-ink md:text-2xl">
               &ldquo;Chúng tôi tin rằng cơ thể bạn xứng đáng nhận được nguồn dinh dưỡng lành mạnh nhất. Không chỉ cung cấp năng lượng sạch, Nutein là lời cam kết bền vững cho sức khỏe của bạn và hệ sinh thái thiên nhiên.&rdquo;
             </p>
-            <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex flex-wrap items-center gap-4">
               <CtaCluster label="Về chúng tôi" href="/about" size={44} iconSize={18} />
               <StarRating
                 rating={4.9}
@@ -109,20 +107,20 @@ export default function DifferentiatorsSection() {
           {DIFFERENCES.map((item, idx) => (
             <div
               key={idx}
-              className="diff-row animate-fade-up group grid items-center gap-6 border-t border-[color:var(--color-border)] py-9 transition-colors duration-300"
-              style={{ gridTemplateColumns: "88px 80px 1.6fr auto", animationDelay: `${idx * 0.12}s` }}
+              className="diff-row group animate-fade-up grid grid-cols-[2.5rem_3.5rem_minmax(0,1fr)] items-center gap-x-4 gap-y-3 border-t border-[color:var(--color-border)] py-9 transition-colors duration-300 md:grid-cols-[88px_80px_1.6fr_auto] md:gap-6"
+              style={{ animationDelay: `${idx * 0.12}s` }}
             >
-              <span className="font-display font-black text-[26px] text-primary-deep/40 tracking-[-0.02em] tabular-nums">
+              <span className="font-display text-[26px] font-black tracking-[-0.02em] text-primary-deep/40 tabular-nums">
                 0{idx + 1}
               </span>
-              <div className="w-20 h-20 rounded-2xl bg-white text-primary-deep flex items-center justify-center shadow-sm shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:-translate-y-1.5 group-hover:rotate-6 group-hover:shadow-md">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white text-primary-deep shadow-sm transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:-translate-y-1.5 group-hover:rotate-6 group-hover:shadow-md md:h-20 md:w-20">
                 {item.icon}
               </div>
-              <div className="flex flex-col gap-1.5 min-w-0">
-                <h3 className="font-display font-extrabold text-xl text-ink tracking-[-0.02em]">{item.title}</h3>
-                <p className="text-sm text-text-body leading-relaxed">{item.desc}</p>
+              <div className="flex min-w-0 flex-col gap-1.5">
+                <h3 className="font-display text-xl font-extrabold tracking-[-0.02em] text-ink">{item.title}</h3>
+                <p className="text-sm leading-relaxed text-text-body">{item.desc}</p>
               </div>
-              <Badge color="primary" size="md" className="hidden md:inline-flex uppercase tracking-[0.06em] justify-self-end">
+              <Badge color="primary" size="md" className="hidden justify-self-end tracking-[0.06em] uppercase md:inline-flex">
                 {item.tag}
               </Badge>
             </div>

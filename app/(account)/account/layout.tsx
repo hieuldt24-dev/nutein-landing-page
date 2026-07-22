@@ -1,16 +1,20 @@
 "use client";
 
-import { AccountAuthGate } from "@/components/account/AccountAuthGate";
+import { useEffect } from "react";
+import useSWR from "swr";
+import {
+  ACCOUNT_LOGGING_OUT_SWR_KEY,
+  OPEN_AUTH_MODAL_STORAGE_KEY,
+} from "@/features/account/constants";
 import { useAuthStore } from "@/lib/useAuthStore";
 
 /**
- * Guard account — guest thấy CTA đăng nhập; đã login render children.
- * Chờ `isReady` (AuthProvider đã xác định xong session Supabase thật) chứ
- * KHÔNG chờ "đã mount" (1 tick sau mount) — session đọc cookie có độ trễ
- * mạng, còn effect mount thì luôn chạy ngay; nếu chỉ chờ mount, guard chốt
- * isLoggedIn=false (giá trị mặc định) trước khi AuthProvider kịp resolve
- * session, gây chập chờn hiện/mất trạng thái đăng nhập ngẫu nhiên mỗi lần
- * F5 (bug thật đã gặp — xem components/providers/AuthProvider.tsx).
+ * Guard account — không mở AuthModal tại đây (tránh race logout → home + modal).
+ *
+ * - Guest vào /account*: ghi sessionStorage rồi hard về `/`; AuthModal trên
+ *   home đọc flag và mở.
+ * - Logout (cờ account-logging-out): hard về `/`, không ghi flag → không modal.
+ * - Đã login: children.
  */
 export default function AccountLayout({
   children,
@@ -18,6 +22,32 @@ export default function AccountLayout({
   children: React.ReactNode;
 }) {
   const { isLoggedIn, isReady } = useAuthStore();
+  const { data: isLoggingOut } = useSWR<boolean>(
+    ACCOUNT_LOGGING_OUT_SWR_KEY,
+    () => false,
+    {
+      fallbackData: false,
+      revalidateOnMount: false,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+    },
+  );
+
+  useEffect(() => {
+    if (!isReady || isLoggedIn) return;
+
+    if (isLoggingOut) {
+      window.location.replace("/");
+      return;
+    }
+
+    try {
+      sessionStorage.setItem(OPEN_AUTH_MODAL_STORAGE_KEY, "1");
+    } catch {
+      /* private mode */
+    }
+    window.location.replace("/");
+  }, [isReady, isLoggedIn, isLoggingOut]);
 
   if (!isReady) {
     return (
@@ -29,7 +59,7 @@ export default function AccountLayout({
   }
 
   if (!isLoggedIn) {
-    return <AccountAuthGate />;
+    return <div className="min-h-[40vh]" aria-hidden />;
   }
 
   return children;

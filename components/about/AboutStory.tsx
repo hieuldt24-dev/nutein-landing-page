@@ -51,7 +51,7 @@ export default function AboutStory() {
             />
           </div>
 
-          <div className="relative mx-auto w-full max-w-[560px] overflow-visible pb-20 pr-16 md:pb-24 md:pr-20 lg:max-w-none">
+          <div className="relative mx-auto w-full max-w-[560px] overflow-x-clip pb-16 pr-6 md:overflow-visible md:pb-24 md:pr-20 lg:max-w-none">
             <div
               aria-hidden
               className="absolute top-1/2 left-1/2 z-0 h-[70%] w-[70%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/25 blur-[44px]"
@@ -64,7 +64,7 @@ export default function AboutStory() {
                 fontSize={12}
                 duration={18}
                 color="rgba(192,134,53,0.9)"
-                className="absolute -right-16 -bottom-16 z-[1] md:-right-20 md:-bottom-20"
+                className="absolute -right-4 -bottom-10 z-[1] md:-right-20 md:-bottom-20"
               />
 
               <div className="animate-float-slow relative z-[2] aspect-[4/5] w-full overflow-hidden rounded-[var(--radius-xl)] shadow-[0_0_0_4px_var(--color-primary-deep)] md:rounded-[40px]">
