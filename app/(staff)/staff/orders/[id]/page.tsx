@@ -1,8 +1,8 @@
 "use client";
 
 import { use } from "react";
-import { AdminOrderDetail } from "@/components/admin/AdminOrderDetail";
-import { AdminPageFrame } from "@/components/admin/AdminShell";
+import { AdminOrderDetail } from "@/components/admin/orders/AdminOrderDetail";
+import { AdminPageFrame } from "@/components/admin/shell/AdminShell";
 
 export default function AdminOrderDetailPage({
   params,

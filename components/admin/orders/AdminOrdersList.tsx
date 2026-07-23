@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import useSWR from "swr";
-import { AdminOrderStatusBadge } from "@/components/admin/AdminOrderStatusBadge";
+import { AdminOrderStatusBadge } from "@/components/admin/orders/AdminOrderStatusBadge";
 import { ADMIN_ORDER_STATUS_LABEL, ADMIN_ORDERS_SWR_KEY } from "@/features/admin-orders/constants";
 import { adminOrdersService } from "@/features/admin-orders/services/admin-orders.service";
 import type { AdminOrderStatusFilter } from "@/features/admin-orders/types";

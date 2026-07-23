@@ -115,10 +115,26 @@ export default function HomePage() {
 - `components/layout/`: khung layout dùng chung mọi trang (`Navbar.tsx`, `Footer.tsx`).
 - `components/shared/`: section/feature UI cụ thể của trang chủ hiện tại (`HeroSection.tsx`, `IntroSection.tsx`...) và các UI trạng thái chung (`AuthModal.tsx`).
 - `components/providers/`: React context providers (`SWRProvider.tsx`).
+- `components/admin/`: UI portal Staff/Admin — **chia theo domain**, không để flat một cấp:
+
+```txt
+components/admin/
+  shell/       # AdminShell, gates (StaffOnlyGate / AdminOnlyGate)
+  dashboard/   # Tổng quan: revenue / pie / bar / summary / home panels
+  orders/      # Danh sách + chi tiết đơn
+  products/    # Editor sản phẩm
+  coupons/     # Coupon list + form
+  contact/     # Liên hệ list + detail
+  blog/        # Blog list + editor
+  content/     # Trang tĩnh
+  users/       # Quản lý users (Admin)
+  audit/       # Audit log (Admin)
+```
 
 Quy tắc:
 - Component trong `components/ui/` không được biết về business/domain (không import từ `features/`).
 - Component trong `components/shared/` có thể chứa nội dung/copy cụ thể của Nutein nhưng không tự viết business logic (gọi hook/service nếu cần xử lý dữ liệu).
+- Component trong `components/admin/<domain>/` chỉ UI của module đó; business logic nằm ở `features/admin-*` / `features/admin-dashboard`.
 - Khi 1 UI pattern lặp lại ≥ 2 lần giữa các section, extract vào `components/ui/` thay vì copy-paste.
 
 ### `features/` — Business Logic Layer (Feature-Folder Pattern)

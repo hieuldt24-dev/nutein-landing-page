@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import { Loader2 } from "lucide-react";
-import { AdminOrderStatusBadge } from "@/components/admin/AdminOrderStatusBadge";
+import { AdminOrderStatusBadge } from "@/components/admin/orders/AdminOrderStatusBadge";
 import { FillButton } from "@/components/ui/FillButton";
 import {
   ADMIN_ORDER_STATUS_LABEL,

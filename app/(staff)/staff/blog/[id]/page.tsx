@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { use } from "react";
-import { AdminBlogEditor } from "@/components/admin/AdminBlogEditor";
-import { AdminPageFrame } from "@/components/admin/AdminShell";
+import { AdminBlogEditor } from "@/components/admin/blog/AdminBlogEditor";
+import { AdminPageFrame } from "@/components/admin/shell/AdminShell";
 
 export default function AdminBlogDetailPage({
   params,
