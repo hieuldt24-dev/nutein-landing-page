@@ -60,9 +60,13 @@ export default function AdminHomePage() {
               <dt className="font-bold text-text-muted">Email</dt>
               <dd className="font-semibold text-ink">{user?.email ?? "—"}</dd>
             </div>
-            <div className="flex flex-wrap items-baseline gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <dt className="font-bold text-text-muted">Vai trò</dt>
-              <dd className="font-semibold text-ink">Staff</dd>
+              <dd>
+                <span className="inline-flex items-center rounded-full bg-primary-soft px-2.5 py-1 text-[11px] font-extrabold tracking-[0.04em] text-primary-deep uppercase">
+                  Staff
+                </span>
+              </dd>
             </div>
           </dl>
         </section>

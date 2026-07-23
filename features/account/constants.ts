@@ -1,4 +1,4 @@
-import type { AccountOrder } from "./types";
+import type { AccountOrder, AccountOrderStatusFilter } from "./types";
 
 /** URL thật (SWR key) cho hồ sơ — xem app/api/account/profile. */
 export const ACCOUNT_PROFILE_API_PATH = "/api/account/profile";
@@ -31,3 +31,17 @@ export const ACCOUNT_ORDER_STATUS_LABEL: Record<
   completed: "Thành công",
   cancelled: "Đã hủy",
 };
+
+/** Thứ tự chip lọc trên /account/orders. */
+export const ACCOUNT_ORDER_STATUS_FILTERS: {
+  value: AccountOrderStatusFilter;
+  label: string;
+}[] = [
+  { value: "all", label: "Tất cả" },
+  ...(
+    Object.entries(ACCOUNT_ORDER_STATUS_LABEL) as [
+      AccountOrder["status"],
+      string,
+    ][]
+  ).map(([value, label]) => ({ value, label })),
+];

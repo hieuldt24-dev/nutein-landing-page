@@ -36,6 +36,9 @@ export type AccountOrderStatus =
   | "completed"
   | "cancelled";
 
+/** Lọc danh sách đơn trên /account/orders. */
+export type AccountOrderStatusFilter = AccountOrderStatus | "all";
+
 export interface AccountOrder {
   id: string;
   orderCode: string;

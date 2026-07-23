@@ -251,19 +251,14 @@ function SidebarBrand({
             priority
           />
         ) : (
-          <>
-            <Image
-              src="/images/logo-horizontal-2x_1.svg"
-              alt="Nutein"
-              width={112}
-              height={28}
-              className="h-7 w-auto"
-              priority
-            />
-            <span className="shrink-0 rounded-full bg-primary-soft px-2 py-0.5 text-[10px] font-extrabold tracking-[0.04em] text-primary-deep uppercase">
-              Admin
-            </span>
-          </>
+          <Image
+            src="/images/logo-horizontal-2x_1.svg"
+            alt="Nutein"
+            width={112}
+            height={28}
+            className="h-7 w-auto"
+            priority
+          />
         )}
       </Link>
 
