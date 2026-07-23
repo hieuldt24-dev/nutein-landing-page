@@ -92,7 +92,7 @@ export function AdminBlogEditor({ postId }: { postId: string | "new" }) {
           { revalidate: true }
         );
         notify.success("Đã tạo bài.");
-        router.replace(`/admin/blog/${created.id}`);
+        router.replace(`/staff/blog/${created.id}`);
       } else {
         await adminBlogService.update(postId, payload);
         await globalMutate(adminBlogDetailSwrKey(postId));

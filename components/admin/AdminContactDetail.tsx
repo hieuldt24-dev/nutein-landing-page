@@ -73,7 +73,7 @@ export function AdminContactDetail({ messageId }: { messageId: string }) {
   return (
     <div className="flex flex-col gap-4">
       <Link
-        href="/admin/contact"
+        href="/staff/contact"
         className="text-[13px] font-bold text-primary-deep underline-offset-2 hover:underline"
       >
         ← Hộp thư

@@ -113,7 +113,7 @@ export function AdminOrdersList() {
           {data.map((order) => (
             <li key={order.id}>
               <Link
-                href={`/admin/orders/${order.id}`}
+                href={`/staff/orders/${order.id}`}
                 className="block rounded-[var(--radius-lg)] border border-ink/15 bg-surface px-4 py-4 transition-colors hover:border-ink/30 hover:bg-ink/[0.02] md:px-5"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">

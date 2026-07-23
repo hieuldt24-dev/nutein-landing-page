@@ -1,19 +1,26 @@
 "use client";
 
-import { AdminAuditPanel } from "@/components/admin/AdminAuditPanel";
+import { use } from "react";
+import { AdminOrderDetail } from "@/components/admin/AdminOrderDetail";
 import { AdminPageFrame } from "@/components/admin/AdminShell";
 
-export default function AdminAuditPage() {
+export default function AdminOrderDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = use(params);
+
   return (
     <AdminPageFrame>
       <p className="text-[12px] font-bold tracking-[0.08em] text-primary uppercase">
-        Hệ thống
+        Vận hành
       </p>
       <h1 className="mt-1 font-display text-[clamp(28px,3.5vw,36px)] font-bold tracking-[-0.03em] text-ink">
-        Nhật ký hệ thống
+        Chi tiết đơn
       </h1>
       <div className="mt-8">
-        <AdminAuditPanel />
+        <AdminOrderDetail orderId={id} />
       </div>
     </AdminPageFrame>
   );
