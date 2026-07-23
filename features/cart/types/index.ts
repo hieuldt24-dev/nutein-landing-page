@@ -4,11 +4,6 @@
  * chỉ khi pricing chi tiết / ghi order_items.
  */
 
-/** Chủ sở hữu giỏ trên DB — user đã login hoặc guest session cookie. */
-export type CartOwner =
-  | { kind: "user"; userId: string }
-  | { kind: "session"; sessionId: string };
-
 export interface CartLine {
   variantId: string;
   /** Số gói của variant này (không phải số hũ). */

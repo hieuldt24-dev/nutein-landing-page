@@ -23,7 +23,7 @@ export function CheckoutPaymentSection({
     <section>
       <CheckoutSectionHeading title="Thanh toán" />
       <p className="mb-3 text-[12px] font-medium text-text-muted">
-        Đơn được xử lý an toàn. Chưa kết nối cổng thanh toán thật (demo).
+        Đơn được xử lý an toàn.
       </p>
       <div className="flex flex-col gap-2.5">
         {PAYMENT_OPTIONS.map((option) => (

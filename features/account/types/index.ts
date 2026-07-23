@@ -45,4 +45,8 @@ export interface AccountOrder {
   variantLabel: string;
   total: number;
   estimatedDeliveryLabel?: string;
+  /** Trạng thái thanh toán thật (khác `status` — vòng đời xử lý đơn). */
+  paymentStatus: "UNPAID" | "PAID";
+  /** true khi đơn dùng payOS và còn UNPAID — hiện nút "Thanh toán ngay". */
+  canRetryPayment: boolean;
 }

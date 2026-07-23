@@ -34,6 +34,13 @@ export interface CreateOrderResult {
   shippingMethod: ShippingMethod;
   paymentMethod: PaymentMethod;
   paymentInstructions?: PaymentInstructions;
+  /** URL redirect payOS (checkoutUrl) — chỉ có khi paymentMethod = bank_transfer. */
+  paymentUrl?: string;
 }
+
+/** Kết quả thanh toán lại đơn payOS bị bỏ dở — xem checkoutService.retryPayment. */
+export type RetryPaymentResult =
+  | { status: "already_paid" }
+  | { status: "created"; paymentUrl: string };
 
 export type { CreateOrderRequest };

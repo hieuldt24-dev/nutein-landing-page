@@ -1,11 +1,16 @@
 "use client";
 
-import useSWR from "swr";
+import { useRef } from "react";
+import useSWR, { useSWRConfig } from "swr";
 import { ACCOUNT_ORDERS_API_PATH } from "@/features/account/constants";
 import { fetcher } from "@/lib/swr-fetcher";
+import { apiRequest } from "@/lib/api-client";
+import { notify } from "@/lib/toast";
 import { formatCurrencyVnd } from "@/lib/utils";
 import type { AccountOrder } from "@/features/account/types";
+import type { RetryPaymentResult } from "@/features/checkout/types";
 import { AccountOrderStatusBadge } from "@/components/account/AccountOrderStatusBadge";
+import { FillButton } from "@/components/ui/FillButton";
 import { useAuthStore } from "@/lib/useAuthStore";
 
 function formatOrderDate(iso: string): string {
@@ -25,6 +30,40 @@ export function AccountOrderList() {
   const key = isLoggedIn ? ACCOUNT_ORDERS_API_PATH : null;
 
   const { data, error, isLoading } = useSWR<AccountOrder[]>(key, fetcher);
+  const { mutate: globalMutate } = useSWRConfig();
+  /** Guard đồng bộ chống double-click — useState/disabled chỉ áp dụng ở lần
+   *  render sau nên không chặn kịp click thứ 2 bắn ra trước khi re-render. */
+  const retryingRef = useRef<Set<string>>(new Set());
+
+  const handleRetryPayment = async (orderCode: string) => {
+    if (retryingRef.current.has(orderCode)) return;
+    retryingRef.current.add(orderCode);
+    try {
+      const result = await apiRequest<RetryPaymentResult>(
+        "/api/checkout/payos/retry",
+        {
+          method: "POST",
+          body: JSON.stringify({ orderCode }),
+        },
+      );
+
+      if (result.status === "created") {
+        window.location.replace(result.paymentUrl);
+        return;
+      }
+
+      notify.success("Đơn hàng đã được thanh toán.");
+      await globalMutate(ACCOUNT_ORDERS_API_PATH);
+    } catch (err) {
+      notify.error(
+        err instanceof Error
+          ? err.message
+          : "Không tạo được link thanh toán — vui lòng thử lại.",
+      );
+    } finally {
+      retryingRef.current.delete(orderCode);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -84,6 +123,16 @@ export function AccountOrderList() {
               <p className="font-display text-lg font-bold text-ink">
                 {formatCurrencyVnd(order.total)}
               </p>
+              {order.canRetryPayment ? (
+                <FillButton
+                  type="button"
+                  variant="ink-solid"
+                  className="h-[34px] px-4 text-[11px] font-extrabold uppercase"
+                  onClick={() => void handleRetryPayment(order.orderCode)}
+                >
+                  Thanh toán ngay
+                </FillButton>
+              ) : null}
             </div>
           </div>
         </li>

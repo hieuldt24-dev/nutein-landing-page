@@ -9,7 +9,8 @@ function emptyState(): CartState {
   return { lines: [] };
 }
 
-/** Migrate shape cũ `{ quantity, variantId }` → `{ lines }`. */
+/** Coerce shape cũ `{ quantity, variantId }` → `{ lines }` — dữ liệu tồn đọng
+ *  từ trước khi có multi-line theo gói. */
 function coerceState(raw: unknown): CartState {
   if (!raw || typeof raw !== "object") return emptyState();
   const obj = raw as Record<string, unknown>;
@@ -43,12 +44,13 @@ function readLegacyQuantity(): number | null {
 }
 
 /**
- * Legacy localStorage — chỉ đọc/xoá one-shot migrate sang session API.
- * Không còn source of truth cho giỏ.
+ * localStorage — nguồn thật duy nhất của giỏ hàng (không còn DB/API, dùng
+ * chung cho guest lẫn logged-in trong cùng trình duyệt). `coerceState` +
+ * `readLegacyQuantity` xử lý 2 shape cũ hơn để không mất giỏ của user cũ
+ * khi deploy bản này.
  */
 export const cartRepository = {
-  /** Đọc giỏ local cũ (nếu còn) để PUT lên `/api/cart` một lần. */
-  readLegacyState(): CartState {
+  readState(): CartState {
     if (typeof window === "undefined") {
       return emptyState();
     }
@@ -72,9 +74,19 @@ export const cartRepository = {
     return emptyState();
   },
 
-  clearLegacy(): void {
-    if (typeof window === "undefined") return;
-    window.localStorage.removeItem(CART_STATE_STORAGE_KEY);
-    window.localStorage.removeItem(CART_QUANTITY_STORAGE_KEY);
+  /** Ghi đè toàn bộ giỏ — đồng bộ, không network. */
+  writeState(state: CartState): CartState {
+    const next = normalizeCartState(state);
+    if (typeof window === "undefined") {
+      return next;
+    }
+    try {
+      window.localStorage.setItem(CART_STATE_STORAGE_KEY, JSON.stringify(next));
+      window.localStorage.removeItem(CART_QUANTITY_STORAGE_KEY);
+    } catch {
+      // Storage đầy / bị chặn (Safari private mode cũ) — bỏ qua, SWR cache
+      // vẫn đúng cho phiên hiện tại, chỉ mất persist.
+    }
+    return next;
   },
 };

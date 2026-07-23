@@ -6,25 +6,18 @@ export const CART_LINES_SWR_KEY = "cart-lines";
 export const CART_QUANTITY_SWR_KEY = "cart-quantity";
 /** @deprecated — dùng CART_LINES_SWR_KEY. */
 export const CART_VARIANT_SWR_KEY = "cart-variant-id";
-/** SWR-as-store key — cart đang mutate (add/qty/remove), dùng overlay loading. */
-export const CART_UPDATING_SWR_KEY = "cart-updating";
 /**
- * localStorage key legacy — chỉ dùng one-shot migrate → session API rồi xoá.
- * @deprecated Không còn source of truth.
+ * localStorage key — nguồn thật duy nhất của giỏ hàng (xem
+ * `features/cart/services/cart.repository.ts`). Không còn DB/API.
+ */
+export const CART_STATE_STORAGE_KEY = "nutein:cart-state";
+/**
+ * localStorage key cũ hơn (trước khi có multi-line theo gói) — chỉ còn đọc
+ * fallback trong `cartRepository.readState()`, không còn được ghi mới.
  */
 export const CART_QUANTITY_STORAGE_KEY = "nutein:cart-quantity";
-/** @deprecated localStorage legacy — migrate một lần sang `/api/cart`. */
-export const CART_STATE_STORAGE_KEY = "nutein:cart-state";
 /** SWR-as-store key cho trạng thái mở/đóng CartDrawer. */
 export const CART_DRAWER_SWR_KEY = "cart-drawer-open";
-
-/** URL thật — guest (session cookie) + logged-in (JWT + merge). */
-export const CART_API_PATH = "/api/cart";
-
-/** Cookie httpOnly — session cart guest (Joy Rush–style). */
-export const CART_SESSION_COOKIE = "nutein_cart_sid";
-/** TTL cookie session cart (~30 ngày). */
-export const CART_SESSION_MAX_AGE_SEC = 30 * 24 * 60 * 60;
 
 export const MIN_CART_QUANTITY = 0;
 export const MAX_CART_QUANTITY = 20;
