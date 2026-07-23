@@ -64,47 +64,60 @@ export function CheckoutContactSection({
           )
         }
       />
-      <div className="flex flex-col gap-3">
-        {isLoggedIn && !contactLocked ? (
-          <p className="text-[13px] text-text-muted">
-            Bổ sung họ tên và số điện thoại để tiếp tục đặt hàng.
-          </p>
-        ) : null}
-        <CheckoutField label="Email" error={errors.buyer?.email?.message}>
-          <CheckoutTextInput
-            type="email"
-            autoComplete="email"
-            placeholder="tenban@example.com"
-            disabled={isSubmitting || isLoggedIn}
-            readOnly={isLoggedIn}
-            error={Boolean(errors.buyer?.email)}
-            {...register("buyer.email")}
-          />
-        </CheckoutField>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <CheckoutField label="Họ và tên" error={errors.buyer?.fullName?.message}>
+
+      {!isLoggedIn ? (
+        <p className="text-[13px] leading-relaxed text-text-muted">
+          Đăng nhập hoặc đăng ký để điền thông tin liên hệ và hoàn tất đơn hàng.
+        </p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {!contactLocked ? (
+            <p className="text-[13px] text-text-muted">
+              Bổ sung họ tên và số điện thoại để tiếp tục đặt hàng.
+            </p>
+          ) : null}
+          <CheckoutField label="Email" error={errors.buyer?.email?.message}>
             <CheckoutTextInput
-              autoComplete="name"
-              placeholder="Nguyễn Văn A"
-              disabled={isSubmitting || namePhoneLocked}
-              readOnly={namePhoneLocked}
-              error={Boolean(errors.buyer?.fullName)}
-              {...register("buyer.fullName")}
+              type="email"
+              autoComplete="email"
+              placeholder="tenban@example.com"
+              disabled={isSubmitting || isLoggedIn}
+              readOnly={isLoggedIn}
+              error={Boolean(errors.buyer?.email)}
+              {...register("buyer.email")}
             />
           </CheckoutField>
-          <CheckoutField label="Số điện thoại" error={errors.buyer?.phone?.message}>
-            <CheckoutTextInput
-              type="tel"
-              autoComplete="tel"
-              placeholder="0901234567"
-              disabled={isSubmitting || namePhoneLocked}
-              readOnly={namePhoneLocked}
-              error={Boolean(errors.buyer?.phone)}
-              {...register("buyer.phone")}
-            />
-          </CheckoutField>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <CheckoutField
+              label="Họ và tên"
+              error={errors.buyer?.fullName?.message}
+            >
+              <CheckoutTextInput
+                autoComplete="name"
+                placeholder="Nguyễn Văn A"
+                disabled={isSubmitting || namePhoneLocked}
+                readOnly={namePhoneLocked}
+                error={Boolean(errors.buyer?.fullName)}
+                {...register("buyer.fullName")}
+              />
+            </CheckoutField>
+            <CheckoutField
+              label="Số điện thoại"
+              error={errors.buyer?.phone?.message}
+            >
+              <CheckoutTextInput
+                type="tel"
+                autoComplete="tel"
+                placeholder="0901234567"
+                disabled={isSubmitting || namePhoneLocked}
+                readOnly={namePhoneLocked}
+                error={Boolean(errors.buyer?.phone)}
+                {...register("buyer.phone")}
+              />
+            </CheckoutField>
+          </div>
         </div>
-      </div>
+      )}
     </section>
   );
 }

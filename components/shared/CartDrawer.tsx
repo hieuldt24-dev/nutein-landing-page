@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useCartDrawer } from "@/lib/useCartDrawer";
 import { useCartStore } from "@/lib/useCartStore";
 import {
@@ -86,22 +86,11 @@ function CartTotals({
 export default function CartDrawer() {
   const router = useRouter();
   const { isOpen, close } = useCartDrawer();
-  const {
-    quantity,
-    variantId,
-    summary,
-    isUpdating,
-    increment,
-    decrement,
-    removeFromCart,
-  } = useCartStore();
+  const { summary, increment, decrement, removeLine } = useCartStore();
   const [isMounted, setIsMounted] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
 
-  const lineProduct = productService.toCartProduct(
-    productService.getProductDetail(),
-    variantId
-  );
+  const detail = productService.getProductDetail();
 
   const goCheckout = () => {
     close();
@@ -154,22 +143,26 @@ export default function CartDrawer() {
   const isEmpty = summary.isEmpty;
 
   return (
-    <div id="cart-drawer-root" className="fixed inset-0 z-[100] flex justify-end p-5 md:p-8">
+    <div id="cart-drawer-root" className="fixed inset-0 z-[100] flex justify-end p-0 md:p-8">
       <div
         id="cart-drawer-backdrop"
         onClick={close}
         className={cn(
           "absolute inset-0 cursor-pointer bg-ink/40 transition-opacity duration-[380ms] ease-[cubic-bezier(0.645,0.045,0.355,1)]",
-          isVisible ? "opacity-100" : "opacity-0"
+          isVisible ? "opacity-100" : "opacity-0",
+          /* Mobile full-bleed — backdrop ẩn (panel đã phủ cả viewport) */
+          "md:block max-md:opacity-0 max-md:pointer-events-none",
         )}
       />
 
       <aside
         className={cn(
-          "relative flex h-full w-full max-w-[560px] flex-col overflow-hidden rounded-[var(--radius-xl)] border border-ink bg-bg shadow-xl",
+          "relative flex h-full w-full flex-col overflow-hidden bg-bg",
+          /* Mobile: lấp đầy như Joy Rush; desktop: panel bo góc + viền */
+          "max-w-none rounded-none border-0",
+          "md:max-w-[560px] md:rounded-[var(--radius-xl)] md:border md:border-ink md:shadow-xl",
           "transition-transform duration-[380ms] ease-[cubic-bezier(0.645,0.045,0.355,1)] will-change-transform",
-          isVisible ? "translate-x-0" : "translate-x-[calc(100%+2rem)]",
-          isUpdating && "cursor-wait"
+          isVisible ? "translate-x-0" : "translate-x-full md:translate-x-[calc(100%+2rem)]",
         )}
       >
         <div className="flex items-center justify-between border-b border-ink/25 px-7 py-7">
@@ -197,35 +190,27 @@ export default function CartDrawer() {
         {isEmpty ? (
           <CartEmptyState onContinueShopping={continueShopping} />
         ) : (
-          <div className="flex-1 overflow-y-auto px-7 py-8">
-            <CartLineItem
-              product={lineProduct}
-              quantity={quantity}
-              disabled={isUpdating}
-              onIncrement={() => {
-                void increment();
-              }}
-              onDecrement={() => {
-                void decrement();
-              }}
-              onRemove={() => {
-                void removeFromCart();
-              }}
-            />
+          <div className="flex flex-1 flex-col gap-8 overflow-y-auto px-7 py-8">
+            {summary.lines.map((line) => (
+              <CartLineItem
+                key={line.variantId}
+                product={productService.toCartProduct(detail, line.variantId)}
+                quantity={line.quantity}
+                onIncrement={() => {
+                  void increment(line.variantId);
+                }}
+                onDecrement={() => {
+                  void decrement(line.variantId);
+                }}
+                onRemove={() => {
+                  void removeLine(line.variantId);
+                }}
+              />
+            ))}
           </div>
         )}
 
         {!isEmpty && <CartTotals summary={summary} onCheckout={goCheckout} />}
-
-        {isUpdating && (
-          <div
-            className="absolute inset-0 z-10 flex items-center justify-center bg-ink/20"
-            aria-busy="true"
-            aria-live="polite"
-          >
-            <Loader2 size={40} strokeWidth={2.2} className="animate-spin text-ink" />
-          </div>
-        )}
       </aside>
     </div>
   );

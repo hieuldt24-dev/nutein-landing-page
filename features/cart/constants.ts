@@ -1,38 +1,33 @@
 import type { VoucherTier } from "./types";
 
-/** SWR-as-store key (không phải URL thật) cho quantity trong giỏ — xem state-management.md mục 3. */
+/** SWR-as-store key — danh sách dòng giỏ `{ variantId, quantity }[]`. */
+export const CART_LINES_SWR_KEY = "cart-lines";
+/** @deprecated — dùng CART_LINES_SWR_KEY. */
 export const CART_QUANTITY_SWR_KEY = "cart-quantity";
-/** SWR-as-store key cho variantId gói đang chọn trong giỏ. */
+/** @deprecated — dùng CART_LINES_SWR_KEY. */
 export const CART_VARIANT_SWR_KEY = "cart-variant-id";
-/** SWR-as-store key — cart đang mutate (add/qty/remove), dùng overlay loading. */
-export const CART_UPDATING_SWR_KEY = "cart-updating";
 /**
- * localStorage key legacy — chỉ quantity (số). Repository vẫn đọc để migrate.
- * @deprecated Dùng `CART_STATE_STORAGE_KEY`.
+ * localStorage key — nguồn thật duy nhất của giỏ hàng (xem
+ * `features/cart/services/cart.repository.ts`). Không còn DB/API.
+ */
+export const CART_STATE_STORAGE_KEY = "nutein:cart-state";
+/**
+ * localStorage key cũ hơn (trước khi có multi-line theo gói) — chỉ còn đọc
+ * fallback trong `cartRepository.readState()`, không còn được ghi mới.
  */
 export const CART_QUANTITY_STORAGE_KEY = "nutein:cart-quantity";
-/** localStorage key persist `{ quantity, variantId }` — sẵn swap `/api/cart`. */
-export const CART_STATE_STORAGE_KEY = "nutein:cart-state";
 /** SWR-as-store key cho trạng thái mở/đóng CartDrawer. */
 export const CART_DRAWER_SWR_KEY = "cart-drawer-open";
 
 export const MIN_CART_QUANTITY = 0;
 export const MAX_CART_QUANTITY = 20;
 
-/**
- * Delay giả lập latency mạng khi mutate qua local repository.
- * Khi gắn API thật: bỏ delay trong repository/service, giữ nguyên flow async + loading UI.
- */
-export const CART_LOCAL_LATENCY_MS = 280;
-
 /** Nutein chưa có bảng phí ship — hiển thị copy chờ tính ở bước checkout. */
 export const SHIPPING_FEE_NOTE = "Tính phí khi thanh toán";
 
 /**
- * Tiêu đề CartDrawer — cố ý KHÔNG đếm theo dạng "X sản phẩm trong giỏ"
- * (ngôn ngữ multi-product của Joy Rush). Nutein single-SKU chỉ có 1 dòng
- * hàng duy nhất, số lượng đã hiển thị rõ ở QuantityStepper trên line item
- * nên không cần lặp lại ở header — tránh gây hiểu lầm "nhiều sản phẩm".
+ * Tiêu đề CartDrawer — không đếm “X sản phẩm” (multi-product Joy Rush).
+ * Số lượng nằm trên từng dòng gói.
  */
 export const CART_DRAWER_TITLE = "Giỏ hàng của bạn";
 

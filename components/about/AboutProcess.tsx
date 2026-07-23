@@ -49,9 +49,8 @@ function ProcessCard({
   return (
     <article
       className={cn(
-        /* Tỉ lệ JR 34.8×40.7; scale theo vw để card chiếm diện tích viewport giống JR */
-        "about-process-card flex w-[clamp(300px,28vw,400px)] flex-col",
-        "h-[clamp(351px,32.7vw,468px)] rounded-[var(--radius-lg)] p-6 shadow-md md:rounded-[22px] md:p-7",
+        "about-process-card flex w-[min(100%,400px)] max-w-full flex-col sm:w-[clamp(280px,28vw,400px)]",
+        "h-auto min-h-[320px] rounded-[var(--radius-lg)] p-6 shadow-md sm:h-[clamp(351px,32.7vw,468px)] md:rounded-[22px] md:p-7",
         tone.card
       )}
       style={{ "--r": `${panel.rotate}deg` } as CSSProperties}
@@ -133,22 +132,27 @@ function CardTrack({
 /**
  * Quy trình — Joy Rush FUNCTIONALS:
  * sticky pin + heading giữa + card portrait lệch trái/phải/giữa, scroll trượt lên.
+ * Bật mọi viewport (trừ prefers-reduced-motion); overflow-x-clip chặn kéo ngang.
  */
 export default function AboutProcess() {
   const spacerRef = useRef<HTMLElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
-  const [reduceMotion, setReduceMotion] = useState(false);
+  const [usePinnedScroll, setUsePinnedScroll] = useState(false);
 
   useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setReduceMotion(mq.matches);
-    const onChange = () => setReduceMotion(mq.matches);
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
+    const motionMq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => {
+      setUsePinnedScroll(!motionMq.matches);
+    };
+    sync();
+    motionMq.addEventListener("change", sync);
+    return () => {
+      motionMq.removeEventListener("change", sync);
+    };
   }, []);
 
   useEffect(() => {
-    if (reduceMotion) return;
+    if (!usePinnedScroll) return;
     const spacer = spacerRef.current;
     const track = trackRef.current;
     if (!spacer || !track) return;
@@ -178,15 +182,16 @@ export default function AboutProcess() {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
     };
-  }, [reduceMotion]);
+  }, [usePinnedScroll]);
 
-  if (reduceMotion) {
+  /* Reduce-motion: stack thường, không pin. */
+  if (!usePinnedScroll) {
     return (
-      <section id="about-process" className="relative overflow-hidden bg-bg py-24">
-        <div className="mx-auto mb-16 flex justify-center">
+      <section id="about-process" className="relative overflow-x-clip bg-bg py-20 md:py-24">
+        <div className="mx-auto mb-12 flex justify-center md:mb-16">
           <ProcessHeading />
         </div>
-        <CardTrack />
+        <CardTrack className="px-4" />
       </section>
     );
   }
@@ -197,7 +202,7 @@ export default function AboutProcess() {
     <section
       id="about-process"
       ref={spacerRef}
-      className="relative bg-bg"
+      className="relative overflow-x-clip bg-bg"
       style={{ height: `${spacerVh}vh` }}
     >
       <div className="sticky top-0 h-svh overflow-hidden">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -30,6 +30,7 @@ import {
   CheckoutSubmittingOverlay,
 } from "@/components/checkout/CheckoutSubmitBlock";
 import { isCheckoutContactComplete } from "@/features/checkout/contact-complete";
+import { openAuthModal } from "@/lib/openAuthModal";
 import { useAccountProfile } from "@/lib/useAccountProfile";
 import { useAddresses } from "@/lib/useAddresses";
 import { useAuthStore } from "@/lib/useAuthStore";
@@ -38,15 +39,18 @@ import { useCheckoutSubmit } from "@/lib/useCheckoutSubmit";
 
 /**
  * Form checkout — compose sections (soft limit ~300 dòng).
- * Logic submit / prefill / guard giữ tại đây.
+ * Guest: ẩn field Liên hệ (giữ heading + Đăng nhập); vẫn điền giao hàng /
+ * vận chuyển / thanh toán. Submit guest → Auth trước validate Liên hệ.
  */
 export default function CheckoutForm() {
   const router = useRouter();
   const { mutate } = useSWRConfig();
   const { user, isLoggedIn, signOut } = useAuthStore();
   const { updateProfile, profile } = useAccountProfile();
-  const { defaultAddress, saveAsDefaultFromCheckout } = useAddresses();
-  const { quantity, summary, isEmpty, removeFromCart } = useCartStore();
+  const { addresses, defaultAddress, isLoading: addressesLoading, saveAsDefaultFromCheckout } =
+    useAddresses();
+  const [selectedSavedAddressId, setSelectedSavedAddressId] = useState("");
+  const { lines, summary, isEmpty, removeFromCart } = useCartStore();
   const { submitOrder, isSubmitting } = useCheckoutSubmit();
 
   const {
@@ -111,49 +115,61 @@ export default function CheckoutForm() {
   }, [isEmpty, router]);
 
   useEffect(() => {
-    if (!user) return;
-    setValue("buyer.email", user.email, {
-      shouldValidate: true,
-      shouldDirty: true,
-    });
+    // Prefill từ session/profile — chỉ khi field còn trống, không
+    // shouldValidate (tránh loop với reValidateMode + object `user` đổi identity).
+    if (!user?.email) return;
+
+    const current = getValues();
+    if (!current.buyer.email?.trim()) {
+      setValue("buyer.email", user.email, { shouldDirty: false });
+    }
 
     const fullName = (profile?.fullName || user.fullName || "").trim();
     const phone = (profile?.phone || user.phone || "").trim();
-    if (fullName) {
-      setValue("buyer.fullName", fullName, {
-        shouldValidate: true,
-        shouldDirty: true,
-      });
+    if (fullName && !current.buyer.fullName?.trim()) {
+      setValue("buyer.fullName", fullName, { shouldDirty: false });
     }
-    if (phone) {
-      setValue("buyer.phone", phone, {
-        shouldValidate: true,
-        shouldDirty: true,
-      });
+    if (phone && !current.buyer.phone?.trim()) {
+      setValue("buyer.phone", phone, { shouldDirty: false });
     }
-  }, [user, profile?.fullName, profile?.phone, setValue]);
+  }, [
+    user?.email,
+    user?.fullName,
+    user?.phone,
+    profile?.fullName,
+    profile?.phone,
+    setValue,
+    getValues,
+  ]);
 
   useEffect(() => {
     if (!defaultAddress) return;
-    setValue("address.provinceCode", defaultAddress.provinceCode, {
-      shouldValidate: true,
-    });
-    setValue("address.province", defaultAddress.province, {
-      shouldValidate: true,
-    });
-    setValue("address.wardCode", defaultAddress.wardCode, {
-      shouldValidate: true,
-    });
-    setValue("address.ward", defaultAddress.ward, { shouldValidate: true });
-    setValue("address.street", defaultAddress.street, { shouldValidate: true });
-  }, [defaultAddress, setValue]);
+    const current = getValues("address");
+    // Chỉ prefill lần đầu (form địa chỉ còn trống) — không đè khi user đang sửa / test validate.
+    const addressEmpty =
+      !current.provinceCode?.trim() &&
+      !current.wardCode?.trim() &&
+      !current.street?.trim();
+    if (!addressEmpty) return;
 
-  const openAuth = () => mutate("auth-modal", true, { revalidate: false });
+    setValue("address.provinceCode", defaultAddress.provinceCode, {
+      shouldDirty: false,
+    });
+    setValue("address.province", defaultAddress.province, { shouldDirty: false });
+    setValue("address.wardCode", defaultAddress.wardCode, { shouldDirty: false });
+    setValue("address.ward", defaultAddress.ward, { shouldDirty: false });
+    setValue("address.street", defaultAddress.street, { shouldDirty: false });
+    setSelectedSavedAddressId(defaultAddress.id);
+  }, [defaultAddress, setValue, getValues]);
+
+  const openCheckoutAuth = () =>
+    openAuthModal(mutate, { tab: "login", returnTo: "/checkout" });
 
   const handleLogout = async () => {
     if (isSubmitting) return;
     const current = getValues();
     await signOut();
+    setSelectedSavedAddressId("");
     reset({
       ...current,
       buyer: { fullName: "", phone: "", email: "" },
@@ -161,11 +177,11 @@ export default function CheckoutForm() {
     notify.success("Đã đăng xuất.");
   };
 
-  const onSubmit = handleSubmit(
+  const placeOrder = handleSubmit(
     async (values) => {
       try {
         const result = await submitOrder({
-          quantity,
+          lines,
           buyer: values.buyer,
           address: values.address,
           note: values.note || undefined,
@@ -183,7 +199,7 @@ export default function CheckoutForm() {
           /* private mode */
         }
 
-        if (isLoggedIn && user?.email) {
+        if (user?.email) {
           try {
             // Luôn đồng bộ họ tên/SĐT về hồ sơ (kể cả không tick lưu địa chỉ).
             await updateProfile({
@@ -200,6 +216,12 @@ export default function CheckoutForm() {
 
         placingOrderRef.current = true;
         await removeFromCart();
+
+        if (result.paymentUrl) {
+          window.location.replace(result.paymentUrl);
+          return;
+        }
+
         notify.success("Đặt hàng thành công!");
         router.push(
           `/checkout/success?orderCode=${encodeURIComponent(result.orderCode)}`,
@@ -218,6 +240,16 @@ export default function CheckoutForm() {
     },
   );
 
+  const onFormSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!isLoggedIn) {
+      openCheckoutAuth();
+      notify.error("Vui lòng đăng nhập hoặc đăng ký để đặt hàng.");
+      return;
+    }
+    void placeOrder();
+  };
+
   if (isEmpty) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center px-6">
@@ -229,9 +261,18 @@ export default function CheckoutForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="relative">
+    <form onSubmit={onFormSubmit} className="relative">
       <div className="mx-auto grid max-w-[1100px] gap-10 px-5 py-8 md:px-8 lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-12 lg:py-12">
-        <div className="flex flex-col gap-10">
+        {/* Mobile: summary trên đầu; desktop: cột phải sticky */}
+        <div className="order-1 lg:order-2 lg:sticky lg:top-8 lg:self-start">
+          <CheckoutOrderSummary
+            summary={summary}
+            shippingFee={shippingPreview.shippingFee}
+            shippingNote={shippingPreview.shippingNote}
+          />
+        </div>
+
+        <div className="order-2 flex flex-col gap-10 lg:order-1">
           <CheckoutContactSection
             register={register}
             errors={errors}
@@ -239,7 +280,7 @@ export default function CheckoutForm() {
             isLoggedIn={isLoggedIn}
             contactLocked={contactLocked}
             user={user}
-            onOpenAuth={openAuth}
+            onOpenAuth={openCheckoutAuth}
             onLogout={() => {
               void handleLogout();
             }}
@@ -251,6 +292,11 @@ export default function CheckoutForm() {
             isSubmitting={isSubmitting}
             provinceCode={provinceCode}
             wardCode={wardCode}
+            isLoggedIn={isLoggedIn}
+            savedAddresses={isLoggedIn ? addresses : []}
+            savedAddressesLoading={isLoggedIn && addressesLoading}
+            selectedSavedAddressId={selectedSavedAddressId}
+            onSelectedSavedAddressIdChange={setSelectedSavedAddressId}
           />
           <CheckoutShippingSection
             addressReady={addressReady}
@@ -266,14 +312,6 @@ export default function CheckoutForm() {
             isSubmitting={isSubmitting}
           />
           <CheckoutSubmitBlock isSubmitting={isSubmitting} />
-        </div>
-
-        <div className="lg:sticky lg:top-8 lg:self-start">
-          <CheckoutOrderSummary
-            summary={summary}
-            shippingFee={shippingPreview.shippingFee}
-            shippingNote={shippingPreview.shippingNote}
-          />
         </div>
       </div>
 

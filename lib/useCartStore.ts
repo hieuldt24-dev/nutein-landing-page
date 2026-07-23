@@ -1,111 +1,82 @@
 "use client";
 
-import { useCallback, useRef } from "react";
-import useSWR, { useSWRConfig } from "swr";
+import { useCallback } from "react";
+import useSWR from "swr";
+import { CART_LINES_SWR_KEY, MIN_CART_QUANTITY } from "@/features/cart/constants";
 import {
-  CART_QUANTITY_SWR_KEY,
-  CART_UPDATING_SWR_KEY,
-  CART_VARIANT_SWR_KEY,
-  MIN_CART_QUANTITY,
-} from "@/features/cart/constants";
+  addToCartLines,
+  buildCartSummary,
+  setLineQuantityInCart,
+} from "@/features/cart/pricing";
 import { cartRepository } from "@/features/cart/services/cart.repository";
-import { cartService } from "@/features/cart/services/cart.service";
-import type { CartSummary } from "@/features/cart/types";
+import type { CartLine } from "@/features/cart/types";
 import { DEFAULT_PRODUCT_VARIANT_ID } from "@/features/product/constants";
 
 /**
- * Global UI state giỏ hàng — SWR-as-store (docs/state-management.md mục 3 + 7).
- * Persist/mutate đi qua cartRepository + cartService; hook không đụng localStorage trực tiếp.
+ * Global UI state giỏ — nguồn thật `localStorage` (`cartRepository`), lớp
+ * reactive cross-component là SWR-as-store (docs/state-management.md mục 3).
+ * Không còn network round-trip / merge-on-login — localStorage dùng chung
+ * mọi trạng thái đăng nhập trong cùng trình duyệt.
  */
 export function useCartStore() {
-  const { mutate } = useSWRConfig();
-  const inFlightRef = useRef(false);
-
-  const { data: quantity } = useSWR(
-    CART_QUANTITY_SWR_KEY,
-    () => cartRepository.getState().quantity,
+  const { data: lines, mutate: mutateLines } = useSWR(
+    CART_LINES_SWR_KEY,
+    () => cartRepository.readState().lines,
     {
-      fallbackData: MIN_CART_QUANTITY,
+      fallbackData: [] as CartLine[],
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
-    }
-  );
-
-  const { data: variantId } = useSWR(
-    CART_VARIANT_SWR_KEY,
-    () => cartRepository.getState().variantId,
-    {
-      fallbackData: DEFAULT_PRODUCT_VARIANT_ID,
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-    }
-  );
-
-  const { data: isUpdating } = useSWR(CART_UPDATING_SWR_KEY, () => false, {
-    fallbackData: false,
-    revalidateOnFocus: false,
-    revalidateOnReconnect: false,
-  });
-
-  const currentQuantity = quantity ?? MIN_CART_QUANTITY;
-  const currentVariantId = variantId ?? DEFAULT_PRODUCT_VARIANT_ID;
-  const summary = cartService.buildSummary(
-    currentQuantity,
-    undefined,
-    undefined,
-    currentVariantId
-  );
-
-  const syncFromSummary = useCallback(
-    async (next: CartSummary) => {
-      await mutate(CART_QUANTITY_SWR_KEY, next.quantity, { revalidate: false });
-      await mutate(CART_VARIANT_SWR_KEY, next.variantId, { revalidate: false });
-      return next;
     },
-    [mutate]
   );
 
-  const runMutation = useCallback(
-    async (action: () => Promise<CartSummary>) => {
-      if (inFlightRef.current) {
-        return summaryFromRepo();
-      }
+  const currentLines = lines ?? [];
+  const summary = buildCartSummary({ lines: currentLines });
 
-      inFlightRef.current = true;
-      await mutate(CART_UPDATING_SWR_KEY, true, { revalidate: false });
-      try {
-        const next = await action();
-        return await syncFromSummary(next);
-      } finally {
-        inFlightRef.current = false;
-        await mutate(CART_UPDATING_SWR_KEY, false, { revalidate: false });
-      }
+  const writeLines = useCallback(
+    (nextLines: CartLine[]) => {
+      const next = cartRepository.writeState({ lines: nextLines });
+      void mutateLines(next.lines, { revalidate: false });
+      return buildCartSummary(next);
     },
-    [mutate, syncFromSummary]
+    [mutateLines],
   );
 
   return {
-    quantity: currentQuantity,
-    variantId: currentVariantId,
+    lines: currentLines,
+    /** Tổng số gói mọi dòng — dùng pricing / checkout. */
+    quantity: summary.quantity,
+    /** Số dòng gói trong giỏ — dùng badge navbar / dock. */
+    lineCount: currentLines.length,
     summary,
     isEmpty: summary.isEmpty,
-    isUpdating: Boolean(isUpdating),
-    setQuantity: (next: number) => runMutation(() => cartService.setQuantity(next)),
-    setVariant: (next: string) => runMutation(() => cartService.setVariant(next)),
-    increment: () => runMutation(() => cartService.increment()),
-    decrement: () => runMutation(() => cartService.decrement()),
-    addToCart: (amount: number = 1, nextVariantId?: string) =>
-      runMutation(() => cartService.add(amount, nextVariantId)),
-    removeFromCart: () => runMutation(() => cartService.remove()),
+    addToCart: (
+      amount: number = 1,
+      variantId: string = DEFAULT_PRODUCT_VARIANT_ID,
+    ) => writeLines(addToCartLines(currentLines, amount, variantId)),
+    increment: (variantId: string) => {
+      const line = currentLines.find((l) => l.variantId === variantId);
+      return writeLines(
+        setLineQuantityInCart(
+          currentLines,
+          variantId,
+          (line?.quantity ?? MIN_CART_QUANTITY) + 1,
+        ),
+      );
+    },
+    decrement: (variantId: string) => {
+      const line = currentLines.find((l) => l.variantId === variantId);
+      return writeLines(
+        setLineQuantityInCart(
+          currentLines,
+          variantId,
+          (line?.quantity ?? MIN_CART_QUANTITY) - 1,
+        ),
+      );
+    },
+    setLineQuantity: (variantId: string, nextQty: number) =>
+      writeLines(setLineQuantityInCart(currentLines, variantId, nextQty)),
+    removeLine: (variantId: string) =>
+      writeLines(setLineQuantityInCart(currentLines, variantId, 0)),
+    removeFromCart: () => writeLines([]),
   };
-}
-
-function summaryFromRepo(): CartSummary {
-  const state = cartRepository.getState();
-  return cartService.buildSummary(
-    state.quantity,
-    undefined,
-    undefined,
-    state.variantId
-  );
 }

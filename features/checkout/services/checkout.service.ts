@@ -4,34 +4,22 @@ import {
   buildCartSummary,
   resolveCheckoutShippingFee,
 } from "@/features/cart/pricing";
-import { BadRequestError } from "@/src/errors/app.error";
-import { logger } from "@/src/logging/logger";
 import {
-  BANK_TRANSFER_INSTRUCTIONS,
-  CHECKOUT_MOCK_LATENCY_MS,
-  EWALLET_INSTRUCTIONS,
-  SHIPPING_FEES_VND,
-} from "../constants";
+  BadRequestError,
+  ConflictError,
+  NotFoundError,
+} from "@/src/errors/app.error";
+import { logger } from "@/src/logging/logger";
+import { EWALLET_INSTRUCTIONS, SHIPPING_FEES_VND } from "../constants";
 import type { CreateOrderRequest } from "../schemas/checkout.schema";
 import type {
   CreateOrderResult,
   OrderStatus,
   PaymentInstructions,
+  RetryPaymentResult,
 } from "../types";
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
-function buildOrderCode(now = new Date()): string {
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
-  return `NT-${y}${m}${d}-${suffix}`;
-}
+import { buildOrderCode, orderRepository } from "./order.repository";
+import { payosService } from "./payos.service";
 
 function estimatedDeliveryLabel(
   shippingMethod: CreateOrderRequest["shippingMethod"],
@@ -41,42 +29,68 @@ function estimatedDeliveryLabel(
     : "Dự kiến giao trong 3–5 ngày làm việc";
 }
 
-function resolvePayment(paymentMethod: CreateOrderRequest["paymentMethod"]): {
-  status: OrderStatus;
+interface ResolvedPayment {
+  uiStatus: OrderStatus;
   paymentInstructions?: PaymentInstructions;
-} {
+  paymentUrl?: string;
+  payosOrderCode?: number;
+  payosPaymentLinkId?: string;
+}
+
+/**
+ * Gọi payOS (nếu cần) TRƯỚC khi ghi DB — nếu payOS lỗi, throw ngay, chưa có
+ * gì để rollback (đơn chưa được tạo).
+ */
+async function resolvePayment(
+  paymentMethod: CreateOrderRequest["paymentMethod"],
+  context: {
+    orderCode: string;
+    amount: number;
+    buyer: CreateOrderRequest["buyer"];
+  },
+): Promise<ResolvedPayment> {
   if (paymentMethod === "cod") {
-    return { status: "pending" };
+    return { uiStatus: "pending" };
   }
   if (paymentMethod === "bank_transfer") {
+    const link = await payosService.createPaymentLink({
+      orderCode: context.orderCode,
+      amount: context.amount,
+      buyer: {
+        fullName: context.buyer.fullName.trim(),
+        email: context.buyer.email.trim().toLowerCase(),
+        phone: context.buyer.phone.trim(),
+      },
+    });
     return {
-      status: "awaiting_payment",
-      paymentInstructions: BANK_TRANSFER_INSTRUCTIONS,
+      uiStatus: "awaiting_payment",
+      paymentUrl: link.checkoutUrl,
+      payosOrderCode: link.payosOrderCode,
+      payosPaymentLinkId: link.payosPaymentLinkId,
     };
   }
   return {
-    status: "awaiting_payment",
+    uiStatus: "awaiting_payment",
     paymentInstructions: EWALLET_INSTRUCTIONS,
   };
 }
 
 /**
- * Tạo đơn hàng — v1 mock (sinh mã, tính lại tiền).
- * Khi có backend: thêm nhánh remote, giữ chữ ký `createOrder`.
- * `saveInfo`: hiện client tự gọi `useAccountProfile().updateProfile` +
- * `useAddresses().saveAsDefaultFromCheckout` sau order OK khi logged in.
- * Khi có session server: xử lý sync tại đây, client có thể bỏ bước đó.
+ * Tạo đơn thật. Yêu cầu migration E2E đã apply. Giỏ hàng sống client-side
+ * (localStorage) — client tự xoá sau khi submit thành công, không có gì
+ * để server clear ở đây.
  */
 export const checkoutService = {
-  async createOrder(input: CreateOrderRequest): Promise<CreateOrderResult> {
+  async createOrder(
+    userId: string,
+    input: CreateOrderRequest,
+  ): Promise<CreateOrderResult> {
     const serviceLogger = logger.child({
       service: "checkoutService",
       action: "createOrder",
     });
 
-    await delay(CHECKOUT_MOCK_LATENCY_MS);
-
-    const cartSummary = buildCartSummary(input.quantity);
+    const cartSummary = buildCartSummary({ lines: input.lines });
     if (cartSummary.isEmpty) {
       throw new BadRequestError("Giỏ hàng trống — không thể đặt hàng.");
     }
@@ -89,20 +103,50 @@ export const checkoutService = {
 
     const merchandiseTotal = cartSummary.total;
     const total = merchandiseTotal + shippingFee;
-    const { status, paymentInstructions } = resolvePayment(input.paymentMethod);
-
-    const note = input.note?.trim() ? input.note.trim() : undefined;
-    const orderId = crypto.randomUUID();
     const orderCode = buildOrderCode();
 
-    const result: CreateOrderResult = {
-      orderId,
+    const {
+      uiStatus,
+      paymentInstructions,
+      paymentUrl,
+      payosOrderCode,
+      payosPaymentLinkId,
+    } = await resolvePayment(input.paymentMethod, {
       orderCode,
-      status,
+      amount: total,
+      buyer: input.buyer,
+    });
+
+    const note = input.note?.trim() ? input.note.trim() : undefined;
+    const primaryUnitPrice = cartSummary.lines[0]?.unitPrice ?? 0;
+
+    const row = await orderRepository.create(
+      userId,
+      input,
+      {
+        unitPrice: primaryUnitPrice,
+        subtotal: cartSummary.subtotal,
+        discountAmount: cartSummary.discountAmount,
+        shippingFee,
+        total,
+      },
+      {
+        orderCode,
+        status: "PENDING",
+        paymentStatus: "UNPAID",
+        payosOrderCode,
+        payosPaymentLinkId,
+      },
+    );
+
+    const result: CreateOrderResult = {
+      orderId: row.id,
+      orderCode: row.order_code,
+      status: uiStatus,
       estimatedDeliveryLabel: estimatedDeliveryLabel(input.shippingMethod),
       summary: {
         quantity: cartSummary.quantity,
-        unitPrice: cartSummary.unitPrice,
+        unitPrice: primaryUnitPrice,
         subtotal: cartSummary.subtotal,
         discountPercent: cartSummary.discountPercent,
         discountAmount: cartSummary.discountAmount,
@@ -126,20 +170,96 @@ export const checkoutService = {
       shippingMethod: input.shippingMethod,
       paymentMethod: input.paymentMethod,
       paymentInstructions,
+      paymentUrl,
     };
 
     serviceLogger.info(
       {
-        orderId,
-        orderCode,
+        orderId: result.orderId,
+        orderCode: result.orderCode,
         quantity: result.summary.quantity,
+        lineCount: cartSummary.lines.length,
         total: result.summary.total,
         paymentMethod: result.paymentMethod,
-        mode: "mock",
+        mode: "db",
       },
-      "Mock order created",
+      "Order created",
     );
 
     return result;
+  },
+
+  /** Trang /checkout/success gọi khi quay lại từ payOS để đối soát trạng thái thật. */
+  async getPaymentStatusForUser(
+    userId: string,
+    orderCode: string,
+  ): Promise<{ paymentStatus: "UNPAID" | "PAID" }> {
+    const order = await orderRepository.findByOrderCodeForUser(orderCode, userId);
+    if (!order) {
+      throw new NotFoundError("Đơn hàng");
+    }
+    if (
+      order.payment_status === "PAID" ||
+      order.payment_method !== "PAYOS" ||
+      !order.payos_order_code
+    ) {
+      return { paymentStatus: order.payment_status };
+    }
+    return payosService.reconcileByPayosOrderCode(order.payos_order_code);
+  },
+
+  /**
+   * Đơn payOS bị bỏ dở (thoát giữa chừng, không quét QR) — tạo lại payment
+   * link. `updatePayosLink` là compare-and-swap: nếu thua race (2 tab bấm
+   * cùng lúc), huỷ link vừa tạo và báo lỗi cho client thử lại thay vì âm
+   * thầm ghi đè link mà khách có thể đang xem ở tab kia.
+   */
+  async retryPayment(userId: string, orderCode: string): Promise<RetryPaymentResult> {
+    const order = await orderRepository.findByOrderCodeForUser(orderCode, userId);
+    if (!order) {
+      throw new NotFoundError("Đơn hàng");
+    }
+    if (order.payment_status === "PAID") {
+      return { status: "already_paid" };
+    }
+    if (order.payment_method !== "PAYOS") {
+      throw new BadRequestError("Đơn hàng này không dùng payOS.");
+    }
+
+    const previousPayosOrderCode = order.payos_order_code;
+    if (previousPayosOrderCode) {
+      const reconciled = await payosService.reconcileByPayosOrderCode(
+        previousPayosOrderCode,
+      );
+      if (reconciled.paymentStatus === "PAID") {
+        return { status: "already_paid" };
+      }
+      await payosService.cancelPaymentLink(previousPayosOrderCode, "customer_retry");
+    }
+
+    const address = order.shipping_address;
+    const link = await payosService.createPaymentLink({
+      orderCode,
+      amount: Number(order.final_price),
+      buyer: {
+        fullName: address.fullName,
+        email: address.email,
+        phone: address.phone,
+      },
+    });
+
+    const updated = await orderRepository.updatePayosLink(
+      order.id,
+      previousPayosOrderCode,
+      link.payosOrderCode,
+      link.payosPaymentLinkId,
+    );
+
+    if (!updated) {
+      await payosService.cancelPaymentLink(link.payosOrderCode, "retry_race_lost");
+      throw new ConflictError("Đơn đang được xử lý ở nơi khác — vui lòng thử lại.");
+    }
+
+    return { status: "created", paymentUrl: link.checkoutUrl };
   },
 };

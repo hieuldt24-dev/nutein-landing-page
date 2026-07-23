@@ -6,6 +6,7 @@ import type { MouseEvent } from "react";
 import { MessageSquare, ShoppingCart } from "lucide-react";
 import { BounceChars } from "@/components/ui/BounceChars";
 import { FillButton } from "@/components/ui/FillButton";
+import { POLICY_FOOTER_LINKS } from "@/features/policies/constants";
 import { useAddToCart } from "@/lib/useAddToCart";
 
 function FacebookIcon({ size = 16 }: { size?: number }) {
@@ -43,12 +44,7 @@ const QUICK_LINKS = [
   { label: "Liên hệ", href: "/contact" },
 ];
 
-const POLICY_LINKS = [
-  { label: "Giao hàng", href: "#" },
-  { label: "Đổi trả", href: "#" },
-  { label: "Bảo mật", href: "#" },
-  { label: "Điều khoản sử dụng", href: "#" },
-];
+const POLICY_LINKS = POLICY_FOOTER_LINKS;
 
 /**
  * Footer site — nền caramel như BottomCta; CTA mua hàng ở trên,

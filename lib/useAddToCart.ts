@@ -5,8 +5,7 @@ import { useCartDrawer } from "@/lib/useCartDrawer";
 
 /**
  * Hành động "Mua ngay"/"Thêm vào giỏ" dùng chung cho mọi CTA trên site
- * (Hero, CTA sections, PDP…) — mở drawer rồi mutate qua cartService
- * (async + loading), tránh lặp logic ở từng nút mua.
+ * (Hero, CTA sections, PDP…) — `amount` = số gói (không phải số hũ).
  */
 export function useAddToCart() {
   const { addToCart } = useCartStore();
