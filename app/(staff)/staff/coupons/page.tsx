@@ -1,19 +1,19 @@
 "use client";
 
-import { AdminAuditPanel } from "@/components/admin/AdminAuditPanel";
+import { AdminCouponsList } from "@/components/admin/AdminCouponsList";
 import { AdminPageFrame } from "@/components/admin/AdminShell";
 
-export default function AdminAuditPage() {
+export default function AdminCouponsPage() {
   return (
     <AdminPageFrame>
       <p className="text-[12px] font-bold tracking-[0.08em] text-primary uppercase">
-        Hệ thống
+        Nội dung
       </p>
       <h1 className="mt-1 font-display text-[clamp(28px,3.5vw,36px)] font-bold tracking-[-0.03em] text-ink">
-        Nhật ký hệ thống
+        Mã giảm giá
       </h1>
       <div className="mt-8">
-        <AdminAuditPanel />
+        <AdminCouponsList />
       </div>
     </AdminPageFrame>
   );

@@ -59,7 +59,7 @@ export function AdminOrderDetail({ orderId }: AdminOrderDetailProps) {
           Không tìm thấy đơn hàng hoặc lỗi tải dữ liệu.
         </p>
         <FillButton
-          href="/admin/orders"
+          href="/staff/orders"
           variant="ink"
           className="mt-4 px-5 py-2.5 text-[13px] font-bold"
         >
@@ -103,7 +103,7 @@ export function AdminOrderDetail({ orderId }: AdminOrderDetailProps) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <Link
-            href="/admin/orders"
+            href="/staff/orders"
             className="text-[13px] font-bold text-primary-deep underline-offset-2 hover:underline"
           >
             ← Danh sách đơn

@@ -11,7 +11,7 @@ export const EXPLORE_LINKS = [
   { label: "Liên hệ", href: "/contact" },
 ] as const;
 
-const ADMIN_LINK = { label: "Quản Trị", href: "/admin" } as const;
+const ADMIN_LINK_LABEL = "Quản Trị";
 
 const PROMO_CARDS = [
   {
@@ -44,7 +44,8 @@ type NavExploreMegaProps = {
  * Link Quản Trị chỉ hiện khi session staff/admin (client store — tránh lệch SSR).
  */
 export function NavExploreMega({ onNavigate }: NavExploreMegaProps) {
-  const { isStaffOrAdmin } = useAuthStore();
+  const { role, isStaffOrAdmin } = useAuthStore();
+  const adminLinkHref = role === "admin" ? "/admin/users" : "/staff";
 
   return (
     <div id="nav-explore-mega" role="region" aria-label="Khám phá Nutein">
@@ -65,11 +66,11 @@ export function NavExploreMega({ onNavigate }: NavExploreMegaProps) {
             {isStaffOrAdmin ? (
               <li>
                 <Link
-                  href={ADMIN_LINK.href}
+                  href={adminLinkHref}
                   onClick={onNavigate}
                   className="font-display text-[28px] font-bold leading-[1.15] tracking-[-0.03em] text-ink transition-colors hover:text-primary md:text-[32px] lg:text-[36px]"
                 >
-                  {ADMIN_LINK.label}
+                  {ADMIN_LINK_LABEL}
                 </Link>
               </li>
             ) : null}

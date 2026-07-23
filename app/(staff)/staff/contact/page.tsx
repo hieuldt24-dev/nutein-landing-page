@@ -1,19 +1,19 @@
 "use client";
 
-import { AdminAuditPanel } from "@/components/admin/AdminAuditPanel";
+import { AdminContactList } from "@/components/admin/AdminContactList";
 import { AdminPageFrame } from "@/components/admin/AdminShell";
 
-export default function AdminAuditPage() {
+export default function AdminContactPage() {
   return (
     <AdminPageFrame>
       <p className="text-[12px] font-bold tracking-[0.08em] text-primary uppercase">
-        Hệ thống
+        Vận hành
       </p>
       <h1 className="mt-1 font-display text-[clamp(28px,3.5vw,36px)] font-bold tracking-[-0.03em] text-ink">
-        Nhật ký hệ thống
+        Hộp thư Liên hệ
       </h1>
       <div className="mt-8">
-        <AdminAuditPanel />
+        <AdminContactList />
       </div>
     </AdminPageFrame>
   );
