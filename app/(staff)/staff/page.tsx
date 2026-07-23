@@ -1,56 +1,60 @@
 "use client";
 
-import { AdminDashboardSummary } from "@/components/admin/AdminDashboardSummary";
-import { AdminPageFrame } from "@/components/admin/AdminShell";
+import { AdminDashboardSummary } from "@/components/admin/dashboard/AdminDashboardSummary";
+import { AdminPageFrame } from "@/components/admin/shell/AdminShell";
+import { DashboardOrderStatusPanel } from "@/components/admin/dashboard/DashboardOrderStatusPanel";
+import { DashboardOrdersByDayPanel } from "@/components/admin/dashboard/DashboardOrdersByDayPanel";
+import { DashboardRevenuePanel } from "@/components/admin/dashboard/DashboardRevenuePanel";
 import { FillButton } from "@/components/ui/FillButton";
-import { useAuthStore } from "@/lib/useAuthStore";
 
-/** /staff — S2 Dashboard (Staff). Gate + redirect role sai đã xử lý ở layout. */
+/** /staff — S2 Dashboard (Staff): doanh thu chính + vận hành phụ. */
 export default function StaffHomePage() {
-  const { user } = useAuthStore();
-
   return (
     <AdminPageFrame>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-[12px] font-bold tracking-[0.08em] text-primary uppercase">
-            Vận hành
-          </p>
-          <h1 className="mt-1 font-display text-[clamp(28px,3.5vw,36px)] font-bold tracking-[-0.03em] text-ink">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="font-display text-[clamp(26px,6vw,36px)] font-bold tracking-[-0.03em] text-ink">
             Tổng quan
           </h1>
-          <p className="mt-1 max-w-[520px] text-[14px] text-text-muted">
-            Nắm nhanh đơn hàng, liên hệ và tồn kho.
-          </p>
         </div>
         <FillButton
           href="/staff/orders"
           variant="ink-solid"
-          className="mt-3 h-11 shrink-0 px-5 text-[13px] font-bold sm:mt-0"
+          className="h-11 w-full shrink-0 px-5 text-[13px] font-bold sm:mt-0 sm:w-auto"
         >
           Quản lý đơn hàng
         </FillButton>
       </div>
 
-      <section className="mt-6 rounded-[var(--radius-lg)] border border-ink/10 bg-surface px-5 py-4">
-        <dl className="flex flex-wrap gap-x-8 gap-y-2 text-[14px]">
-          <div className="flex flex-wrap items-baseline gap-2">
-            <dt className="font-bold text-text-muted">Email</dt>
-            <dd className="font-semibold text-ink">{user?.email ?? "—"}</dd>
-          </div>
-          <div className="flex flex-wrap items-baseline gap-2">
-            <dt className="font-bold text-text-muted">Vai trò</dt>
-            <dd className="font-semibold text-ink">Staff</dd>
-          </div>
-        </dl>
+      <section className="mt-6 sm:mt-8">
+        <h2 className="mb-3 font-display text-lg font-bold text-ink">
+          Doanh thu
+        </h2>
+        <DashboardRevenuePanel />
       </section>
 
-      <section className="mt-8">
-        <h2 className="mb-4 font-display text-lg font-bold text-ink">
-          Chỉ số hôm nay
+      <section className="mt-8 sm:mt-10">
+        <h2 className="mb-3 font-display text-lg font-bold text-ink">
+          Đơn theo ngày
         </h2>
-        <AdminDashboardSummary />
+        <DashboardOrdersByDayPanel />
       </section>
+
+      <div className="mt-8 grid gap-8 sm:mt-10 lg:grid-cols-2 lg:items-start lg:gap-6">
+        <section className="min-w-0">
+          <h2 className="mb-3 font-display text-lg font-bold text-ink">
+            Trạng thái đơn
+          </h2>
+          <DashboardOrderStatusPanel />
+        </section>
+
+        <section className="min-w-0">
+          <h2 className="mb-3 font-display text-lg font-bold text-ink">
+            Cần chú ý
+          </h2>
+          <AdminDashboardSummary />
+        </section>
+      </div>
     </AdminPageFrame>
   );
 }

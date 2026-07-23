@@ -6,17 +6,18 @@ Tài liệu này mô tả lộ trình khu vực quản trị (Staff / Admin).
 ## Nguyên tắc sản phẩm
 
 - Staff/Admin vào cùng storefront; login chung [`AuthModal`](../components/shared/AuthModal.tsx).
-- Entry: **Quản Trị** trong mega Khám phá khi `staff|admin` — trỏ động theo role (`/staff` hoặc `/admin/users`).
-- Route: **tách 2 namespace riêng theo role**, không dùng chung `/admin` nữa — `/staff` (S2–S8, Staff) và `/admin` (A1/A2, Admin) — cùng shell sidebar [`AdminShell`](../components/admin/AdminShell.tsx) (không Navbar storefront). Nút **Về cửa hàng** → `/`.
-- **Tách quyền:** Staff = S2–S8 (vận hành, ở `/staff/**`). Admin = chỉ A1 Users + A2 Audit (không kế thừa staff, ở `/admin/**`). Gate: [`StaffOnlyGate`](../components/admin/StaffOnlyGate.tsx) (bọc 1 lần ở `app/(staff)/staff/layout.tsx`) / [`AdminOnlyGate`](../components/admin/AdminOnlyGate.tsx) (bọc 1 lần ở `app/(admin)/admin/layout.tsx`) — mỗi gate tự xử lý cả 2 tầng (không phải staff/admin → `/`; đúng nhóm nhưng sai khu vực → trang gốc của nhóm kia).
+- Entry: **Quản Trị** trong mega Khám phá khi `staff|admin` — trỏ động theo role (`/staff` hoặc `/admin`).
+- Route: **tách 2 namespace riêng theo role**, không dùng chung shell route — `/staff` (S2–S8, Staff) và `/admin` (Tổng quan + A1 Users + A2 Audit, Admin) — cùng shell sidebar [`AdminShell`](../components/admin/shell/AdminShell.tsx) (không Navbar storefront). Nút **Về cửa hàng** → `/`.
+- **Tách quyền:** Staff = S2–S8 (vận hành, ở `/staff/**`). Admin = Tổng quan (doanh thu + users + audit) + A1 Users + A2 Audit (không kế thừa staff ops, ở `/admin/**`). Gate: [`StaffOnlyGate`](../components/admin/shell/StaffOnlyGate.tsx) / [`AdminOnlyGate`](../components/admin/shell/AdminOnlyGate.tsx).
 
 ## Phase 0 — Nền tảng (xong)
 
 Role từ `public.users` qua `POST /api/auth/session` → SWR `auth-role` + gate `StaffOnlyGate`/`AdminOnlyGate` ở layout mỗi khu vực (đã bỏ `AdminAccessGate` — dư thừa sau khi tách route, 2 gate trên đã tự đủ). Không còn email allowlist mock.
 
-## Phase 1 — S2 Dashboard (mock UI)
+## Phase 1 — Dashboard (mock UI)
 
-[`/staff`](../app/(staff)/staff/page.tsx) · [`features/admin-dashboard/`](../features/admin-dashboard/) · [`AdminDashboardSummary`](../components/admin/AdminDashboardSummary.tsx)
+- Staff [`/staff`](../app/(staff)/staff/page.tsx): doanh thu chính + chỉ số vận hành phụ · [`DashboardRevenuePanel`](../components/admin/dashboard/DashboardRevenuePanel.tsx) · [`AdminDashboardSummary`](../components/admin/dashboard/AdminDashboardSummary.tsx) · [`features/admin-dashboard/`](../features/admin-dashboard/)
+- Admin [`/admin`](../app/(admin)/admin/page.tsx): doanh thu + users snapshot + audit gần đây · cùng `features/admin-dashboard/` (`getAdminHome`)
 
 ## Phase 2 — S3 Đơn hàng (mock UI)
 
@@ -44,7 +45,7 @@ Role từ `public.users` qua `POST /api/auth/session` → SWR `auth-role` + gate
 
 ## Phase 8 — A1 Users (mock UI, Admin only)
 
-[`/admin/users`](../app/(admin)/admin/users/page.tsx) · [`features/admin-users/`](../features/admin-users/) · [`AdminOnlyGate`](../components/admin/AdminOnlyGate.tsx) · đổi role + khóa. Chưa Supabase Auth Admin API.
+[`/admin/users`](../app/(admin)/admin/users/page.tsx) · [`features/admin-users/`](../features/admin-users/) · [`AdminOnlyGate`](../components/admin/shell/AdminOnlyGate.tsx) · đổi role + khóa. Chưa Supabase Auth Admin API.
 
 ## Phase 9 — A2 Audit (mock UI, Admin only)
 
@@ -61,8 +62,8 @@ Client gate + role DB + mock admin data services — đủ demo UI admin, **khô
 
 ## Kiểm thử nhanh
 
-- Staff: `/staff` + S2–S8 OK; `/admin/**` (A1/A2) bị đá về `/staff`.
-- Admin: `/admin/users`, `/admin/audit` OK; `/staff/**` bị đá về `/admin/users`.
+- Staff: `/staff` + S2–S8 OK; `/admin/**` bị đá về `/staff`.
+- Admin: `/admin` (Tổng quan), `/admin/users`, `/admin/audit` OK; `/staff/**` bị đá về `/admin`.
 - Chưa đăng nhập / role USER: cả `/staff` và `/admin/**` đá về `/`.
 - UI không import `*.mock.ts`.
 - `npm run build`.

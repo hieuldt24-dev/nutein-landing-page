@@ -45,7 +45,7 @@ type NavExploreMegaProps = {
  */
 export function NavExploreMega({ onNavigate }: NavExploreMegaProps) {
   const { role, isStaffOrAdmin } = useAuthStore();
-  const adminLinkHref = role === "admin" ? "/admin/users" : "/staff";
+  const adminLinkHref = role === "admin" ? "/admin" : "/staff";
 
   return (
     <div id="nav-explore-mega" role="region" aria-label="Khám phá Nutein">
