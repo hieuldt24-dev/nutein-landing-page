@@ -89,6 +89,17 @@ export const authRepository = {
     return { user: data.user, needsEmailConfirmation: !data.session };
   },
 
+  /** Redirect toàn trang sang Google — session thật lấy về qua app/auth/callback/route.ts. */
+  async signInWithGoogle(redirectTo: string): Promise<void> {
+    const { error } = await supabaseBrowser.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo },
+    });
+    if (error) {
+      throw new Error(mapAuthError(error));
+    }
+  },
+
   async signOut(): Promise<void> {
     const { error } = await supabaseBrowser.auth.signOut();
     if (error) {

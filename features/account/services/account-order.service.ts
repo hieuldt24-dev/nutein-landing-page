@@ -18,6 +18,8 @@ interface OrderListRow {
   shipping_method: "STANDARD" | "EXPRESS";
   final_price: number | string;
   created_at: string;
+  payment_method: "COD" | "BANK_TRANSFER" | "MOMO" | "VNPAY" | "PAYOS";
+  payment_status: "UNPAID" | "PAID" | "FAILED" | "REFUNDED";
   shipping_address: {
     variantLabel?: string;
   } | null;
@@ -76,6 +78,9 @@ function toAccountOrder(row: OrderListRow): AccountOrder {
     uniqueLabels.length > 0
       ? uniqueLabels.join(" + ")
       : row.shipping_address?.variantLabel?.trim() || "1 hộp";
+  /** Đơn giản hoá về UNPAID/PAID — khớp cách checkoutService.getPaymentStatusForUser đã làm. */
+  const paymentStatus: "UNPAID" | "PAID" =
+    row.payment_status === "PAID" ? "PAID" : "UNPAID";
 
   return {
     id: row.id,
@@ -86,6 +91,8 @@ function toAccountOrder(row: OrderListRow): AccountOrder {
     variantLabel,
     total: Number(row.final_price),
     estimatedDeliveryLabel: estimatedDeliveryLabel(row.shipping_method, status),
+    paymentStatus,
+    canRetryPayment: row.payment_method === "PAYOS" && paymentStatus === "UNPAID",
   };
 }
 
@@ -102,6 +109,8 @@ export const accountOrderService = {
         shipping_method,
         final_price,
         created_at,
+        payment_method,
+        payment_status,
         shipping_address,
         order_items ( quantity, variant_info )
       `,

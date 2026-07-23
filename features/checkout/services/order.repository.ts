@@ -16,7 +16,7 @@ type DbOrderStatus =
   | "DELIVERED"
   | "CANCELLED"
   | "RETURNED";
-type DbPaymentMethod = "COD" | "BANK_TRANSFER" | "MOMO" | "VNPAY";
+type DbPaymentMethod = "COD" | "BANK_TRANSFER" | "MOMO" | "VNPAY" | "PAYOS";
 type DbShippingMethod = "STANDARD" | "EXPRESS";
 
 export interface OrderShippingAddressSnapshot {
@@ -49,6 +49,8 @@ interface OrderInsertRow {
   shipping_address: OrderShippingAddressSnapshot;
   note: string | null;
   created_at: string;
+  payos_order_code: number | null;
+  payos_payment_link_id: string | null;
 }
 
 function requireAdminClient() {
@@ -62,7 +64,7 @@ function mapPaymentMethod(
   method: CreateOrderRequest["paymentMethod"],
 ): DbPaymentMethod {
   if (method === "cod") return "COD";
-  if (method === "bank_transfer") return "BANK_TRANSFER";
+  if (method === "bank_transfer") return "PAYOS";
   return "MOMO";
 }
 
@@ -99,6 +101,8 @@ export const orderRepository = {
       orderCode: string;
       status: DbOrderStatus;
       paymentStatus: "UNPAID" | "PAID";
+      payosOrderCode?: number;
+      payosPaymentLinkId?: string;
     },
   ): Promise<OrderInsertRow> {
     const lines = normalizeCartLines(input.lines);
@@ -148,9 +152,11 @@ export const orderRepository = {
         final_price: money.total,
         shipping_address: shippingAddress,
         note: input.note?.trim() || null,
+        payos_order_code: meta.payosOrderCode ?? null,
+        payos_payment_link_id: meta.payosPaymentLinkId ?? null,
       })
       .select(
-        "id, order_code, status, payment_method, payment_status, shipping_method, total_price, shipping_fee, discount_amount, final_price, shipping_address, note, created_at",
+        "id, order_code, status, payment_method, payment_status, shipping_method, total_price, shipping_fee, discount_amount, final_price, shipping_address, note, created_at, payos_order_code, payos_payment_link_id",
       )
       .single();
 
@@ -182,6 +188,97 @@ export const orderRepository = {
     }
 
     return row;
+  },
+
+  /**
+   * Trang /checkout/success (đối soát) và retryPayment (thanh toán lại) gọi
+   * — tra đơn theo order_code + user.
+   */
+  async findByOrderCodeForUser(
+    orderCode: string,
+    userId: string,
+  ): Promise<Pick<
+    OrderInsertRow,
+    | "id"
+    | "payment_status"
+    | "payment_method"
+    | "payos_order_code"
+    | "payos_payment_link_id"
+    | "final_price"
+    | "shipping_address"
+  > | null> {
+    const client = requireAdminClient();
+    const { data, error } = await client
+      .from("orders")
+      .select(
+        "id, payment_status, payment_method, payos_order_code, payos_payment_link_id, final_price, shipping_address",
+      )
+      .eq("order_code", orderCode)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Không tra được đơn hàng: ${error.message}`);
+    }
+    return data ?? null;
+  },
+
+  /**
+   * Compare-and-swap: chỉ update khi `payos_order_code` hiện tại còn khớp
+   * `previousPayosOrderCode` đã đọc lúc đầu. Chặn race 2 request retry song
+   * song ghi đè lẫn nhau (webhook sẽ tra nhầm theo code "thua" nếu không có
+   * điều kiện này). Trả `false` nếu 0 dòng khớp — bên gọi tự huỷ link vừa
+   * tạo và báo lỗi cho client thử lại.
+   */
+  async updatePayosLink(
+    orderId: string,
+    previousPayosOrderCode: number | null,
+    nextPayosOrderCode: number,
+    nextPayosPaymentLinkId: string,
+  ): Promise<boolean> {
+    const client = requireAdminClient();
+    let query = client
+      .from("orders")
+      .update({
+        payos_order_code: nextPayosOrderCode,
+        payos_payment_link_id: nextPayosPaymentLinkId,
+      })
+      .eq("id", orderId);
+
+    query =
+      previousPayosOrderCode === null
+        ? query.is("payos_order_code", null)
+        : query.eq("payos_order_code", previousPayosOrderCode);
+
+    const { data, error } = await query.select("id");
+
+    if (error) {
+      throw new Error(`Không cập nhật được link thanh toán: ${error.message}`);
+    }
+    return Array.isArray(data) && data.length > 0;
+  },
+
+  /**
+   * Update idempotent trong 1 round-trip: webhook payOS có thể gọi lại
+   * nhiều lần cùng đơn — `neq payment_status 'PAID'` đảm bảo chỉ update lần
+   * đầu, các lần sau là no-op an toàn (không lỗi, không side-effect kép).
+   */
+  async markPaidByPayosOrderCode(
+    payosOrderCode: number,
+  ): Promise<{ orderId: string } | null> {
+    const client = requireAdminClient();
+    const { data, error } = await client
+      .from("orders")
+      .update({ payment_status: "PAID" })
+      .eq("payos_order_code", payosOrderCode)
+      .neq("payment_status", "PAID")
+      .select("id")
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Không cập nhật được trạng thái thanh toán: ${error.message}`);
+    }
+    return data ? { orderId: data.id } : null;
   },
 };
 

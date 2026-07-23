@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useCartDrawer } from "@/lib/useCartDrawer";
 import { useCartStore } from "@/lib/useCartStore";
 import {
@@ -86,13 +86,7 @@ function CartTotals({
 export default function CartDrawer() {
   const router = useRouter();
   const { isOpen, close } = useCartDrawer();
-  const {
-    summary,
-    isUpdating,
-    increment,
-    decrement,
-    removeLine,
-  } = useCartStore();
+  const { summary, increment, decrement, removeLine } = useCartStore();
   const [isMounted, setIsMounted] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
 
@@ -169,7 +163,6 @@ export default function CartDrawer() {
           "md:max-w-[560px] md:rounded-[var(--radius-xl)] md:border md:border-ink md:shadow-xl",
           "transition-transform duration-[380ms] ease-[cubic-bezier(0.645,0.045,0.355,1)] will-change-transform",
           isVisible ? "translate-x-0" : "translate-x-full md:translate-x-[calc(100%+2rem)]",
-          isUpdating && "cursor-wait",
         )}
       >
         <div className="flex items-center justify-between border-b border-ink/25 px-7 py-7">
@@ -203,7 +196,6 @@ export default function CartDrawer() {
                 key={line.variantId}
                 product={productService.toCartProduct(detail, line.variantId)}
                 quantity={line.quantity}
-                disabled={isUpdating}
                 onIncrement={() => {
                   void increment(line.variantId);
                 }}
@@ -219,16 +211,6 @@ export default function CartDrawer() {
         )}
 
         {!isEmpty && <CartTotals summary={summary} onCheckout={goCheckout} />}
-
-        {isUpdating && (
-          <div
-            className="absolute inset-0 z-10 flex items-center justify-center bg-ink/20"
-            aria-busy="true"
-            aria-live="polite"
-          >
-            <Loader2 size={40} strokeWidth={2.2} className="animate-spin text-ink" />
-          </div>
-        )}
       </aside>
     </div>
   );

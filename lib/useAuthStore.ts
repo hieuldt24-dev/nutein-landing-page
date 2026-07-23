@@ -8,7 +8,6 @@ import {
   AUTH_READY_SWR_KEY,
   AUTH_ROLE_SWR_KEY,
 } from "@/features/auth/constants";
-import { CART_LINES_SWR_KEY } from "@/features/cart/constants";
 import { authRepository, toAuthUser } from "@/features/auth/services/auth.repository";
 import { authService } from "@/features/auth/services/auth.service";
 import type { AuthRole, AuthUser } from "@/features/auth/types";
@@ -80,13 +79,15 @@ export function useAuthStore() {
     [mutate]
   );
 
+  /** Trình duyệt redirect sang Google ngay khi gọi thành công — không cần mutate SWR ở đây. */
+  const signInWithGoogle = useCallback(async (redirectTo: string) => {
+    await authRepository.signInWithGoogle(redirectTo);
+  }, []);
+
   const signOut = useCallback(async () => {
     await authRepository.signOut();
     await mutate(AUTH_USER_SWR_KEY, null, { revalidate: false });
     await mutate(AUTH_ROLE_SWR_KEY, null, { revalidate: false });
-    // Logout API đã clear session cart trên server — sync UI ngay, tránh
-    // flash giỏ user cũ trước khi hydrate guest trả về empty.
-    await mutate(CART_LINES_SWR_KEY, [], { revalidate: false });
   }, [mutate]);
 
   const role = user?.role ?? null;
@@ -101,6 +102,7 @@ export function useAuthStore() {
     canAccessAdmin: authService.canAccessAdmin(user),
     signIn,
     signUp,
+    signInWithGoogle,
     signOut,
   };
 }

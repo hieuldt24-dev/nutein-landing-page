@@ -4,7 +4,6 @@ import { withErrorHandler } from "@/src/middlewares/error-handler.middleware";
 import { authenticate } from "@/src/middlewares/authenticate.middlware";
 import { createOrderRequestSchema } from "@/features/checkout/schemas/checkout.schema";
 import { checkoutService } from "@/features/checkout/services/checkout.service";
-import { resolveCartActor, applyCartSessionCookie } from "@/features/cart/services/cart-session.server";
 
 /**
  * POST /api/checkout
@@ -15,15 +14,6 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const user = await authenticate(req);
   const body = await req.json();
   const validated = createOrderRequestSchema.parse(body);
-  const actor = resolveCartActor(req);
-  const result = await checkoutService.createOrder(
-    user.userId,
-    validated,
-    actor.sessionId,
-  );
-  const response = createdResponse(result);
-  if (actor.isNewSession) {
-    applyCartSessionCookie(response, actor.sessionId);
-  }
-  return response;
+  const result = await checkoutService.createOrder(user.userId, validated);
+  return createdResponse(result);
 });

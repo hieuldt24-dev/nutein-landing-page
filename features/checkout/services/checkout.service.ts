@@ -4,21 +4,22 @@ import {
   buildCartSummary,
   resolveCheckoutShippingFee,
 } from "@/features/cart/pricing";
-import { cartServerService } from "@/features/cart/services/cart.server.service";
-import { BadRequestError } from "@/src/errors/app.error";
-import { logger } from "@/src/logging/logger";
 import {
-  BANK_TRANSFER_INSTRUCTIONS,
-  EWALLET_INSTRUCTIONS,
-  SHIPPING_FEES_VND,
-} from "../constants";
+  BadRequestError,
+  ConflictError,
+  NotFoundError,
+} from "@/src/errors/app.error";
+import { logger } from "@/src/logging/logger";
+import { EWALLET_INSTRUCTIONS, SHIPPING_FEES_VND } from "../constants";
 import type { CreateOrderRequest } from "../schemas/checkout.schema";
 import type {
   CreateOrderResult,
   OrderStatus,
   PaymentInstructions,
+  RetryPaymentResult,
 } from "../types";
 import { buildOrderCode, orderRepository } from "./order.repository";
+import { payosService } from "./payos.service";
 
 function estimatedDeliveryLabel(
   shippingMethod: CreateOrderRequest["shippingMethod"],
@@ -28,17 +29,44 @@ function estimatedDeliveryLabel(
     : "Dự kiến giao trong 3–5 ngày làm việc";
 }
 
-function resolvePayment(paymentMethod: CreateOrderRequest["paymentMethod"]): {
+interface ResolvedPayment {
   uiStatus: OrderStatus;
   paymentInstructions?: PaymentInstructions;
-} {
+  paymentUrl?: string;
+  payosOrderCode?: number;
+  payosPaymentLinkId?: string;
+}
+
+/**
+ * Gọi payOS (nếu cần) TRƯỚC khi ghi DB — nếu payOS lỗi, throw ngay, chưa có
+ * gì để rollback (đơn chưa được tạo).
+ */
+async function resolvePayment(
+  paymentMethod: CreateOrderRequest["paymentMethod"],
+  context: {
+    orderCode: string;
+    amount: number;
+    buyer: CreateOrderRequest["buyer"];
+  },
+): Promise<ResolvedPayment> {
   if (paymentMethod === "cod") {
     return { uiStatus: "pending" };
   }
   if (paymentMethod === "bank_transfer") {
+    const link = await payosService.createPaymentLink({
+      orderCode: context.orderCode,
+      amount: context.amount,
+      buyer: {
+        fullName: context.buyer.fullName.trim(),
+        email: context.buyer.email.trim().toLowerCase(),
+        phone: context.buyer.phone.trim(),
+      },
+    });
     return {
       uiStatus: "awaiting_payment",
-      paymentInstructions: BANK_TRANSFER_INSTRUCTIONS,
+      paymentUrl: link.checkoutUrl,
+      payosOrderCode: link.payosOrderCode,
+      payosPaymentLinkId: link.payosPaymentLinkId,
     };
   }
   return {
@@ -48,13 +76,14 @@ function resolvePayment(paymentMethod: CreateOrderRequest["paymentMethod"]): {
 }
 
 /**
- * Tạo đơn thật + clear giỏ DB. Yêu cầu migration E2E đã apply.
+ * Tạo đơn thật. Yêu cầu migration E2E đã apply. Giỏ hàng sống client-side
+ * (localStorage) — client tự xoá sau khi submit thành công, không có gì
+ * để server clear ở đây.
  */
 export const checkoutService = {
   async createOrder(
     userId: string,
     input: CreateOrderRequest,
-    sessionId: string | null = null,
   ): Promise<CreateOrderResult> {
     const serviceLogger = logger.child({
       service: "checkoutService",
@@ -74,10 +103,21 @@ export const checkoutService = {
 
     const merchandiseTotal = cartSummary.total;
     const total = merchandiseTotal + shippingFee;
-    const { uiStatus, paymentInstructions } = resolvePayment(input.paymentMethod);
+    const orderCode = buildOrderCode();
+
+    const {
+      uiStatus,
+      paymentInstructions,
+      paymentUrl,
+      payosOrderCode,
+      payosPaymentLinkId,
+    } = await resolvePayment(input.paymentMethod, {
+      orderCode,
+      amount: total,
+      buyer: input.buyer,
+    });
 
     const note = input.note?.trim() ? input.note.trim() : undefined;
-    const orderCode = buildOrderCode();
     const primaryUnitPrice = cartSummary.lines[0]?.unitPrice ?? 0;
 
     const row = await orderRepository.create(
@@ -94,10 +134,10 @@ export const checkoutService = {
         orderCode,
         status: "PENDING",
         paymentStatus: "UNPAID",
+        payosOrderCode,
+        payosPaymentLinkId,
       },
     );
-
-    await cartServerService.clearUserAndSession(userId, sessionId);
 
     const result: CreateOrderResult = {
       orderId: row.id,
@@ -130,6 +170,7 @@ export const checkoutService = {
       shippingMethod: input.shippingMethod,
       paymentMethod: input.paymentMethod,
       paymentInstructions,
+      paymentUrl,
     };
 
     serviceLogger.info(
@@ -146,5 +187,79 @@ export const checkoutService = {
     );
 
     return result;
+  },
+
+  /** Trang /checkout/success gọi khi quay lại từ payOS để đối soát trạng thái thật. */
+  async getPaymentStatusForUser(
+    userId: string,
+    orderCode: string,
+  ): Promise<{ paymentStatus: "UNPAID" | "PAID" }> {
+    const order = await orderRepository.findByOrderCodeForUser(orderCode, userId);
+    if (!order) {
+      throw new NotFoundError("Đơn hàng");
+    }
+    if (
+      order.payment_status === "PAID" ||
+      order.payment_method !== "PAYOS" ||
+      !order.payos_order_code
+    ) {
+      return { paymentStatus: order.payment_status };
+    }
+    return payosService.reconcileByPayosOrderCode(order.payos_order_code);
+  },
+
+  /**
+   * Đơn payOS bị bỏ dở (thoát giữa chừng, không quét QR) — tạo lại payment
+   * link. `updatePayosLink` là compare-and-swap: nếu thua race (2 tab bấm
+   * cùng lúc), huỷ link vừa tạo và báo lỗi cho client thử lại thay vì âm
+   * thầm ghi đè link mà khách có thể đang xem ở tab kia.
+   */
+  async retryPayment(userId: string, orderCode: string): Promise<RetryPaymentResult> {
+    const order = await orderRepository.findByOrderCodeForUser(orderCode, userId);
+    if (!order) {
+      throw new NotFoundError("Đơn hàng");
+    }
+    if (order.payment_status === "PAID") {
+      return { status: "already_paid" };
+    }
+    if (order.payment_method !== "PAYOS") {
+      throw new BadRequestError("Đơn hàng này không dùng payOS.");
+    }
+
+    const previousPayosOrderCode = order.payos_order_code;
+    if (previousPayosOrderCode) {
+      const reconciled = await payosService.reconcileByPayosOrderCode(
+        previousPayosOrderCode,
+      );
+      if (reconciled.paymentStatus === "PAID") {
+        return { status: "already_paid" };
+      }
+      await payosService.cancelPaymentLink(previousPayosOrderCode, "customer_retry");
+    }
+
+    const address = order.shipping_address;
+    const link = await payosService.createPaymentLink({
+      orderCode,
+      amount: Number(order.final_price),
+      buyer: {
+        fullName: address.fullName,
+        email: address.email,
+        phone: address.phone,
+      },
+    });
+
+    const updated = await orderRepository.updatePayosLink(
+      order.id,
+      previousPayosOrderCode,
+      link.payosOrderCode,
+      link.payosPaymentLinkId,
+    );
+
+    if (!updated) {
+      await payosService.cancelPaymentLink(link.payosOrderCode, "retry_race_lost");
+      throw new ConflictError("Đơn đang được xử lý ở nơi khác — vui lòng thử lại.");
+    }
+
+    return { status: "created", paymentUrl: link.checkoutUrl };
   },
 };

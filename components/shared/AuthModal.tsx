@@ -69,7 +69,7 @@ export default function AuthModal() {
   const router = useRouter();
   const pathname = usePathname();
   const { mutate } = useSWRConfig();
-  const { isLoggedIn, signIn, signUp } = useAuthStore();
+  const { isLoggedIn, signIn, signUp, signInWithGoogle } = useAuthStore();
   // revalidateOnMount/OnFocus/OnReconnect: false — key này chỉ là cờ mở/đóng
   // UI (SWR-as-store), không phải server data. Không tắt sẽ có nguy cơ race
   // giống useAuthStore: fetcher no-op tự chạy lại (VD mỗi lần tab focus lại)
@@ -106,6 +106,7 @@ export default function AuthModal() {
   const [activeTab, setActiveTab] = useState<"login" | "register">("login");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmittingForm, setIsSubmittingForm] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const returnToRef = useRef<string | null>(null);
   const appliedOpenRef = useRef(false);
 
@@ -201,6 +202,21 @@ export default function AuthModal() {
     setActiveTab("register");
     setSignUpValue("email", email, { shouldDirty: true, shouldValidate: false });
     setLoginValue("email", email, { shouldDirty: false });
+  };
+
+  // Redirect toàn trang sang Google — session thật lấy về qua app/auth/callback/route.ts
+  // (cùng route xử lý cả email-confirm lẫn OAuth, xem sanitizeAuthReturnTo).
+  const onGoogleLogin = async () => {
+    setIsGoogleLoading(true);
+    try {
+      const next = resolveAfterAuthPath() ?? "/";
+      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
+      await signInWithGoogle(redirectTo);
+      // Thành công: trình duyệt redirect sang Google ngay, không cần setIsOpen(false).
+    } catch (err) {
+      notify.error(err instanceof Error ? err.message : "Không thể đăng nhập bằng Google.");
+      setIsGoogleLoading(false);
+    }
   };
 
   const onLogin = async (data: LoginFormValues) => {
@@ -429,10 +445,17 @@ export default function AuthModal() {
               <FillButton
                 type="button"
                 variant="ink"
-                disabled
+                disabled={isGoogleLoading || isSubmittingForm}
+                onClick={() => {
+                  void onGoogleLogin();
+                }}
                 className="h-11 w-full justify-center px-4 text-[13px] font-bold"
               >
-                <GoogleIcon />
+                {isGoogleLoading ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <GoogleIcon />
+                )}
                 Google
               </FillButton>
             </form>
