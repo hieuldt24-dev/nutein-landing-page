@@ -43,7 +43,7 @@ export function AdminContactList() {
           {data.map((m) => (
             <li key={m.id}>
               <Link
-                href={`/admin/contact/${m.id}`}
+                href={`/staff/contact/${m.id}`}
                 className="block rounded-[var(--radius-lg)] border border-ink/15 bg-surface px-4 py-4 hover:border-ink/30"
               >
                 <div className="flex flex-wrap justify-between gap-2">

@@ -54,7 +54,7 @@ export function AdminCouponsList() {
     <div>
       <div className="mb-4 flex justify-end">
         <Link
-          href="/admin/coupons/new"
+          href="/staff/coupons/new"
           className="rounded-full bg-ink px-4 py-2 text-[13px] font-bold text-bg"
         >
           Tạo coupon
@@ -68,7 +68,7 @@ export function AdminCouponsList() {
           >
             <div>
               <Link
-                href={`/admin/coupons/${c.id}`}
+                href={`/staff/coupons/${c.id}`}
                 className="text-[15px] font-bold text-ink underline-offset-2 hover:underline"
               >
                 {c.code}

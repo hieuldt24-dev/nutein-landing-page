@@ -95,7 +95,8 @@ export default function Navbar() {
     if (val) openAuthModal(mutate);
     else void mutate(AUTH_MODAL_SWR_KEY, false, { revalidate: false });
   };
-  const { isLoggedIn, isStaffOrAdmin, user } = useAuthStore();
+  const { isLoggedIn, isStaffOrAdmin, role, user } = useAuthStore();
+  const adminLinkHref = role === "admin" ? "/admin/users" : "/staff";
   const { profile } = useAccountProfile();
   const avatarName = profile?.fullName || user?.fullName;
   const cartDrawer = useCartDrawer();
@@ -326,7 +327,7 @@ export default function Navbar() {
 
                 {isStaffOrAdmin ? (
                   <Link
-                    href="/admin"
+                    href={adminLinkHref}
                     onClick={closeMenu}
                     className="mt-6 block py-3 text-[13px] font-extrabold uppercase tracking-[0.08em] text-ink"
                   >

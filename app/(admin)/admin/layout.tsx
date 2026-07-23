@@ -1,9 +1,10 @@
-import { AdminAccessGate } from "@/components/admin/AdminAccessGate";
+import { AdminOnlyGate } from "@/components/admin/AdminOnlyGate";
 import { AdminShell } from "@/components/admin/AdminShell";
 
 /**
- * Khu vực quản trị — shell sidebar (không Navbar/FAB storefront).
- * Gate role staff/admin; modules theo docs/admin-portal-roadmap.md.
+ * Khu vực quản trị (A1 Users, A2 Audit) — chỉ Admin. Staff → /staff.
+ * AdminOnlyGate tự xử lý cả 2 tầng: chưa đăng nhập/không phải staff|admin
+ * -> "/"; đúng nhóm nhưng là Staff -> "/staff".
  */
 export default function AdminGroupLayout({
   children,
@@ -11,8 +12,8 @@ export default function AdminGroupLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <AdminAccessGate>
+    <AdminOnlyGate>
       <AdminShell>{children}</AdminShell>
-    </AdminAccessGate>
+    </AdminOnlyGate>
   );
 }

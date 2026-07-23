@@ -78,7 +78,7 @@ export function AdminCouponForm({ couponId }: Props) {
         const created = await adminCouponsService.create(payload);
         await globalMutate(ADMIN_COUPONS_SWR_KEY);
         notify.success("Đã tạo coupon.");
-        router.replace(`/admin/coupons/${created.id}`);
+        router.replace(`/staff/coupons/${created.id}`);
       } else {
         await adminCouponsService.update(couponId, payload);
         await globalMutate(ADMIN_COUPONS_SWR_KEY);
