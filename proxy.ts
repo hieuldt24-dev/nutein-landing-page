@@ -9,7 +9,7 @@ import { authenticate, requireRole } from "@/src/middlewares/authenticate.middlw
  * khi trang render, mirror đúng StaffOnlyGate/AdminOnlyGate phía client:
  *   - Không phải Staff/Admin (chưa đăng nhập hoặc role USER) -> "/".
  *   - Đúng nhóm nhưng lạc sang khu còn lại -> trang gốc của role đó
- *     ("/staff" cho Staff, "/admin/users" cho Admin).
+ *     ("/staff" cho Staff, "/admin" cho Admin).
  * Optimistic check (chỉ verify JWT, không query DB) — không thay thế
  * authenticate()/requireRole() ở từng route thật trong app/api/staff/**,
  * app/api/admin/** khi các route đó được thêm; đây chỉ là lớp UX chặn sớm,
@@ -35,7 +35,7 @@ async function guardAdminArea(request: NextRequest): Promise<NextResponse | null
       return NextResponse.redirect(new URL("/staff", request.url));
     }
     if (user.role === "ADMIN") {
-      return NextResponse.redirect(new URL("/admin/users", request.url));
+      return NextResponse.redirect(new URL("/admin", request.url));
     }
     return NextResponse.redirect(new URL("/", request.url));
   }

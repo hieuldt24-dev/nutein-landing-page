@@ -1,8 +1,8 @@
 "use client";
 
 import { use } from "react";
-import { AdminContactDetail } from "@/components/admin/AdminContactDetail";
-import { AdminPageFrame } from "@/components/admin/AdminShell";
+import { AdminContactDetail } from "@/components/admin/contact/AdminContactDetail";
+import { AdminPageFrame } from "@/components/admin/shell/AdminShell";
 
 export default function AdminContactDetailPage({
   params,

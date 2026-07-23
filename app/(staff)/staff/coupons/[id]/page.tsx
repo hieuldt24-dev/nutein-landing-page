@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { use } from "react";
-import { AdminCouponForm } from "@/components/admin/AdminCouponForm";
-import { AdminPageFrame } from "@/components/admin/AdminShell";
+import { AdminCouponForm } from "@/components/admin/coupons/AdminCouponForm";
+import { AdminPageFrame } from "@/components/admin/shell/AdminShell";
 
 export default function AdminCouponDetailPage({
   params,

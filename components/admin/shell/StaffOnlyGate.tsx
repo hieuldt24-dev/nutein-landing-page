@@ -6,7 +6,7 @@ import { useAuthStore } from "@/lib/useAuthStore";
 import { notify } from "@/lib/toast";
 
 /**
- * S2–S8 — chỉ Staff. Admin bị redirect về /admin/users.
+ * S2–S8 — chỉ Staff. Admin bị redirect về /admin (Tổng quan).
  * Không phải Staff/Admin (chưa đăng nhập hoặc role USER) → "/".
  */
 export function StaffOnlyGate({ children }: { children: ReactNode }) {
@@ -20,10 +20,10 @@ export function StaffOnlyGate({ children }: { children: ReactNode }) {
     if (!warned.current) {
       warned.current = true;
       if (role === "admin") {
-        notify.error("Khu vực vận hành dành cho Staff. Admin dùng Users / Audit.");
+        notify.error("Khu vực vận hành dành cho Staff. Admin dùng Tổng quan / Users / Audit.");
       }
     }
-    router.replace(role === "admin" ? "/admin/users" : "/");
+    router.replace(role === "admin" ? "/admin" : "/");
   }, [isReady, role, router]);
 
   if (!isReady || role !== "staff") {

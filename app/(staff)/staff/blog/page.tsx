@@ -1,7 +1,7 @@
 "use client";
 
-import { AdminBlogList } from "@/components/admin/AdminBlogList";
-import { AdminPageFrame } from "@/components/admin/AdminShell";
+import { AdminBlogList } from "@/components/admin/blog/AdminBlogList";
+import { AdminPageFrame } from "@/components/admin/shell/AdminShell";
 
 export default function AdminBlogPage() {
   return (

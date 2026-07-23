@@ -9,6 +9,7 @@ import {
   FileText,
   Home,
   LayoutDashboard,
+  LogOut,
   Mail,
   Menu,
   Newspaper,
@@ -21,7 +22,9 @@ import {
   X,
 } from "lucide-react";
 import { useAuthStore } from "@/lib/useAuthStore";
+import { useAccountProfile } from "@/lib/useAccountProfile";
 import { cn } from "@/lib/utils";
+import { notify } from "@/lib/toast";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 
 const COMPACT_STORAGE_KEY = "nutein:admin-sidebar-compact";
@@ -103,6 +106,18 @@ const STAFF_NAV: AdminNavGroup[] = [
 
 const ADMIN_NAV: AdminNavGroup[] = [
   {
+    id: "overview",
+    label: "Tổng quan",
+    items: [
+      {
+        href: "/admin",
+        label: "Tổng quan",
+        icon: LayoutDashboard,
+        match: (p) => p === "/admin",
+      },
+    ],
+  },
+  {
     id: "system",
     label: "Hệ thống",
     items: [
@@ -127,12 +142,14 @@ function NavGroups({
   pathname,
   compactUi,
   onNavigate,
+  onLogout,
 }: {
   groups: AdminNavGroup[];
   pathname: string;
   /** true = chỉ hiện icon (compact + chưa hover expand). */
   compactUi: boolean;
   onNavigate?: () => void;
+  onLogout?: () => void;
 }) {
   return (
     <div className={cn("flex flex-col gap-6", compactUi ? "px-2" : "px-3")}>
@@ -207,6 +224,27 @@ function NavGroups({
               {!compactUi ? <span>Về cửa hàng</span> : null}
             </Link>
           </li>
+          <li>
+            <button
+              type="button"
+              title={compactUi ? "Đăng xuất" : undefined}
+              onClick={() => {
+                onNavigate?.();
+                onLogout?.();
+              }}
+              className={cn(
+                "flex w-full cursor-pointer items-center rounded-[var(--radius-md)] text-[13px] font-bold text-danger transition-colors hover:bg-danger/10",
+                compactUi ? "justify-center px-2 py-2.5" : "gap-2.5 px-3 py-2.5",
+              )}
+            >
+              <LogOut
+                size={18}
+                strokeWidth={2.1}
+                className="shrink-0 text-danger"
+              />
+              {!compactUi ? <span>Đăng xuất</span> : null}
+            </button>
+          </li>
         </ul>
       </div>
     </div>
@@ -251,19 +289,14 @@ function SidebarBrand({
             priority
           />
         ) : (
-          <>
-            <Image
-              src="/images/logo-horizontal-2x_1.svg"
-              alt="Nutein"
-              width={112}
-              height={28}
-              className="h-7 w-auto"
-              priority
-            />
-            <span className="shrink-0 rounded-full bg-primary-soft px-2 py-0.5 text-[10px] font-extrabold tracking-[0.04em] text-primary-deep uppercase">
-              Admin
-            </span>
-          </>
+          <Image
+            src="/images/logo-horizontal-2x_1.svg"
+            alt="Nutein"
+            width={112}
+            height={28}
+            className="h-7 w-auto"
+            priority
+          />
         )}
       </Link>
 
@@ -288,28 +321,34 @@ function SidebarBrand({
 }
 
 function SidebarUserCard({
+  fullName,
   email,
   roleLabel,
   compactUi,
 }: {
+  fullName?: string | null;
   email: string;
   roleLabel: string;
   compactUi: boolean;
 }) {
+  const displayName = fullName?.trim() || email.split("@")[0] || "Tài khoản";
+
   return (
     <div
       className={cn(
         "rounded-[var(--radius-md)] border border-ink/10 bg-bg",
         compactUi ? "flex justify-center px-2 py-3" : "px-3 py-3",
       )}
-      title={compactUi ? `${roleLabel} · ${email}` : undefined}
+      title={compactUi ? `${displayName} · ${roleLabel}` : undefined}
     >
       <div className={cn("flex items-center gap-3", compactUi && "justify-center")}>
-        <UserAvatar email={email} size="md" />
+        <UserAvatar fullName={fullName} email={email} size="md" />
         {!compactUi ? (
           <div className="min-w-0">
-            <p className="truncate text-[13px] font-bold text-ink">{roleLabel}</p>
-            <p className="truncate text-[11px] text-text-muted">{email || "—"}</p>
+            <p className="truncate text-[13px] font-bold text-ink">{displayName}</p>
+            <span className="mt-1 inline-flex items-center rounded-full bg-primary-soft px-2 py-0.5 text-[10px] font-extrabold tracking-[0.04em] text-primary-deep uppercase">
+              {roleLabel}
+            </span>
           </div>
         ) : null}
       </div>
@@ -322,7 +361,8 @@ function SidebarUserCard({
  */
 export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { user, role } = useAuthStore();
+  const { user, role, signOut } = useAuthStore();
+  const { profile } = useAccountProfile();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [compact, setCompact] = useState(false);
   const [hoverExpand, setHoverExpand] = useState(false);
@@ -330,11 +370,18 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const groups = role === "admin" ? ADMIN_NAV : STAFF_NAV;
   const roleLabel =
     role === "admin" ? "Admin" : role === "staff" ? "Staff" : "User";
-  const homeHref = role === "admin" ? "/admin/users" : "/staff";
+  const homeHref = role === "admin" ? "/admin" : "/staff";
+  const displayName = profile?.fullName || user?.fullName;
 
   /** Compact đã bật nhưng đang hover → UI đầy đủ, layout vẫn 72px. */
   const compactUi = compact && !hoverExpand;
   const panelExpanded = !compact || hoverExpand;
+
+  const handleLogout = async () => {
+    await signOut();
+    notify.success("Đã đăng xuất.");
+    window.location.replace("/");
+  };
 
   useEffect(() => {
     try {
@@ -381,11 +428,15 @@ export function AdminShell({ children }: { children: ReactNode }) {
           pathname={pathname}
           compactUi={isCompactUi}
           onNavigate={onNavigate}
+          onLogout={() => {
+            void handleLogout();
+          }}
         />
       </div>
 
       <div className={cn("border-t border-ink/10 py-4", isCompactUi ? "px-2" : "px-4")}>
         <SidebarUserCard
+          fullName={displayName}
           email={user?.email ?? ""}
           roleLabel={roleLabel}
           compactUi={isCompactUi}
@@ -484,7 +535,7 @@ export function AdminPageFrame({
   return (
     <div
       className={cn(
-        "mx-auto w-full max-w-[1100px] px-4 py-6 md:px-8 md:py-8",
+        "mx-auto w-full max-w-[1100px] px-4 py-5 pb-10 md:px-8 md:py-8",
         className,
       )}
     >

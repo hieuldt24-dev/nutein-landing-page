@@ -108,7 +108,7 @@ export function AccountShell({ children, title, description }: AccountShellProps
           onClick={() => {
             void handleLogout();
           }}
-          className="ml-auto inline-flex cursor-pointer items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-bold text-ink/70 transition-colors hover:bg-ink/5 hover:text-ink"
+          className="ml-auto inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-danger/10 px-4 py-2 text-[13px] font-bold text-danger transition-colors hover:bg-danger/15"
         >
           <LogOut size={15} strokeWidth={2.2} />
           Đăng xuất

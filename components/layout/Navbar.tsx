@@ -96,7 +96,7 @@ export default function Navbar() {
     else void mutate(AUTH_MODAL_SWR_KEY, false, { revalidate: false });
   };
   const { isLoggedIn, isStaffOrAdmin, role, user } = useAuthStore();
-  const adminLinkHref = role === "admin" ? "/admin/users" : "/staff";
+  const adminLinkHref = role === "admin" ? "/admin" : "/staff";
   const { profile } = useAccountProfile();
   const avatarName = profile?.fullName || user?.fullName;
   const cartDrawer = useCartDrawer();
