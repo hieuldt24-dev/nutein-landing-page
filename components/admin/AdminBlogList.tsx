@@ -54,7 +54,7 @@ export function AdminBlogList() {
           </label>
         </div>
         <Link
-          href="/admin/blog/new"
+          href="/staff/blog/new"
           className="rounded-full bg-ink px-4 py-2 text-[13px] font-bold text-bg"
         >
           Bài mới
@@ -72,7 +72,7 @@ export function AdminBlogList() {
           {data.map((p) => (
             <li key={p.id}>
               <Link
-                href={`/admin/blog/${p.id}`}
+                href={`/staff/blog/${p.id}`}
                 className="block rounded-[var(--radius-lg)] border border-ink/15 bg-surface px-4 py-4 hover:border-ink/30"
               >
                 <div className="flex flex-wrap justify-between gap-2">

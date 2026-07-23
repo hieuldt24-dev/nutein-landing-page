@@ -164,13 +164,13 @@ Hệ thống có 3 role: **User** (khách hàng — đã đặc tả đủ ở M
 | # | Trạng thái | Trang | Mục tiêu | Route Path | Next.js File Path | Ghi chú |
 | :--- | :---: | :--- | :--- | :--- | :--- | :--- |
 | S1 | ⏳ | Đăng nhập quản trị | Xác thực nhân viên | `/admin/login` | `app/admin/login/page.tsx` | Form login riêng biệt với `AuthModal.tsx` của khách hàng — không tái dùng |
-| S2 | ⏳ | Dashboard tổng quan | Nắm nhanh tình hình vận hành | `/admin` | `app/admin/page.tsx` | Đơn mới, đơn cần xử lý, tin nhắn liên hệ chưa đọc, sản phẩm sắp hết hàng |
-| S3 | ⏳ | Quản lý đơn hàng | Xử lý đơn từ đặt tới giao xong | `/admin/orders`, `/admin/orders/[id]` | `app/admin/orders/page.tsx`, `app/admin/orders/[id]/page.tsx` | Lọc theo trạng thái/ngày, đổi trạng thái (Chờ xử lý → Đang xử lý → Đang giao → Đã giao/Hủy/Trả hàng), lịch sử đổi trạng thái (`order_status_logs` đã có) |
-| S4 | ⏳ | Quản lý sản phẩm | Cập nhật thông tin bán hàng | `/admin/products` | `app/admin/products/page.tsx` | ⚠️ Single-SKU: quản lý **SKU/variant** (hương vị/dung tích) của 1 sản phẩm Nutein, không phải catalog đa sản phẩm |
-| S5 | ⏳ | Quản lý coupon | Tạo chương trình khuyến mãi | `/admin/coupons` | `app/admin/coupons/page.tsx` | Tạo/sửa/tắt, % hoặc số tiền giảm, giới hạn lượt dùng, ngày hết hạn |
-| S6 | ⏳ | Quản lý Blog | Sản xuất nội dung Khám phá | `/admin/blog`, `/admin/blog/[id]` | `app/admin/blog/page.tsx`, `app/admin/blog/[id]/page.tsx` | Soạn thảo, chọn chuyên mục/tag, lưu nháp hoặc đăng công khai |
-| S7 | ⏳ | Quản lý nội dung tĩnh | Cập nhật nội dung ít thay đổi | `/admin/content/[slug]` | `app/admin/content/[slug]/page.tsx` | 5 trang Chính sách + trang Về Nutein qua CMS, không cần dev sửa code |
-| S8 | ⏳ | Hộp thư Liên hệ | Chăm sóc khách qua form liên hệ | `/admin/messages` | `app/admin/messages/page.tsx` | Đánh dấu đã đọc/đã xử lý, ghi chú nội bộ (`contact_messages` đã có) |
+| S2 | ⏳ | Dashboard tổng quan | Nắm nhanh tình hình vận hành | `/staff` | `app/(staff)/staff/page.tsx` | Đơn mới, đơn cần xử lý, tin nhắn liên hệ chưa đọc, sản phẩm sắp hết hàng |
+| S3 | ⏳ | Quản lý đơn hàng | Xử lý đơn từ đặt tới giao xong | `/staff/orders`, `/staff/orders/[id]` | `app/(staff)/staff/orders/page.tsx`, `app/(staff)/staff/orders/[id]/page.tsx` | Lọc theo trạng thái/ngày, đổi trạng thái (Chờ xử lý → Đang xử lý → Đang giao → Đã giao/Hủy/Trả hàng), lịch sử đổi trạng thái (`order_status_logs` đã có) |
+| S4 | ⏳ | Quản lý sản phẩm | Cập nhật thông tin bán hàng | `/staff/products` | `app/(staff)/staff/products/page.tsx` | ⚠️ Single-SKU: quản lý **SKU/variant** (hương vị/dung tích) của 1 sản phẩm Nutein, không phải catalog đa sản phẩm |
+| S5 | ⏳ | Quản lý coupon | Tạo chương trình khuyến mãi | `/staff/coupons` | `app/(staff)/staff/coupons/page.tsx` | Tạo/sửa/tắt, % hoặc số tiền giảm, giới hạn lượt dùng, ngày hết hạn |
+| S6 | ⏳ | Quản lý Blog | Sản xuất nội dung Khám phá | `/staff/blog`, `/staff/blog/[id]` | `app/(staff)/staff/blog/page.tsx`, `app/(staff)/staff/blog/[id]/page.tsx` | Soạn thảo, chọn chuyên mục/tag, lưu nháp hoặc đăng công khai |
+| S7 | ⏳ | Quản lý nội dung tĩnh | Cập nhật nội dung ít thay đổi | `/staff/content/[slug]` | `app/(staff)/staff/content/[slug]/page.tsx` | 5 trang Chính sách + trang Về Nutein qua CMS, không cần dev sửa code |
+| S8 | ⏳ | Hộp thư Liên hệ | Chăm sóc khách qua form liên hệ | `/staff/messages` | `app/(staff)/staff/messages/page.tsx` | Đánh dấu đã đọc/đã xử lý, ghi chú nội bộ (`contact_messages` đã có) |
 
 ### 6.2 Admin — Trang độc quyền (kế thừa toàn bộ S2–S8 + A1–A2)
 

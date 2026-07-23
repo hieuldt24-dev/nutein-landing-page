@@ -50,28 +50,28 @@ const STAFF_NAV: AdminNavGroup[] = [
     label: "Vận hành",
     items: [
       {
-        href: "/admin",
+        href: "/staff",
         label: "Tổng quan",
         icon: LayoutDashboard,
-        match: (p) => p === "/admin",
+        match: (p) => p === "/staff",
       },
       {
-        href: "/admin/orders",
+        href: "/staff/orders",
         label: "Đơn hàng",
         icon: ClipboardList,
-        match: (p) => p.startsWith("/admin/orders"),
+        match: (p) => p.startsWith("/staff/orders"),
       },
       {
-        href: "/admin/products",
+        href: "/staff/products",
         label: "Sản phẩm",
         icon: Package,
-        match: (p) => p.startsWith("/admin/products"),
+        match: (p) => p.startsWith("/staff/products"),
       },
       {
-        href: "/admin/contact",
+        href: "/staff/contact",
         label: "Liên hệ",
         icon: Mail,
-        match: (p) => p.startsWith("/admin/contact"),
+        match: (p) => p.startsWith("/staff/contact"),
       },
     ],
   },
@@ -80,22 +80,22 @@ const STAFF_NAV: AdminNavGroup[] = [
     label: "Nội dung",
     items: [
       {
-        href: "/admin/coupons",
+        href: "/staff/coupons",
         label: "Coupon",
         icon: Ticket,
-        match: (p) => p.startsWith("/admin/coupons"),
+        match: (p) => p.startsWith("/staff/coupons"),
       },
       {
-        href: "/admin/blog",
+        href: "/staff/blog",
         label: "Blog",
         icon: Newspaper,
-        match: (p) => p.startsWith("/admin/blog"),
+        match: (p) => p.startsWith("/staff/blog"),
       },
       {
-        href: "/admin/content",
+        href: "/staff/content",
         label: "Trang tĩnh",
         icon: FileText,
-        match: (p) => p.startsWith("/admin/content"),
+        match: (p) => p.startsWith("/staff/content"),
       },
     ],
   },
@@ -325,7 +325,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const groups = role === "admin" ? ADMIN_NAV : STAFF_NAV;
   const roleLabel =
     role === "admin" ? "Admin" : role === "staff" ? "Staff" : "User";
-  const homeHref = role === "admin" ? "/admin/users" : "/admin";
+  const homeHref = role === "admin" ? "/admin/users" : "/staff";
 
   /** Compact đã bật nhưng đang hover → UI đầy đủ, layout vẫn 72px. */
   const compactUi = compact && !hoverExpand;

@@ -6,41 +6,41 @@ Tài liệu này mô tả lộ trình khu vực quản trị (Staff / Admin).
 ## Nguyên tắc sản phẩm
 
 - Staff/Admin vào cùng storefront; login chung [`AuthModal`](../components/shared/AuthModal.tsx).
-- Entry: **Quản Trị** trong mega Khám phá khi `staff|admin`.
-- Route: `/admin` + shell sidebar [`AdminShell`](../components/admin/AdminShell.tsx) (không Navbar storefront). Nút **Về cửa hàng** → `/`.
-- **Tách quyền:** Staff = S2–S8 (vận hành). Admin = chỉ A1 Users + A2 Audit (không kế thừa staff). Gate: [`StaffOnlyGate`](../components/admin/StaffOnlyGate.tsx) / [`AdminOnlyGate`](../components/admin/AdminOnlyGate.tsx).
+- Entry: **Quản Trị** trong mega Khám phá khi `staff|admin` — trỏ động theo role (`/staff` hoặc `/admin/users`).
+- Route: **tách 2 namespace riêng theo role**, không dùng chung `/admin` nữa — `/staff` (S2–S8, Staff) và `/admin` (A1/A2, Admin) — cùng shell sidebar [`AdminShell`](../components/admin/AdminShell.tsx) (không Navbar storefront). Nút **Về cửa hàng** → `/`.
+- **Tách quyền:** Staff = S2–S8 (vận hành, ở `/staff/**`). Admin = chỉ A1 Users + A2 Audit (không kế thừa staff, ở `/admin/**`). Gate: [`StaffOnlyGate`](../components/admin/StaffOnlyGate.tsx) (bọc 1 lần ở `app/(staff)/staff/layout.tsx`) / [`AdminOnlyGate`](../components/admin/AdminOnlyGate.tsx) (bọc 1 lần ở `app/(admin)/admin/layout.tsx`) — mỗi gate tự xử lý cả 2 tầng (không phải staff/admin → `/`; đúng nhóm nhưng sai khu vực → trang gốc của nhóm kia).
 
 ## Phase 0 — Nền tảng (xong)
 
-Role từ `public.users` qua `POST /api/auth/session` → SWR `auth-role` + gate [`AdminAccessGate`](../components/admin/AdminAccessGate.tsx). Không còn email allowlist mock.
+Role từ `public.users` qua `POST /api/auth/session` → SWR `auth-role` + gate `StaffOnlyGate`/`AdminOnlyGate` ở layout mỗi khu vực (đã bỏ `AdminAccessGate` — dư thừa sau khi tách route, 2 gate trên đã tự đủ). Không còn email allowlist mock.
 
 ## Phase 1 — S2 Dashboard (mock UI)
 
-[`/admin`](../app/(admin)/admin/page.tsx) · [`features/admin-dashboard/`](../features/admin-dashboard/) · [`AdminDashboardSummary`](../components/admin/AdminDashboardSummary.tsx)
+[`/staff`](../app/(staff)/staff/page.tsx) · [`features/admin-dashboard/`](../features/admin-dashboard/) · [`AdminDashboardSummary`](../components/admin/AdminDashboardSummary.tsx)
 
 ## Phase 2 — S3 Đơn hàng (mock UI)
 
-[`/admin/orders`](../app/(admin)/admin/orders/page.tsx) · [`features/admin-orders/`](../features/admin-orders/)
+[`/staff/orders`](../app/(staff)/staff/orders/page.tsx) · [`features/admin-orders/`](../features/admin-orders/)
 
 ## Phase 3 — S4 Sản phẩm (mock UI)
 
-[`/admin/products`](../app/(admin)/admin/products/page.tsx) · [`features/admin-products/`](../features/admin-products/) · single-SKU editor + variants + stock + URL ảnh (chưa Cloudinary).
+[`/staff/products`](../app/(staff)/staff/products/page.tsx) · [`features/admin-products/`](../features/admin-products/) · single-SKU editor + variants + stock + URL ảnh (chưa Cloudinary).
 
 ## Phase 4 — S5 Coupon (mock UI)
 
-[`/admin/coupons`](../app/(admin)/admin/coupons/page.tsx) · [`features/admin-coupons/`](../features/admin-coupons/) · CRUD + bật/tắt.
+[`/staff/coupons`](../app/(staff)/staff/coupons/page.tsx) · [`features/admin-coupons/`](../features/admin-coupons/) · CRUD + bật/tắt.
 
 ## Phase 5 — S6 Blog CMS (mock UI)
 
-[`/admin/blog`](../app/(admin)/admin/blog/page.tsx) · [`features/admin-blog/`](../features/admin-blog/) · draft/publish. Storefront blog vẫn mock riêng cho đến API chung.
+[`/staff/blog`](../app/(staff)/staff/blog/page.tsx) · [`features/admin-blog/`](../features/admin-blog/) · draft/publish. Storefront blog vẫn mock riêng cho đến API chung.
 
 ## Phase 6 — S7 Nội dung tĩnh (mock UI)
 
-[`/admin/content`](../app/(admin)/admin/content/page.tsx) · [`features/admin-content/`](../features/admin-content/) · Policy ×5 (`privacy|terms|shipping|return|payment`) + About. Public policy routes gắn sau.
+[`/staff/content`](../app/(staff)/staff/content/page.tsx) · [`features/admin-content/`](../features/admin-content/) · Policy ×5 (`privacy|terms|shipping|return|payment`) + About. Public policy routes gắn sau.
 
 ## Phase 7 — S8 Liên hệ (mock UI)
 
-[`/admin/contact`](../app/(admin)/admin/contact/page.tsx) · [`features/admin-contact/`](../features/admin-contact/) · đọc / xử lý / ghi chú. Form storefront chưa ghi DB.
+[`/staff/contact`](../app/(staff)/staff/contact/page.tsx) · [`features/admin-contact/`](../features/admin-contact/) · đọc / xử lý / ghi chú. Form storefront chưa ghi DB.
 
 ## Phase 8 — A1 Users (mock UI, Admin only)
 
@@ -50,20 +50,19 @@ Role từ `public.users` qua `POST /api/auth/session` → SWR `auth-role` + gate
 
 [`/admin/audit`](../app/(admin)/admin/audit/page.tsx) · [`features/admin-audit/`](../features/admin-audit/) · list + lọc (read-only seed).
 
-## API & production hardening (chưa làm)
+## API & production hardening
 
 Client gate + role DB + mock admin data services — đủ demo UI admin, **không** đủ production data.
 
-Khi gắn thật:
-
-1. Middleware chặn `/admin/**` bằng JWT role (bổ sung client gate).
-2. Đổi thân từng `admin*Service` → `app/api/admin/**` / Supabase.
+1. ~~Proxy chặn `/staff/**`, `/admin/**` bằng JWT role~~ — **xong**, xem `proxy.ts` (`guardAdminArea`) — optimistic check ở edge, mirror đúng `StaffOnlyGate`/`AdminOnlyGate`. Chưa thay thế được check thật khi route API dưới đây tồn tại.
+2. Đổi thân từng `admin*Service` → route API thật + Supabase. Namespace API gợi ý mirror route UI: `app/api/staff/**` (orders/products/coupons/blog/content/contact) + `app/api/admin/**` (users/audit) — hiện `features/admin-orders/` còn 2 dòng comment cũ nhắc `app/api/admin/orders/**`, cần đổi thành `app/api/staff/orders/**` khi làm bước này.
 3. Cloudinary upload (S4); đồng bộ storefront với nguồn admin (blog/product/contact).
 4. Audit ghi từ mutate thật (A2).
 
 ## Kiểm thử nhanh
 
-- Staff: S2–S8 OK; A1/A2 redirect.
-- Admin: toàn bộ module.
+- Staff: `/staff` + S2–S8 OK; `/admin/**` (A1/A2) bị đá về `/staff`.
+- Admin: `/admin/users`, `/admin/audit` OK; `/staff/**` bị đá về `/admin/users`.
+- Chưa đăng nhập / role USER: cả `/staff` và `/admin/**` đá về `/`.
 - UI không import `*.mock.ts`.
 - `npm run build`.

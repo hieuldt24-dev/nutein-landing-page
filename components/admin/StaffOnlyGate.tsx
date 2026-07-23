@@ -7,6 +7,7 @@ import { notify } from "@/lib/toast";
 
 /**
  * S2–S8 — chỉ Staff. Admin bị redirect về /admin/users.
+ * Không phải Staff/Admin (chưa đăng nhập hoặc role USER) → "/".
  */
 export function StaffOnlyGate({ children }: { children: ReactNode }) {
   const router = useRouter();
