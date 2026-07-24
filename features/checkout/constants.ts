@@ -61,20 +61,7 @@ export const PAYMENT_OPTIONS: {
     label: "Chuyển khoản ngân hàng (payOS)",
     description: "Quét mã QR hoặc chuyển khoản qua payOS — xác nhận tự động.",
   },
-  {
-    value: "ewallet",
-    label: "Ví điện tử",
-    description: "Hướng dẫn thanh toán ví sẽ gửi kèm xác nhận đơn (demo).",
-  },
 ];
-
-export const EWALLET_INSTRUCTIONS = {
-  title: "Hướng dẫn ví điện tử (demo)",
-  lines: [
-    "Sau khi đặt hàng, chúng tôi gửi link/QR thanh toán demo qua email hoặc Zalo.",
-    "Môi trường hiện tại chưa kết nối cổng thanh toán thật — không trừ tiền.",
-  ],
-};
 
 export const CHECKOUT_SUBMIT_LABEL = "Đặt hàng ngay";
 export const CHECKOUT_SHIPPING_GATE_MESSAGE =

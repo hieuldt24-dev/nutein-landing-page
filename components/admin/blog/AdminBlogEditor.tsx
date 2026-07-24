@@ -35,6 +35,8 @@ export function AdminBlogEditor({ postId }: { postId: string | "new" }) {
   const [bodyHtml, setBodyHtml] = useState("<p></p>");
   const [status, setStatus] = useState<AdminBlogStatus>("draft");
   const [readingMinutes, setReadingMinutes] = useState(5);
+  const [featured, setFeatured] = useState(false);
+  const [favorite, setFavorite] = useState(false);
   const [tags, setTags] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -49,6 +51,8 @@ export function AdminBlogEditor({ postId }: { postId: string | "new" }) {
     setBodyHtml(data.bodyHtml);
     setStatus(data.status);
     setReadingMinutes(data.readingMinutes);
+    setFeatured(data.featured ?? false);
+    setFavorite(data.favorite ?? false);
     setTags((data.tags ?? []).join(", "));
   }, [data]);
 
@@ -78,6 +82,8 @@ export function AdminBlogEditor({ postId }: { postId: string | "new" }) {
             ? data?.publishedAt ?? new Date().toISOString().slice(0, 10)
             : null,
         readingMinutes,
+        featured,
+        favorite,
         tags: tags
           .split(",")
           .map((t) => t.trim())
@@ -194,6 +200,24 @@ export function AdminBlogEditor({ postId }: { postId: string | "new" }) {
           onChange={(e) => setReadingMinutes(Number(e.target.value))}
         />
       </label>
+      <div className="flex flex-wrap gap-4">
+        <label className="flex items-center gap-2 text-[13px] font-bold">
+          <input
+            type="checkbox"
+            checked={featured}
+            onChange={(e) => setFeatured(e.target.checked)}
+          />
+          Bài nổi bật (trang chủ)
+        </label>
+        <label className="flex items-center gap-2 text-[13px] font-bold">
+          <input
+            type="checkbox"
+            checked={favorite}
+            onChange={(e) => setFavorite(e.target.checked)}
+          />
+          Công thức yêu thích
+        </label>
+      </div>
       <button
         type="button"
         disabled={isSubmitting}

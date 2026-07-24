@@ -50,7 +50,7 @@ export default function CheckoutForm() {
   const { addresses, defaultAddress, isLoading: addressesLoading, saveAsDefaultFromCheckout } =
     useAddresses();
   const [selectedSavedAddressId, setSelectedSavedAddressId] = useState("");
-  const { lines, summary, isEmpty, removeFromCart } = useCartStore();
+  const { lines, summary, isEmpty, isReady: cartReady, removeFromCart } = useCartStore();
   const { submitOrder, isSubmitting } = useCheckoutSubmit();
 
   const {
@@ -107,12 +107,16 @@ export default function CheckoutForm() {
   const placingOrderRef = useRef(false);
 
   useEffect(() => {
+    // Đợi cart đọc xong localStorage (cartReady) trước khi kết luận "trống"
+    // — tránh đá nhầm về home khi hard-refresh/mở thẳng /checkout lúc giỏ
+    // vẫn còn hàng (isEmpty=true giả ở lần render đầu trước khi hydrate).
+    if (!cartReady) return;
     // Giỏ trống → về home im lặng (single-SKU: không cần toast “thêm sản phẩm”).
     // Bỏ qua khi vừa đặt hàng xong (cart clear trước khi push /success).
     if (isEmpty && !placingOrderRef.current) {
       router.replace("/");
     }
-  }, [isEmpty, router]);
+  }, [cartReady, isEmpty, router]);
 
   useEffect(() => {
     // Prefill từ session/profile — chỉ khi field còn trống, không
@@ -250,11 +254,11 @@ export default function CheckoutForm() {
     void placeOrder();
   };
 
-  if (isEmpty) {
+  if (!cartReady || isEmpty) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center px-6">
         <p className="text-sm font-semibold text-text-muted">
-          Đang chuyển hướng…
+          {cartReady ? "Đang chuyển hướng…" : "Đang tải giỏ hàng…"}
         </p>
       </div>
     );

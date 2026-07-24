@@ -15,6 +15,7 @@ interface FillButtonProps {
   className?: string;
   type?: "button" | "submit" | "reset";
   disabled?: boolean;
+  tabIndex?: number;
   "aria-label"?: string;
   "aria-expanded"?: boolean;
 }
@@ -85,6 +86,7 @@ export function FillButton({
   className,
   type = "button",
   disabled = false,
+  tabIndex,
   "aria-label": ariaLabel,
   "aria-expanded": ariaExpanded,
 }: FillButtonProps) {
@@ -133,6 +135,7 @@ export function FillButton({
         onClick={onClick}
         className={base}
         style={rootStyle}
+        tabIndex={tabIndex}
         aria-label={ariaLabel}
         aria-expanded={ariaExpanded}
         {...events}
@@ -149,6 +152,7 @@ export function FillButton({
       onClick={onClick}
       className={base}
       style={rootStyle}
+      tabIndex={tabIndex}
       aria-label={ariaLabel}
       aria-expanded={ariaExpanded}
       {...events}

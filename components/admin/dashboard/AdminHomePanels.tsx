@@ -103,7 +103,7 @@ export function AdminHomeAuditPanel({
                 <div className="min-w-0">
                   <p className="text-[13px] font-bold text-ink">{row.summary}</p>
                   <p className="mt-0.5 truncate text-[12px] text-text-muted">
-                    {row.actorEmail}
+                    {row.actorEmail ?? "—"}
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1">

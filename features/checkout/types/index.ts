@@ -1,7 +1,7 @@
 import type { CreateOrderRequest } from "../schemas/checkout.schema";
 
 export type ShippingMethod = "standard" | "express";
-export type PaymentMethod = "cod" | "bank_transfer" | "ewallet";
+export type PaymentMethod = "cod" | "bank_transfer";
 export type OrderStatus = "pending" | "awaiting_payment";
 
 export interface OrderMoneySummary {
@@ -16,11 +16,6 @@ export interface OrderMoneySummary {
   total: number;
 }
 
-export interface PaymentInstructions {
-  title: string;
-  lines: string[];
-}
-
 /** Response create order — UI success + snapshot. */
 export interface CreateOrderResult {
   orderId: string;
@@ -33,7 +28,6 @@ export interface CreateOrderResult {
   note?: string;
   shippingMethod: ShippingMethod;
   paymentMethod: PaymentMethod;
-  paymentInstructions?: PaymentInstructions;
   /** URL redirect payOS (checkoutUrl) — chỉ có khi paymentMethod = bank_transfer. */
   paymentUrl?: string;
 }

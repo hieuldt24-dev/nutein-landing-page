@@ -14,6 +14,9 @@ export interface AdminBlogPost {
   status: AdminBlogStatus;
   publishedAt: string | null;
   readingMinutes: number;
+  /** Curation cho trang chủ/blog public — "Bài nổi bật" / "Công thức yêu thích". */
+  featured?: boolean;
+  favorite?: boolean;
   recipeFilters?: RecipeFilterId[];
   tags?: string[];
   updatedAt: string;

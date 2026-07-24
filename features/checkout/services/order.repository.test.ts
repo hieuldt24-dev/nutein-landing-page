@@ -2,6 +2,7 @@
 // order.repository.ts có `import "server-only"`, chặn import ở jsdom.
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { CreateOrderRequest } from "@/features/checkout/schemas/checkout.schema";
+import { NUTEIN_PRODUCT_DB_ID } from "@/features/product/constants";
 
 const mocks = vi.hoisted(() => ({
   from: vi.fn(),
@@ -135,6 +136,53 @@ describe("orderRepository.create", () => {
     ).rejects.toThrow("Không lưu được dòng đơn");
 
     expect(orderBuilder.delete).toHaveBeenCalled();
+  });
+
+  it("thua race trừ kho (CHECK stock >= 0 — mã 23514) -> BadRequestError rõ ràng, vẫn rollback order", async () => {
+    const orderBuilder = makeBuilder({ data: orderRow, error: null });
+    const itemsBuilder = makeBuilder({
+      data: null,
+      error: {
+        code: "23514",
+        message:
+          'new row for relation "products" violates check constraint "products_stock_check"',
+      },
+    });
+    mocks.from.mockImplementation((table: string) =>
+      table === "orders" ? orderBuilder : itemsBuilder,
+    );
+
+    await expect(
+      orderRepository.create(
+        "user-1",
+        baseInput,
+        { unitPrice: 199000, subtotal: 199000, discountAmount: 0, shippingFee: 25000, total: 224000 },
+        { orderCode: "NT-20260722-AB12", status: "PENDING", paymentStatus: "UNPAID" },
+      ),
+    ).rejects.toMatchObject({ statusCode: 400 });
+
+    expect(orderBuilder.delete).toHaveBeenCalled();
+  });
+});
+
+describe("orderRepository.getAvailableStock", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("trả về stock từ dòng products", async () => {
+    const builder = makeBuilder({ data: { stock: 42 }, error: null });
+    mocks.from.mockReturnValue(builder);
+
+    const result = await orderRepository.getAvailableStock();
+
+    expect(builder.eq).toHaveBeenCalledWith("id", NUTEIN_PRODUCT_DB_ID);
+    expect(result).toBe(42);
+  });
+
+  it("throw khi query lỗi", async () => {
+    mocks.from.mockReturnValue(
+      makeBuilder({ data: null, error: { message: "db down" } }),
+    );
+    await expect(orderRepository.getAvailableStock()).rejects.toThrow("db down");
   });
 });
 

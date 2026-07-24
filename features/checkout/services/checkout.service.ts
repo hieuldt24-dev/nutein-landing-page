@@ -10,15 +10,12 @@ import {
   NotFoundError,
 } from "@/src/errors/app.error";
 import { logger } from "@/src/logging/logger";
-import { EWALLET_INSTRUCTIONS, SHIPPING_FEES_VND } from "../constants";
+import { productService } from "@/features/product/services/product.service";
+import { SHIPPING_FEES_VND } from "../constants";
 import type { CreateOrderRequest } from "../schemas/checkout.schema";
-import type {
-  CreateOrderResult,
-  OrderStatus,
-  PaymentInstructions,
-  RetryPaymentResult,
-} from "../types";
+import type { CreateOrderResult, OrderStatus, RetryPaymentResult } from "../types";
 import { buildOrderCode, orderRepository } from "./order.repository";
+import { orderEmailService } from "./order-email.service";
 import { payosService } from "./payos.service";
 
 function estimatedDeliveryLabel(
@@ -29,9 +26,17 @@ function estimatedDeliveryLabel(
     : "Dự kiến giao trong 3–5 ngày làm việc";
 }
 
+/** Tổng số hũ yêu cầu (packQuantity × units/gói) — cùng công thức orderRepository dùng khi ghi order_items. */
+function totalRequestedUnits(lines: { variantId: string; quantity: number }[]): number {
+  const detail = productService.getProductDetail();
+  return lines.reduce((sum, line) => {
+    const variant = productService.resolveVariant(detail, line.variantId);
+    return sum + line.quantity * variant.units;
+  }, 0);
+}
+
 interface ResolvedPayment {
   uiStatus: OrderStatus;
-  paymentInstructions?: PaymentInstructions;
   paymentUrl?: string;
   payosOrderCode?: number;
   payosPaymentLinkId?: string;
@@ -52,26 +57,20 @@ async function resolvePayment(
   if (paymentMethod === "cod") {
     return { uiStatus: "pending" };
   }
-  if (paymentMethod === "bank_transfer") {
-    const link = await payosService.createPaymentLink({
-      orderCode: context.orderCode,
-      amount: context.amount,
-      buyer: {
-        fullName: context.buyer.fullName.trim(),
-        email: context.buyer.email.trim().toLowerCase(),
-        phone: context.buyer.phone.trim(),
-      },
-    });
-    return {
-      uiStatus: "awaiting_payment",
-      paymentUrl: link.checkoutUrl,
-      payosOrderCode: link.payosOrderCode,
-      payosPaymentLinkId: link.payosPaymentLinkId,
-    };
-  }
+  const link = await payosService.createPaymentLink({
+    orderCode: context.orderCode,
+    amount: context.amount,
+    buyer: {
+      fullName: context.buyer.fullName.trim(),
+      email: context.buyer.email.trim().toLowerCase(),
+      phone: context.buyer.phone.trim(),
+    },
+  });
   return {
     uiStatus: "awaiting_payment",
-    paymentInstructions: EWALLET_INSTRUCTIONS,
+    paymentUrl: link.checkoutUrl,
+    payosOrderCode: link.payosOrderCode,
+    payosPaymentLinkId: link.payosPaymentLinkId,
   };
 }
 
@@ -90,9 +89,26 @@ export const checkoutService = {
       action: "createOrder",
     });
 
+    // Đảm bảo cartSummary tính theo GIÁ THẬT hiện tại (Staff sửa qua
+    // /staff/products) — cache productService là module-level sync, nếu
+    // không refresh ở đây sẽ tính theo giá lần refresh gần nhất (có thể cũ).
+    await productService.refreshCatalogCache();
+
     const cartSummary = buildCartSummary({ lines: input.lines });
     if (cartSummary.isEmpty) {
       throw new BadRequestError("Giỏ hàng trống — không thể đặt hàng.");
+    }
+
+    // Chặn đặt vượt tồn kho TRƯỚC khi gọi payOS/ghi DB — tránh tạo payment
+    // link hoặc đơn orphan cho số lượng không thể giao.
+    const requestedUnits = totalRequestedUnits(cartSummary.lines);
+    const availableStock = await orderRepository.getAvailableStock();
+    if (requestedUnits > availableStock) {
+      throw new BadRequestError(
+        availableStock > 0
+          ? `Chỉ còn ${availableStock} hũ trong kho — vui lòng giảm số lượng.`
+          : "Sản phẩm hiện đã hết hàng.",
+      );
     }
 
     const { shippingFee, shippingNote } = resolveCheckoutShippingFee(
@@ -105,17 +121,12 @@ export const checkoutService = {
     const total = merchandiseTotal + shippingFee;
     const orderCode = buildOrderCode();
 
-    const {
-      uiStatus,
-      paymentInstructions,
-      paymentUrl,
-      payosOrderCode,
-      payosPaymentLinkId,
-    } = await resolvePayment(input.paymentMethod, {
-      orderCode,
-      amount: total,
-      buyer: input.buyer,
-    });
+    const { uiStatus, paymentUrl, payosOrderCode, payosPaymentLinkId } =
+      await resolvePayment(input.paymentMethod, {
+        orderCode,
+        amount: total,
+        buyer: input.buyer,
+      });
 
     const note = input.note?.trim() ? input.note.trim() : undefined;
     const primaryUnitPrice = cartSummary.lines[0]?.unitPrice ?? 0;
@@ -169,7 +180,6 @@ export const checkoutService = {
       note,
       shippingMethod: input.shippingMethod,
       paymentMethod: input.paymentMethod,
-      paymentInstructions,
       paymentUrl,
     };
 
@@ -185,6 +195,10 @@ export const checkoutService = {
       },
       "Order created",
     );
+
+    // Best-effort — sendOrderConfirmation tự nuốt lỗi, không chặn response
+    // đặt hàng (đơn đã tạo xong dù email gửi lỗi/thiếu cấu hình).
+    await orderEmailService.sendOrderConfirmation(result);
 
     return result;
   },

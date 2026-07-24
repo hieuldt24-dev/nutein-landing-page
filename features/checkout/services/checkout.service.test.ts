@@ -7,9 +7,11 @@ const mocks = vi.hoisted(() => ({
   createOrder: vi.fn(),
   findByOrderCodeForUser: vi.fn(),
   updatePayosLink: vi.fn(),
+  getAvailableStock: vi.fn(),
   createPaymentLink: vi.fn(),
   reconcileByPayosOrderCode: vi.fn(),
   cancelPaymentLink: vi.fn(),
+  sendOrderConfirmation: vi.fn(),
 }));
 
 vi.mock("./order.repository", () => ({
@@ -18,6 +20,7 @@ vi.mock("./order.repository", () => ({
     create: mocks.createOrder,
     findByOrderCodeForUser: mocks.findByOrderCodeForUser,
     updatePayosLink: mocks.updatePayosLink,
+    getAvailableStock: mocks.getAvailableStock,
   },
 }));
 
@@ -28,6 +31,28 @@ vi.mock("./payos.service", () => ({
     cancelPaymentLink: mocks.cancelPaymentLink,
   },
 }));
+
+vi.mock("./order-email.service", () => ({
+  orderEmailService: {
+    sendOrderConfirmation: mocks.sendOrderConfirmation,
+  },
+}));
+
+// refreshCatalogCache gọi Supabase thật (getSupabaseClient) — stub thành
+// no-op trong test, giữ nguyên toàn bộ hàm sync còn lại (resolveVariant,
+// getProductDetail...) để totalRequestedUnits/buildCartSummary vẫn chạy
+// đúng trên data mock có sẵn.
+vi.mock("@/features/product/services/product.service", async (importOriginal) => {
+  const actual = await importOriginal<
+    typeof import("@/features/product/services/product.service")
+  >();
+  return {
+    productService: {
+      ...actual.productService,
+      refreshCatalogCache: vi.fn().mockResolvedValue(undefined),
+    },
+  };
+});
 
 import { checkoutService } from "./checkout.service";
 
@@ -64,14 +89,21 @@ const orderRow = {
 };
 
 describe("checkoutService.createOrder", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.getAvailableStock.mockResolvedValue(9999);
+    mocks.sendOrderConfirmation.mockResolvedValue(undefined);
+  });
 
-  it("cod: không gọi payosService, tạo đơn bình thường", async () => {
+  it("cod: không gọi payosService, tạo đơn bình thường, gửi email xác nhận", async () => {
     mocks.createOrder.mockResolvedValue(orderRow);
 
     const result = await checkoutService.createOrder("user-1", baseInput);
 
     expect(mocks.createPaymentLink).not.toHaveBeenCalled();
+    expect(mocks.sendOrderConfirmation).toHaveBeenCalledWith(
+      expect.objectContaining({ orderCode: "NT-20260722-AB12" }),
+    );
     expect(mocks.createOrder).toHaveBeenCalled();
     expect(result.paymentUrl).toBeUndefined();
     expect(result.status).toBe("pending");
@@ -120,6 +152,26 @@ describe("checkoutService.createOrder", () => {
     ).rejects.toThrow();
 
     expect(mocks.createOrder).not.toHaveBeenCalled();
+  });
+
+  it("vượt tồn kho → BadRequestError, không gọi payOS lẫn orderRepository.create", async () => {
+    mocks.getAvailableStock.mockResolvedValue(0); // 1 gói pack-1 = 1 hũ > 0 còn lại
+
+    await expect(
+      checkoutService.createOrder("user-1", { ...baseInput, paymentMethod: "bank_transfer" }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+
+    expect(mocks.createPaymentLink).not.toHaveBeenCalled();
+    expect(mocks.createOrder).not.toHaveBeenCalled();
+  });
+
+  it("đủ tồn kho vừa khít (bằng số lượng đặt) → vẫn tạo đơn bình thường", async () => {
+    mocks.getAvailableStock.mockResolvedValue(1); // baseInput đặt đúng 1 hũ (pack-1 × 1)
+    mocks.createOrder.mockResolvedValue(orderRow);
+
+    const result = await checkoutService.createOrder("user-1", baseInput);
+
+    expect(result.status).toBe("pending");
   });
 });
 

@@ -13,6 +13,7 @@ function order(
     customerPhone: "0900000000",
     shippingAddressLabel: "HN",
     paymentMethodLabel: "COD",
+    paymentStatus: "unpaid",
     shippingFee: 0,
     discountAmount: 0,
     subtotal: partial.total,

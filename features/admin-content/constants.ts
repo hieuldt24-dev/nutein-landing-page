@@ -2,7 +2,6 @@ import type { AdminStaticSlug } from "./types";
 import { POLICY_NAV, policyHref } from "@/features/policies/constants";
 
 export const ADMIN_CONTENT_SWR_KEY = "admin-content-pages";
-export const ADMIN_CONTENT_MOCK_LATENCY_MS = 240;
 
 export function adminContentPageSwrKey(slug: string): string {
   return `admin-content:${slug}`;

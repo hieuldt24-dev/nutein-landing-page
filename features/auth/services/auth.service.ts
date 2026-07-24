@@ -1,4 +1,4 @@
-import type { AuthRole, AuthUser } from "../types";
+import type { AuthRole } from "../types";
 
 /**
  * Auth domain helpers — role thật từ `public.users` (qua `/api/auth/session`).
@@ -15,11 +15,6 @@ export const authService = {
       default:
         return "user";
     }
-  },
-
-  canAccessAdmin(user: AuthUser | null | undefined): boolean {
-    if (!user?.email) return false;
-    return user.role === "staff" || user.role === "admin";
   },
 
   isStaffOrAdmin(role: AuthRole | null | undefined): boolean {
