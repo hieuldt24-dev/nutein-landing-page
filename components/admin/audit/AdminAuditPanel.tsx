@@ -88,7 +88,7 @@ export function AdminAuditPanel() {
               </div>
               <p className="mt-1 text-[13px] text-text-muted">{row.summary}</p>
               <p className="mt-1 text-[12px] text-text-muted">
-                {row.actorEmail} · record {row.recordId}
+                {row.actorEmail ?? "—"} · record {row.recordId}
               </p>
             </li>
           ))}

@@ -36,28 +36,32 @@ export const adminDashboardService = {
     return { ...MOCK_ADMIN_DASHBOARD_SUMMARY };
   },
 
-  /** Doanh thu — Staff + Admin dùng chung (không thêm delay — orders service đã có). */
+  /**
+   * Doanh thu — Staff + Admin dùng chung. Gọi `listSummary()` (tổng hợp,
+   * không PII, `/api/admin/orders-summary`) chứ không phải `list()` (chi
+   * tiết đầy đủ, chỉ STAFF) — Admin gọi `list()` sẽ bị 403 (S3).
+   */
   async getRevenue(): Promise<DashboardRevenueSnapshot> {
-    const orders = await adminOrdersService.list({});
+    const orders = await adminOrdersService.listSummary();
     return buildRevenueSnapshotFromOrders(orders);
   },
 
-  /** Phân bố đơn theo trạng thái — pie Staff. */
+  /** Phân bố đơn theo trạng thái — pie Staff + Admin. */
   async getOrderStatusBreakdown(): Promise<DashboardPieSlice[]> {
-    const orders = await adminOrdersService.list({});
+    const orders = await adminOrdersService.listSummary();
     return buildOrderStatusBreakdown(orders);
   },
 
-  /** Đơn mới + hủy theo ngày — bar Staff. */
+  /** Đơn mới + hủy theo ngày — bar Staff + Admin. */
   async getOrdersByDay(): Promise<DashboardOrdersByDayPoint[]> {
-    const orders = await adminOrdersService.list({});
+    const orders = await adminOrdersService.listSummary();
     return buildOrdersByDayBreakdown(orders);
   },
 
   /** Admin `/admin` — doanh thu + users + audit gần đây. */
   async getAdminHome(): Promise<AdminHomeSummary> {
     const [orders, users, audit] = await Promise.all([
-      adminOrdersService.list({}),
+      adminOrdersService.listSummary(),
       adminUsersService.list({}),
       adminAuditService.list({}),
     ]);

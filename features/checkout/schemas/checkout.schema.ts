@@ -46,7 +46,7 @@ export const createOrderRequestSchema = z.object({
   note: z.string().trim().max(500, "Ghi chú không được vượt quá 500 ký tự").optional(),
 
   shippingMethod: z.enum(["standard", "express"]),
-  paymentMethod: z.enum(["cod", "bank_transfer", "ewallet"]),
+  paymentMethod: z.enum(["cod", "bank_transfer"]),
 
   /** Chỉ UI — không bắt buộc gửi; server bỏ qua. */
   saveInfo: z.boolean().optional(),

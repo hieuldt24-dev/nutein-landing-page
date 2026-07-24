@@ -57,7 +57,8 @@ export interface AdminHomeAuditPreviewItem {
   id: string;
   action: "CREATE" | "UPDATE" | "DELETE";
   summary: string;
-  actorEmail: string;
+  /** null khi không xác định được actor — xem AdminAuditEntry.actorEmail. */
+  actorEmail: string | null;
   createdAt: string;
 }
 

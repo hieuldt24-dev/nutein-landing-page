@@ -6,13 +6,17 @@ import { logger } from "@/src/logging/logger";
 
 /**
  * Handler type cho Next.js App Router API Route (Next.js 16+).
- * Lưu ý: Từ Next.js 15+, `context.params` là Promise<Record<string, string>>
+ * Lưu ý: Từ Next.js 15+, `context.params` là Promise<Record<string, string>>.
+ * Generic theo `T` — route tĩnh dùng mặc định (không cần params); route động
+ * truyền `withErrorHandler<{ id: string }>(...)` để có `params` gõ kiểu đúng.
  */
-type RouteContext = { params: Promise<Record<string, string>> };
+type RouteContext<T extends Record<string, string> = Record<string, string>> = {
+  params: Promise<T>;
+};
 
-type RouteHandler = (
+type RouteHandler<T extends Record<string, string> = Record<string, string>> = (
   req: NextRequest,
-  context?: RouteContext
+  context: RouteContext<T>
 ) => Promise<NextResponse>;
 
 /**
@@ -27,10 +31,12 @@ type RouteHandler = (
  *     return successResponse(data);
  *   });
  */
-export function withErrorHandler(handler: RouteHandler): RouteHandler {
-  return async (req: NextRequest, context?: RouteContext) => {
+export function withErrorHandler<T extends Record<string, string> = Record<string, string>>(
+  handler: RouteHandler<T>
+): (req: NextRequest, context?: RouteContext<T>) => Promise<NextResponse> {
+  return async (req: NextRequest, context?: RouteContext<T>) => {
     try {
-      return await handler(req, context);
+      return await handler(req, context as RouteContext<T>);
     } catch (error) {
       // Lỗi do validate dữ liệu (Zod)
       if (error instanceof ZodError) {

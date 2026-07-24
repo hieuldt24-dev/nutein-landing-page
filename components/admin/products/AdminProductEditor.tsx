@@ -36,6 +36,7 @@ export function AdminProductEditor() {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [tab, setTab] = useState<ProductTabId>("info");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadingKey, setUploadingKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (data) setDraft(structuredClone(data));
@@ -77,6 +78,23 @@ export function AdminProductEditor() {
       );
       return { ...prev, gallery };
     });
+  };
+
+  const handleUpload = async (
+    key: string,
+    file: File,
+    onDone: (url: string) => void,
+  ) => {
+    setUploadingKey(key);
+    try {
+      const url = await adminProductsService.uploadImage(file);
+      onDone(url);
+      notify.success("Đã tải ảnh lên.");
+    } catch (err) {
+      notify.error(err instanceof Error ? err.message : "Tải ảnh lên thất bại.");
+    } finally {
+      setUploadingKey(null);
+    }
   };
 
   const handleSave = async () => {
@@ -270,7 +288,7 @@ export function AdminProductEditor() {
         {tab === "media" ? (
           <div>
             <p className="mb-4 text-[13px] text-text-muted">
-              Phase mock: dán URL / path public. Cloudinary upload gắn sau.
+              Dán URL / path public, hoặc chọn ảnh để upload lên Cloudinary (tối đa 5MB).
             </p>
             <Field label="Ảnh chính">
               <input
@@ -279,6 +297,23 @@ export function AdminProductEditor() {
                 onChange={(e) => setField("image", e.target.value)}
               />
             </Field>
+            <div className="mt-2 flex items-center gap-2">
+              <input
+                type="file"
+                accept="image/*"
+                disabled={uploadingKey === "main"}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (file) {
+                    void handleUpload("main", file, (url) => setField("image", url));
+                  }
+                }}
+              />
+              {uploadingKey === "main" ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : null}
+            </div>
             <Field label="Alt ảnh chính" className="mt-3">
               <input
                 className={inputClass}
@@ -298,6 +333,25 @@ export function AdminProductEditor() {
                       value={g.src}
                       onChange={(e) => updateGallery(i, { src: e.target.value })}
                     />
+                    <div className="mt-2 flex items-center gap-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        disabled={uploadingKey === `gallery-${i}`}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          e.target.value = "";
+                          if (file) {
+                            void handleUpload(`gallery-${i}`, file, (url) =>
+                              updateGallery(i, { src: url }),
+                            );
+                          }
+                        }}
+                      />
+                      {uploadingKey === `gallery-${i}` ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : null}
+                    </div>
                   </Field>
                   <Field label="Alt">
                     <input

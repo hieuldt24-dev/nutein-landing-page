@@ -1,7 +1,7 @@
-import type { AdminOrder } from "@/features/admin-orders/types";
+import type { AdminOrderSummaryRow } from "@/features/admin-orders/types";
 import type { DashboardRevenueSnapshot } from "../types";
 
-const EXCLUDED: ReadonlySet<AdminOrder["status"]> = new Set([
+const EXCLUDED: ReadonlySet<AdminOrderSummaryRow["status"]> = new Set([
   "cancelled",
   "returned",
 ]);
@@ -31,7 +31,7 @@ function toDateKey(d: Date): string {
  * Chỉ cộng đơn không hủy / không trả.
  */
 export function buildRevenueSnapshotFromOrders(
-  orders: AdminOrder[],
+  orders: AdminOrderSummaryRow[],
 ): DashboardRevenueSnapshot {
   const countable = orders.filter((o) => !EXCLUDED.has(o.status));
 

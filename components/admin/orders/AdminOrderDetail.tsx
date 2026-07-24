@@ -14,9 +14,8 @@ import {
 } from "@/features/admin-orders/constants";
 import { adminOrdersService } from "@/features/admin-orders/services/admin-orders.service";
 import type { AdminOrderStatus } from "@/features/admin-orders/types";
-import { useAuthStore } from "@/lib/useAuthStore";
 import { notify } from "@/lib/toast";
-import { formatCurrencyVnd, formatDate } from "@/lib/utils";
+import { cn, formatCurrencyVnd, formatDate } from "@/lib/utils";
 
 interface AdminOrderDetailProps {
   orderId: string;
@@ -27,7 +26,6 @@ interface AdminOrderDetailProps {
  */
 export function AdminOrderDetail({ orderId }: AdminOrderDetailProps) {
   const { mutate: globalMutate } = useSWRConfig();
-  const { user } = useAuthStore();
   const detailKey = adminOrderDetailSwrKey(orderId);
 
   const { data: order, error, isLoading, mutate } = useSWR(
@@ -80,7 +78,6 @@ export function AdminOrderDetail({ orderId }: AdminOrderDetailProps) {
     try {
       const updated = await adminOrdersService.updateStatus(order.id, nextStatus, {
         note,
-        actorLabel: user?.fullName || user?.email || "Staff",
       });
       await mutate(updated, { revalidate: false });
       await globalMutate(
@@ -143,7 +140,19 @@ export function AdminOrderDetail({ orderId }: AdminOrderDetailProps) {
             <dt className="text-[12px] font-bold uppercase tracking-[0.06em] text-text-muted">
               Thanh toán
             </dt>
-            <dd className="mt-1 font-semibold text-ink">{order.paymentMethodLabel}</dd>
+            <dd className="mt-1 flex items-center gap-2 font-semibold text-ink">
+              {order.paymentMethodLabel}
+              <span
+                className={cn(
+                  "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-extrabold tracking-[0.02em] uppercase",
+                  order.paymentStatus === "paid"
+                    ? "bg-lime/50 text-forest"
+                    : "bg-ink/10 text-text-muted"
+                )}
+              >
+                {order.paymentStatus === "paid" ? "Đã thanh toán" : "Chưa thanh toán"}
+              </span>
+            </dd>
           </div>
           <div className="sm:col-span-2">
             <dt className="text-[12px] font-bold uppercase tracking-[0.06em] text-text-muted">

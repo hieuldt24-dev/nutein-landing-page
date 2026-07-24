@@ -1,5 +1,5 @@
 import { ADMIN_ORDER_STATUS_LABEL } from "@/features/admin-orders/constants";
-import type { AdminOrder, AdminOrderStatus } from "@/features/admin-orders/types";
+import type { AdminOrderStatus, AdminOrderSummaryRow } from "@/features/admin-orders/types";
 import type { AdminManagedUser } from "@/features/admin-users/types";
 import type { DashboardPieSlice } from "../types";
 
@@ -23,7 +23,7 @@ const STATUS_ORDER: AdminOrderStatus[] = [
 
 /** Đếm đơn theo trạng thái — bỏ slice value = 0. */
 export function buildOrderStatusBreakdown(
-  orders: AdminOrder[],
+  orders: AdminOrderSummaryRow[],
 ): DashboardPieSlice[] {
   const counts = new Map<AdminOrderStatus, number>();
   for (const status of STATUS_ORDER) {

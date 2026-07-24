@@ -7,8 +7,10 @@ import { adminUsersService } from "@/features/admin-users/services/admin-users.s
 import type { AuthRole } from "@/features/auth/types";
 import { notify } from "@/lib/toast";
 import { formatDate } from "@/lib/utils";
+import { useAuthStore } from "@/lib/useAuthStore";
 
 export function AdminUsersPanel() {
+  const { user: currentUser } = useAuthStore();
   const [q, setQ] = useState("");
   const [role, setRole] = useState<AuthRole | "all">("all");
   const key = useMemo(() => `${ADMIN_USERS_SWR_KEY}:${q}:${role}`, [q, role]);
@@ -72,42 +74,70 @@ export function AdminUsersPanel() {
       ) : null}
       {data ? (
         <ul className="m-0 flex list-none flex-col gap-3 p-0">
-          {data.map((u) => (
-            <li
-              key={u.id}
-              className="rounded-[var(--radius-lg)] border border-ink/15 bg-surface px-4 py-4"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="font-bold text-ink">{u.fullName}</p>
-                  <p className="text-[13px] text-text-muted">
-                    {u.email} · {formatDate(u.createdAt)}
-                    {u.locked ? " · Đã khóa" : ""}
-                  </p>
+          {data.map((u) => {
+            const isSelf = Boolean(currentUser?.email) && u.email === currentUser?.email;
+            return (
+              <li
+                key={u.id}
+                className="rounded-[var(--radius-lg)] border border-ink/15 bg-surface px-4 py-4"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-bold text-ink">
+                      {u.fullName}
+                      {isSelf ? (
+                        <span className="ml-2 rounded-full bg-primary-soft px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-[0.04em] text-primary-deep">
+                          Bạn
+                        </span>
+                      ) : null}
+                    </p>
+                    <p className="text-[13px] text-text-muted">
+                      {u.email} · {formatDate(u.createdAt)}
+                      {u.locked ? " · Đã khóa" : ""}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {isSelf ? (
+                      <span
+                        title="Không thể tự đổi vai trò của chính mình"
+                        className="rounded-[var(--radius-md)] border border-ink/10 bg-border-subtle px-2.5 py-1.5 text-[13px] font-bold text-text-muted"
+                      >
+                        {u.role}
+                      </span>
+                    ) : (
+                      <select
+                        className="rounded-[var(--radius-md)] border border-ink/20 bg-bg px-2 py-1.5 text-[13px] font-bold"
+                        value={u.role}
+                        onChange={(e) =>
+                          void changeRole(u.id, e.target.value as AuthRole)
+                        }
+                      >
+                        <option value="user">user</option>
+                        <option value="staff">staff</option>
+                        <option value="admin">admin</option>
+                      </select>
+                    )}
+                    {isSelf ? (
+                      <span
+                        title="Không thể tự khóa tài khoản của chính mình"
+                        className="rounded-full border border-ink/10 bg-border-subtle px-3 py-1.5 text-[12px] font-bold text-text-muted"
+                      >
+                        Khóa
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => void toggleLock(u.id, u.locked)}
+                        className="cursor-pointer rounded-full border border-ink/20 px-3 py-1.5 text-[12px] font-bold"
+                      >
+                        {u.locked ? "Mở khóa" : "Khóa"}
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <select
-                    className="rounded-[var(--radius-md)] border border-ink/20 bg-bg px-2 py-1.5 text-[13px] font-bold"
-                    value={u.role}
-                    onChange={(e) =>
-                      void changeRole(u.id, e.target.value as AuthRole)
-                    }
-                  >
-                    <option value="user">user</option>
-                    <option value="staff">staff</option>
-                    <option value="admin">admin</option>
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => void toggleLock(u.id, u.locked)}
-                    className="cursor-pointer rounded-full border border-ink/20 px-3 py-1.5 text-[12px] font-bold"
-                  >
-                    {u.locked ? "Mở khóa" : "Khóa"}
-                  </button>
-                </div>
-              </div>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       ) : null}
     </div>

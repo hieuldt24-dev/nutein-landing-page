@@ -1,4 +1,4 @@
-import type { AdminOrder } from "@/features/admin-orders/types";
+import type { AdminOrderSummaryRow } from "@/features/admin-orders/types";
 import type { DashboardOrdersByDayPoint } from "../types";
 
 function startOfDay(d: Date): Date {
@@ -25,7 +25,7 @@ function toDateKey(d: Date): string {
  * “Mới” = mọi đơn tạo trong ngày; “Hủy” = status cancelled (cùng ngày tạo).
  */
 export function buildOrdersByDayBreakdown(
-  orders: AdminOrder[],
+  orders: AdminOrderSummaryRow[],
 ): DashboardOrdersByDayPoint[] {
   const asOfMs = orders.reduce(
     (max, o) => Math.max(max, new Date(o.createdAt).getTime()),
