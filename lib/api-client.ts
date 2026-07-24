@@ -70,10 +70,12 @@ export async function apiRequest<T>(
   url: string,
   init?: RequestInit,
 ): Promise<T> {
-  const headers = {
-    "Content-Type": "application/json",
-    ...(init?.headers ?? {}),
-  };
+  // FormData (vd upload file) — để browser tự set Content-Type kèm boundary,
+  // ép "application/json" ở đây sẽ phá multipart request.
+  const isFormData = init?.body instanceof FormData;
+  const headers = isFormData
+    ? { ...(init?.headers ?? {}) }
+    : { "Content-Type": "application/json", ...(init?.headers ?? {}) };
 
   let res = await fetch(url, { ...init, headers });
 

@@ -8,6 +8,8 @@ import { productService } from "@/features/product/services/product.service";
 import { supabaseAdmin } from "@/lib/supabase";
 import type { CreateOrderRequest } from "@/features/checkout/schemas/checkout.schema";
 import { normalizeCartLines } from "@/features/cart/pricing";
+import { BadRequestError } from "@/src/errors/app.error";
+import { auditLogRepository } from "@/features/admin-audit/services/audit-log.repository";
 
 type DbOrderStatus =
   | "PENDING"
@@ -63,9 +65,7 @@ function requireAdminClient() {
 function mapPaymentMethod(
   method: CreateOrderRequest["paymentMethod"],
 ): DbPaymentMethod {
-  if (method === "cod") return "COD";
-  if (method === "bank_transfer") return "PAYOS";
-  return "MOMO";
+  return method === "cod" ? "COD" : "PAYOS";
 }
 
 function mapShippingMethod(
@@ -184,10 +184,53 @@ export const orderRepository = {
 
     if (itemError) {
       await client.from("orders").delete().eq("id", row.id);
+      // Trigger DB trừ kho lúc insert order_items — nếu 2 đơn đặt gần như
+      // đồng thời cùng thua race, CHECK (stock >= 0) chặn đơn thua ở đây
+      // (23514 = check_violation). Dịch sang lỗi rõ ràng thay vì 500 chung.
+      const isStockExhausted =
+        (itemError as { code?: string }).code === "23514" &&
+        itemError.message.includes("stock");
+      if (isStockExhausted) {
+        throw new BadRequestError(
+          "Sản phẩm hiện đã hết hàng hoặc không đủ số lượng — vui lòng thử lại.",
+        );
+      }
       throw new Error(`Không lưu được dòng đơn: ${itemError.message}`);
     }
 
+    await auditLogRepository.record({
+      userId,
+      action: "CREATE",
+      tableName: "orders",
+      recordId: row.id,
+      newData: {
+        order_code: row.order_code,
+        status: row.status,
+        payment_method: row.payment_method,
+        final_price: row.final_price,
+      },
+    });
+
     return row;
+  },
+
+  /**
+   * Tồn kho thật (đơn vị hũ) của sản phẩm chủ lực — single-SKU nên chỉ 1
+   * dòng `products`. checkoutService gọi trước khi tạo đơn để chặn đặt
+   * hàng vượt tồn kho.
+   */
+  async getAvailableStock(): Promise<number> {
+    const client = requireAdminClient();
+    const { data, error } = await client
+      .from("products")
+      .select("stock")
+      .eq("id", NUTEIN_PRODUCT_DB_ID)
+      .single();
+
+    if (error) {
+      throw new Error(`Không đọc được tồn kho: ${error.message}`);
+    }
+    return data.stock as number;
   },
 
   /**

@@ -39,12 +39,25 @@ export interface AdminOrder {
   shippingAddressLabel: string;
   note?: string;
   paymentMethodLabel: string;
+  paymentStatus: "paid" | "unpaid";
   shippingFee: number;
   discountAmount: number;
   subtotal: number;
   total: number;
   lines: AdminOrderLine[];
   statusHistory: AdminOrderStatusLog[];
+}
+
+/**
+ * Dòng tổng hợp cho dashboard (doanh thu/breakdown) — KHÔNG chứa PII khách
+ * hàng (tên/SĐT/địa chỉ). Admin không có quyền xem chi tiết đơn (S3) nhưng
+ * vẫn cần số liệu tổng hợp cho `/admin` — dùng type/endpoint riêng này thay
+ * vì mở quyền `AdminOrder` đầy đủ cho Admin.
+ */
+export interface AdminOrderSummaryRow {
+  status: AdminOrderStatus;
+  total: number;
+  createdAt: string;
 }
 
 export type AdminOrderStatusFilter = AdminOrderStatus | "all";

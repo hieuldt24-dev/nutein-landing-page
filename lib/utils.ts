@@ -31,7 +31,30 @@ export function formatDate(
  * Ví dụ: await sleep(1000) // chờ 1 giây
  */
 export function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+/** Nhãn ngày ngắn dd/mm (chart axis / tooltip). */
+export function formatDayMonth(date: Date | string): string {
+  const d = typeof date === "string" ? new Date(date) : date;
+  // Parse YYYY-MM-DD as local to tránh lệch timezone UTC.
+  if (typeof date === "string" && /^\d{4}-\d{2}-\d{2}/.test(date)) {
+    const [y, m, day] = date.slice(0, 10).split("-").map(Number);
+    const local = new Date(y, m - 1, day);
+    const dd = String(local.getDate()).padStart(2, "0");
+    const mm = String(local.getMonth() + 1).padStart(2, "0");
+    return `${dd}/${mm}`;
+  }
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  return `${dd}/${mm}`;
+}
+
+/** Tiêu đề tooltip chart — "Ngày: dd/mm". */
+export function formatChartDayTitle(date: Date | string): string {
+  return `Ngày: ${formatDayMonth(date)}`;
 }
 
 /**

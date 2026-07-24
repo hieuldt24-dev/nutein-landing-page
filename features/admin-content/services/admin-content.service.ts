@@ -1,34 +1,35 @@
-import { sleep } from "@/lib/utils";
-import { ADMIN_CONTENT_MOCK_LATENCY_MS } from "../constants";
-import { MOCK_ADMIN_STATIC_PAGES } from "../data/pages.mock";
+import { apiRequest, type FetchError } from "@/lib/api-client";
 import type { AdminStaticPage, AdminStaticSlug } from "../types";
 
-let store: AdminStaticPage[] = structuredClone(MOCK_ADMIN_STATIC_PAGES);
+const BASE_PATH = "/api/staff/content";
 
+/**
+ * Admin content domain (S7) — client fetch wrapper gọi `app/api/staff/content/**`.
+ * Business logic/DB thật nằm ở `admin-content.repository.ts` (server-only).
+ */
 export const adminContentService = {
   async list(): Promise<AdminStaticPage[]> {
-    await sleep(ADMIN_CONTENT_MOCK_LATENCY_MS);
-    return structuredClone(store);
+    return apiRequest<AdminStaticPage[]>(BASE_PATH);
   },
 
   async getPage(slug: AdminStaticSlug): Promise<AdminStaticPage | null> {
-    await sleep(ADMIN_CONTENT_MOCK_LATENCY_MS);
-    return store.find((p) => p.slug === slug) ?? null;
+    try {
+      return await apiRequest<AdminStaticPage>(`${BASE_PATH}/${slug}`);
+    } catch (err) {
+      if ((err as FetchError)?.status === 404) {
+        return null;
+      }
+      throw err;
+    }
   },
 
   async updatePage(
     slug: AdminStaticSlug,
-    patch: { title?: string; content?: string }
+    patch: { title?: string; content?: string },
   ): Promise<AdminStaticPage> {
-    await sleep(ADMIN_CONTENT_MOCK_LATENCY_MS);
-    const idx = store.findIndex((p) => p.slug === slug);
-    if (idx < 0) throw new Error("Không tìm thấy trang.");
-    const updated: AdminStaticPage = {
-      ...store[idx],
-      ...patch,
-      updatedAt: new Date().toISOString(),
-    };
-    store = [...store.slice(0, idx), updated, ...store.slice(idx + 1)];
-    return structuredClone(updated);
+    return apiRequest<AdminStaticPage>(`${BASE_PATH}/${slug}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    });
   },
 };

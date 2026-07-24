@@ -75,19 +75,6 @@ export function CheckoutSuccessView({
           </div>
         </dl>
 
-        {order.paymentInstructions ? (
-          <div className="mt-5 rounded-[var(--radius-md)] border border-primary/25 bg-primary/10 px-4 py-3">
-            <p className="text-[13px] font-extrabold text-ink">
-              {order.paymentInstructions.title}
-            </p>
-            <ul className="mt-2 list-disc space-y-1 pl-4 text-[12px] font-medium text-text-body">
-              {order.paymentInstructions.lines.map((line) => (
-                <li key={line}>{line.replace("<mã đơn>", order.orderCode)}</li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-
         {isPayos ? (
           <div
             className={

@@ -1,7 +1,7 @@
 "use client";
 
-import { AdminAuditPanel } from "@/components/admin/AdminAuditPanel";
-import { AdminPageFrame } from "@/components/admin/AdminShell";
+import { AdminAuditPanel } from "@/components/admin/audit/AdminAuditPanel";
+import { AdminPageFrame } from "@/components/admin/shell/AdminShell";
 
 export default function AdminAuditPage() {
   return (

@@ -99,7 +99,6 @@ export function useAuthStore() {
     isLoggedIn: Boolean(user?.email),
     isReady: Boolean(isReady),
     isStaffOrAdmin,
-    canAccessAdmin: authService.canAccessAdmin(user),
     signIn,
     signUp,
     signInWithGoogle,

@@ -1,8 +1,27 @@
-import { sleep } from "@/lib/utils";
-import { ADMIN_AUDIT_MOCK_LATENCY_MS } from "../constants";
-import { MOCK_ADMIN_AUDIT } from "../data/audit.mock";
+import { apiRequest } from "@/lib/api-client";
 import type { AdminAuditAction, AdminAuditEntry } from "../types";
 
+const BASE_PATH = "/api/admin/audit";
+
+function buildQueryString(query?: {
+  action?: AdminAuditAction | "all";
+  actor?: string;
+  from?: string;
+  to?: string;
+}): string {
+  const params = new URLSearchParams();
+  if (query?.action && query.action !== "all") params.set("action", query.action);
+  if (query?.actor) params.set("actor", query.actor);
+  if (query?.from) params.set("from", query.from);
+  if (query?.to) params.set("to", query.to);
+  const qs = params.toString();
+  return qs ? `?${qs}` : "";
+}
+
+/**
+ * Admin audit domain — client fetch wrapper gọi `app/api/admin/audit`.
+ * Business logic/DB thật nằm ở `admin-audit.repository.ts` (server-only).
+ */
 export const adminAuditService = {
   async list(query?: {
     action?: AdminAuditAction | "all";
@@ -10,26 +29,6 @@ export const adminAuditService = {
     from?: string;
     to?: string;
   }): Promise<AdminAuditEntry[]> {
-    await sleep(ADMIN_AUDIT_MOCK_LATENCY_MS);
-    let rows = structuredClone(MOCK_ADMIN_AUDIT);
-    if (query?.action && query.action !== "all") {
-      rows = rows.filter((r) => r.action === query.action);
-    }
-    const actor = query?.actor?.trim().toLowerCase();
-    if (actor) {
-      rows = rows.filter((r) => r.actorEmail.toLowerCase().includes(actor));
-    }
-    if (query?.from) {
-      const fromMs = new Date(query.from).getTime();
-      rows = rows.filter((r) => new Date(r.createdAt).getTime() >= fromMs);
-    }
-    if (query?.to) {
-      const to = new Date(query.to);
-      to.setHours(23, 59, 59, 999);
-      rows = rows.filter((r) => new Date(r.createdAt).getTime() <= to.getTime());
-    }
-    return rows.sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    return apiRequest<AdminAuditEntry[]>(`${BASE_PATH}${buildQueryString(query)}`);
   },
 };

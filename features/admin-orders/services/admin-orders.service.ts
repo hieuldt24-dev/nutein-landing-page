@@ -1,97 +1,59 @@
-import { sleep } from "@/lib/utils";
-import {
-  ADMIN_ORDER_STATUS_TRANSITIONS,
-  ADMIN_ORDERS_MOCK_LATENCY_MS,
-} from "../constants";
-import { MOCK_ADMIN_ORDERS } from "../data/orders.mock";
+import { apiRequest, type FetchError } from "@/lib/api-client";
 import type {
   AdminOrder,
   AdminOrderListQuery,
   AdminOrderStatus,
+  AdminOrderSummaryRow,
 } from "../types";
 
-/** Bản sao mutable in-memory — phase mock; API thật sẽ không cần. */
-let ordersStore: AdminOrder[] = structuredClone(MOCK_ADMIN_ORDERS);
+const BASE_PATH = "/api/staff/orders";
+const SUMMARY_PATH = "/api/admin/orders-summary";
 
-function endOfDayIso(dateIso: string): string {
-  const d = new Date(dateIso);
-  d.setHours(23, 59, 59, 999);
-  return d.toISOString();
+function buildListQueryString(query: AdminOrderListQuery): string {
+  const params = new URLSearchParams();
+  if (query.status && query.status !== "all") params.set("status", query.status);
+  if (query.from) params.set("from", query.from);
+  if (query.to) params.set("to", query.to);
+  const qs = params.toString();
+  return qs ? `?${qs}` : "";
 }
 
 /**
- * Admin orders domain (S3).
- * Phase mock: list/filter/detail/updateStatus trên store in-memory.
- * Khi có API: đổi thân các method → `app/api/admin/orders/**` hoặc Supabase;
- * giữ chữ ký + types.
+ * Admin orders domain (S3) — client fetch wrapper gọi `app/api/staff/orders/**`.
+ * Business logic/DB thật nằm ở `admin-orders.repository.ts` (server-only).
  */
 export const adminOrdersService = {
   async list(query: AdminOrderListQuery = {}): Promise<AdminOrder[]> {
-    await sleep(ADMIN_ORDERS_MOCK_LATENCY_MS);
-    const status = query.status ?? "all";
-    let rows = [...ordersStore];
-
-    if (status !== "all") {
-      rows = rows.filter((o) => o.status === status);
-    }
-    if (query.from) {
-      const fromMs = new Date(query.from).getTime();
-      rows = rows.filter((o) => new Date(o.createdAt).getTime() >= fromMs);
-    }
-    if (query.to) {
-      const toMs = new Date(endOfDayIso(query.to)).getTime();
-      rows = rows.filter((o) => new Date(o.createdAt).getTime() <= toMs);
-    }
-
-    return rows.sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    return apiRequest<AdminOrder[]>(`${BASE_PATH}${buildListQueryString(query)}`);
   },
 
   async getById(id: string): Promise<AdminOrder | null> {
-    await sleep(ADMIN_ORDERS_MOCK_LATENCY_MS);
-    return ordersStore.find((o) => o.id === id) ?? null;
+    try {
+      return await apiRequest<AdminOrder>(`${BASE_PATH}/${id}`);
+    } catch (err) {
+      if ((err as FetchError)?.status === 404) {
+        return null;
+      }
+      throw err;
+    }
   },
 
   async updateStatus(
     id: string,
     nextStatus: AdminOrderStatus,
-    options?: { note?: string; actorLabel?: string }
+    options?: { note?: string },
   ): Promise<AdminOrder> {
-    await sleep(ADMIN_ORDERS_MOCK_LATENCY_MS);
-    const idx = ordersStore.findIndex((o) => o.id === id);
-    if (idx < 0) {
-      throw new Error("Không tìm thấy đơn hàng.");
-    }
+    return apiRequest<AdminOrder>(`${BASE_PATH}/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status: nextStatus, note: options?.note }),
+    });
+  },
 
-    const current = ordersStore[idx];
-    const allowed = ADMIN_ORDER_STATUS_TRANSITIONS[current.status];
-    if (!allowed.includes(nextStatus)) {
-      throw new Error("Không thể chuyển sang trạng thái này.");
-    }
-
-    const now = new Date().toISOString();
-    const updated: AdminOrder = {
-      ...current,
-      status: nextStatus,
-      updatedAt: now,
-      statusHistory: [
-        ...current.statusHistory,
-        {
-          id: `log-${id}-${now}`,
-          status: nextStatus,
-          note: options?.note?.trim() || undefined,
-          changedByLabel: options?.actorLabel?.trim() || "Staff",
-          createdAt: now,
-        },
-      ],
-    };
-
-    ordersStore = [
-      ...ordersStore.slice(0, idx),
-      updated,
-      ...ordersStore.slice(idx + 1),
-    ];
-    return updated;
+  /**
+   * Tổng hợp không PII (status/total/createdAt) cho dashboard — gọi được
+   * bởi cả STAFF lẫn ADMIN, khác `list()` (chi tiết đầy đủ, chỉ STAFF).
+   */
+  async listSummary(): Promise<AdminOrderSummaryRow[]> {
+    return apiRequest<AdminOrderSummaryRow[]>(SUMMARY_PATH);
   },
 };

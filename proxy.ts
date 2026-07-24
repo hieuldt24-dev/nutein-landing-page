@@ -9,7 +9,7 @@ import { authenticate, requireRole } from "@/src/middlewares/authenticate.middlw
  * khi trang render, mirror đúng StaffOnlyGate/AdminOnlyGate phía client:
  *   - Không phải Staff/Admin (chưa đăng nhập hoặc role USER) -> "/".
  *   - Đúng nhóm nhưng lạc sang khu còn lại -> trang gốc của role đó
- *     ("/staff" cho Staff, "/admin/users" cho Admin).
+ *     ("/staff" cho Staff, "/admin" cho Admin).
  * Optimistic check (chỉ verify JWT, không query DB) — không thay thế
  * authenticate()/requireRole() ở từng route thật trong app/api/staff/**,
  * app/api/admin/** khi các route đó được thêm; đây chỉ là lớp UX chặn sớm,
@@ -35,7 +35,7 @@ async function guardAdminArea(request: NextRequest): Promise<NextResponse | null
       return NextResponse.redirect(new URL("/staff", request.url));
     }
     if (user.role === "ADMIN") {
-      return NextResponse.redirect(new URL("/admin/users", request.url));
+      return NextResponse.redirect(new URL("/admin", request.url));
     }
     return NextResponse.redirect(new URL("/", request.url));
   }
@@ -44,13 +44,30 @@ async function guardAdminArea(request: NextRequest): Promise<NextResponse | null
 }
 
 /**
+ * Route thật sự đọc session Supabase server-side (`lib/supabase-server.ts`)
+ * — đã grep xác nhận, chỉ 2 chỗ này. Toàn bộ `app/api/**` còn lại (checkout,
+ * cart, staff/orders, account...) chỉ dùng JWT app riêng (`authenticate()`),
+ * không đụng Supabase session — refresh cho các route đó là round-trip thừa
+ * tới Supabase Auth server trên mọi request, không có tác dụng.
+ */
+function needsSupabaseRefresh(pathname: string): boolean {
+  if (!pathname.startsWith("/api/")) return true; // page navigation — giữ nguyên, chưa audit hết Server Component
+  return pathname === "/api/auth/session";
+}
+
+/**
  * Next.js 16 đổi tên middleware.ts -> proxy.ts (hành vi giữ nguyên).
- * Refresh Supabase session cookie trên mọi request, để Server Component/
- * Route Handler luôn đọc được session mới nhất qua lib/supabase-server.ts.
+ * Refresh Supabase session cookie khi cần (xem needsSupabaseRefresh), để
+ * Server Component/Route Handler đọc được session mới nhất qua
+ * lib/supabase-server.ts.
  */
 export async function proxy(request: NextRequest) {
   const adminRedirect = await guardAdminArea(request);
   if (adminRedirect) return adminRedirect;
+
+  if (!needsSupabaseRefresh(request.nextUrl.pathname)) {
+    return NextResponse.next({ request });
+  }
 
   let response = NextResponse.next({ request });
 
