@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState, type InputHTMLAttributes, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type InputHTMLAttributes, type ReactNode } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import useSWR, { useSWRConfig } from "swr";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,6 +16,15 @@ import {
   type LoginFormValues,
   type RegisterFormValues,
 } from "@/features/auth/schemas/auth.schema";
+import {
+  AUTH_MODAL_OPTIONS_DEFAULT,
+  AUTH_MODAL_OPTIONS_SWR_KEY,
+  AUTH_MODAL_SWR_KEY,
+  type AuthModalOptions,
+} from "@/features/auth/constants";
+import { OPEN_AUTH_MODAL_STORAGE_KEY } from "@/features/account/constants";
+import { closeAuthModal } from "@/lib/openAuthModal";
+import { apiRequest } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 
 function Field({
@@ -58,33 +67,55 @@ function TextInput({
 
 export default function AuthModal() {
   const router = useRouter();
+  const pathname = usePathname();
   const { mutate } = useSWRConfig();
-  const { user, isLoggedIn, signIn, signUp, signOut } = useAuthStore();
+  const { isLoggedIn, signIn, signUp, signInWithGoogle } = useAuthStore();
   // revalidateOnMount/OnFocus/OnReconnect: false — key này chỉ là cờ mở/đóng
   // UI (SWR-as-store), không phải server data. Không tắt sẽ có nguy cơ race
   // giống useAuthStore: fetcher no-op tự chạy lại (VD mỗi lần tab focus lại)
   // rồi ghi đè `true` thật về `false`, tự đóng modal ngoài ý muốn.
-  const { data: isOpen } = useSWR("auth-modal", () => false, {
+  const { data: isOpen } = useSWR(AUTH_MODAL_SWR_KEY, () => false, {
     fallbackData: false,
     revalidateOnMount: false,
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
   });
 
+  const { data: modalOptions } = useSWR<AuthModalOptions>(
+    AUTH_MODAL_OPTIONS_SWR_KEY,
+    () => AUTH_MODAL_OPTIONS_DEFAULT,
+    {
+      fallbackData: AUTH_MODAL_OPTIONS_DEFAULT,
+      revalidateOnMount: false,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+    },
+  );
+
   const setIsOpen = useCallback(
-    (val: boolean) => mutate("auth-modal", val, { revalidate: false }),
-    [mutate]
+    (val: boolean) => {
+      if (val) {
+        void mutate(AUTH_MODAL_SWR_KEY, true, { revalidate: false });
+      } else {
+        closeAuthModal(mutate);
+      }
+    },
+    [mutate],
   );
 
   const [activeTab, setActiveTab] = useState<"login" | "register">("login");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmittingForm, setIsSubmittingForm] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const returnToRef = useRef<string | null>(null);
+  const appliedOpenRef = useRef(false);
 
   const {
     register: registerLogin,
     handleSubmit: handleLoginSubmit,
     formState: { errors: loginErrors },
     reset: resetLoginForm,
+    setValue: setLoginValue,
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "", rememberMe: false },
@@ -95,6 +126,7 @@ export default function AuthModal() {
     handleSubmit: handleSignUpSubmit,
     formState: { errors: signUpErrors },
     reset: resetSignUpForm,
+    setValue: setSignUpValue,
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -122,15 +154,92 @@ export default function AuthModal() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, setIsOpen]);
 
+  // Modal chỉ dành login/register — đã login thì đóng (tránh panel "Xin chào"
+  // + email trùng + Đăng xuất; tài khoản quản lý qua /account).
+  useEffect(() => {
+    if (isOpen && isLoggedIn) setIsOpen(false);
+  }, [isOpen, isLoggedIn, setIsOpen]);
+
+  // Guest bị chặn ở /account* → layout ghi flag rồi về `/`; mở modal 1 lần tại home.
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(OPEN_AUTH_MODAL_STORAGE_KEY) !== "1") return;
+      sessionStorage.removeItem(OPEN_AUTH_MODAL_STORAGE_KEY);
+      setIsOpen(true);
+    } catch {
+      /* private mode */
+    }
+  }, [setIsOpen]);
+
+  // Áp options mỗi lần mở modal (tab / email / returnTo).
+  useEffect(() => {
+    if (!isOpen) {
+      appliedOpenRef.current = false;
+      return;
+    }
+    if (appliedOpenRef.current) return;
+    appliedOpenRef.current = true;
+
+    const opts = modalOptions ?? AUTH_MODAL_OPTIONS_DEFAULT;
+    returnToRef.current = opts.returnTo;
+    setActiveTab(opts.tab);
+    if (opts.email) {
+      setLoginValue("email", opts.email, { shouldDirty: false });
+      setSignUpValue("email", opts.email, { shouldDirty: false });
+    }
+  }, [isOpen, modalOptions, setLoginValue, setSignUpValue]);
+
   if (!isOpen) return null;
+
+  const resolveAfterAuthPath = (): string | null => {
+    const fromOptions = returnToRef.current;
+    if (fromOptions) return fromOptions;
+    if (pathname?.startsWith("/checkout")) return "/checkout";
+    return null;
+  };
+
+  const switchToRegisterWithEmail = (email: string) => {
+    setActiveTab("register");
+    setSignUpValue("email", email, { shouldDirty: true, shouldValidate: false });
+    setLoginValue("email", email, { shouldDirty: false });
+  };
+
+  // Redirect toàn trang sang Google — session thật lấy về qua app/auth/callback/route.ts
+  // (cùng route xử lý cả email-confirm lẫn OAuth, xem sanitizeAuthReturnTo).
+  const onGoogleLogin = async () => {
+    setIsGoogleLoading(true);
+    try {
+      const next = resolveAfterAuthPath() ?? "/";
+      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
+      await signInWithGoogle(redirectTo);
+      // Thành công: trình duyệt redirect sang Google ngay, không cần setIsOpen(false).
+    } catch (err) {
+      notify.error(err instanceof Error ? err.message : "Không thể đăng nhập bằng Google.");
+      setIsGoogleLoading(false);
+    }
+  };
 
   const onLogin = async (data: LoginFormValues) => {
     setIsSubmittingForm(true);
     try {
+      const status = await apiRequest<{ exists: boolean }>("/api/auth/email-status", {
+        method: "POST",
+        body: JSON.stringify({ email: data.email }),
+      });
+      if (!status.exists) {
+        notify.error("Tài khoản chưa tồn tại, mời bạn đăng ký.");
+        switchToRegisterWithEmail(data.email);
+        return;
+      }
+
       await signIn(data.email, data.password, data.rememberMe);
       resetLoginForm();
+      const next = resolveAfterAuthPath();
       setIsOpen(false);
       notify.success("Đăng nhập thành công! Chào mừng bạn quay trở lại.");
+      if (next && pathname !== next) {
+        router.push(next);
+      }
     } catch (err) {
       notify.error(err instanceof Error ? err.message : "Đăng nhập thất bại");
     } finally {
@@ -141,28 +250,37 @@ export default function AuthModal() {
   const onRegister = async (data: RegisterFormValues) => {
     setIsSubmittingForm(true);
     try {
-      const { needsEmailConfirmation } = await signUp(data.email, data.password, data.fullName);
+      const next = resolveAfterAuthPath() ?? "/";
+      const emailRedirectTo =
+        typeof window !== "undefined"
+          ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
+          : undefined;
+
+      const { needsEmailConfirmation } = await signUp(
+        data.email,
+        data.password,
+        data.fullName,
+        emailRedirectTo ? { emailRedirectTo } : undefined,
+      );
       resetSignUpForm();
       setIsOpen(false);
       notify.success(
         needsEmailConfirmation
           ? "Đăng ký thành công! Vui lòng kiểm tra email để xác nhận tài khoản."
-          : "Đăng ký thành công! Bạn đã được đăng nhập."
+          : "Đăng ký thành công! Bạn đã được đăng nhập.",
       );
       if (!needsEmailConfirmation) {
-        router.push("/account");
+        if (next === "/checkout" || pathname?.startsWith("/checkout")) {
+          if (pathname !== "/checkout") router.push("/checkout");
+        } else {
+          router.push("/account");
+        }
       }
     } catch (err) {
       notify.error(err instanceof Error ? err.message : "Đăng ký thất bại");
     } finally {
       setIsSubmittingForm(false);
     }
-  };
-
-  const onLogoutFromModal = async () => {
-    await signOut();
-    setIsOpen(false);
-    notify.success("Đã đăng xuất.");
   };
 
   return (
@@ -213,69 +331,42 @@ export default function AuthModal() {
               id="auth-modal-title"
               className="font-display text-[22px] font-bold leading-tight tracking-[-0.03em] text-ink"
             >
-              {isLoggedIn
-                ? "Xin chào"
-                : activeTab === "login"
-                  ? "Chào mừng trở lại"
-                  : "Tạo tài khoản mới"}
+              {activeTab === "login" ? "Chào mừng trở lại" : "Tạo tài khoản mới"}
             </h2>
             <p className="mt-1 text-sm text-text-muted">
-              {isLoggedIn
-                ? user?.email || "Bạn đã đăng nhập."
-                : activeTab === "login"
-                  ? "Đăng nhập để theo dõi đơn hàng và ưu đãi."
-                  : "Gia nhập cộng đồng sống lành cùng protein thực vật."}
+              {activeTab === "login"
+                ? "Đăng nhập để theo dõi đơn hàng và ưu đãi."
+                : "Gia nhập cộng đồng sống lành cùng protein thực vật."}
             </p>
           </div>
         </div>
 
-        {!isLoggedIn ? (
-          <div className="flex gap-6 border-b border-ink/15 px-6">
-            {(
-              [
-                { id: "login", label: "Đăng nhập" },
-                { id: "register", label: "Đăng ký" },
-              ] as const
-            ).map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                disabled={isSubmittingForm}
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  "cursor-pointer border-b-2 py-3 text-[14px] font-bold uppercase tracking-[-0.01em] transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-                  activeTab === tab.id
-                    ? "border-ink text-ink"
-                    : "border-transparent text-text-muted hover:text-ink"
-                )}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        ) : null}
+        <div className="flex gap-6 border-b border-ink/15 px-6">
+          {(
+            [
+              { id: "login", label: "Đăng nhập" },
+              { id: "register", label: "Đăng ký" },
+            ] as const
+          ).map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              disabled={isSubmittingForm}
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                "cursor-pointer border-b-2 py-3 text-[14px] font-bold uppercase tracking-[-0.01em] transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                activeTab === tab.id
+                  ? "border-ink text-ink"
+                  : "border-transparent text-text-muted hover:text-ink"
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
         <div className="overflow-y-auto px-6 py-6">
-          {isLoggedIn ? (
-            <div className="flex flex-col gap-4">
-              <div className="rounded-[var(--radius-md)] border border-ink/10 bg-surface px-4 py-3">
-                {user?.fullName ? (
-                  <p className="text-[15px] font-bold text-ink">{user.fullName}</p>
-                ) : null}
-                <p className="text-[13px] font-semibold text-text-muted">{user?.email}</p>
-              </div>
-              <FillButton
-                type="button"
-                variant="ink-solid"
-                onClick={() => {
-                  void onLogoutFromModal();
-                }}
-                className="h-[52px] w-full justify-center text-[15px] font-bold uppercase tracking-[-0.01em]"
-              >
-                Đăng xuất
-              </FillButton>
-            </div>
-          ) : activeTab === "login" ? (
+          {activeTab === "login" ? (
             <form onSubmit={handleLoginSubmit(onLogin)} className="flex flex-col gap-4">
               <Field label="Email" error={loginErrors.email?.message}>
                 <TextInput
@@ -354,10 +445,17 @@ export default function AuthModal() {
               <FillButton
                 type="button"
                 variant="ink"
-                disabled
+                disabled={isGoogleLoading || isSubmittingForm}
+                onClick={() => {
+                  void onGoogleLogin();
+                }}
                 className="h-11 w-full justify-center px-4 text-[13px] font-bold"
               >
-                <GoogleIcon />
+                {isGoogleLoading ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <GoogleIcon />
+                )}
                 Google
               </FillButton>
             </form>

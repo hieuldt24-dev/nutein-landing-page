@@ -58,4 +58,15 @@ describe("GET /auth/callback", () => {
     expect(mocks.exchangeCodeForSession).not.toHaveBeenCalled();
     expect(response.headers.get("location")).toBe("http://localhost:3000/?auth_error=1");
   });
+
+  it("chặn open-redirect khi `next` không phải path nội bộ", async () => {
+    mocks.exchangeCodeForSession.mockResolvedValue({ error: null });
+
+    const request = new NextRequest(
+      "http://localhost:3000/auth/callback?code=abc123&next=https://evil.example",
+    );
+    const response = await GET(request);
+
+    expect(response.headers.get("location")).toBe("http://localhost:3000/");
+  });
 });

@@ -3,11 +3,13 @@
  * It unpacks the data directly if successful or throws an error with status and code if failed.
  */
 import { ApiResponse } from "@/src/api/response";
+import {
+  isRemintableAuthCode,
+  restoreApiSession,
+  type FetchError,
+} from "@/lib/api-client";
 
-export interface FetchError extends Error {
-  status?: number;
-  code?: string;
-}
+export type { FetchError };
 
 async function toFetchError(res: Response): Promise<FetchError> {
   const errorData: ApiResponse<null> = await res.json().catch(() => ({
@@ -17,26 +19,11 @@ async function toFetchError(res: Response): Promise<FetchError> {
   }));
 
   const error = new Error(
-    errorData.error?.message || "Đã xảy ra lỗi khi tải dữ liệu"
+    errorData.error?.message || "Đã xảy ra lỗi khi tải dữ liệu",
   ) as FetchError;
   error.status = res.status;
   error.code = errorData.error?.code || "HTTP_ERROR";
   return error;
-}
-
-/**
- * Access token (JWT riêng của app, cookie httpOnly) hết hạn giữa chừng ->
- * gọi app/api/auth/refresh 1 lần để cấp lại rồi để fetcher retry, tránh văng
- * lỗi 401 vô lý trong khi user vẫn còn đăng nhập hợp lệ (session Supabase +
- * refresh token còn hạn). Xem src/middlewares/authenticate.middlware.ts.
- */
-async function tryRefreshAccessToken(): Promise<boolean> {
-  try {
-    const res = await fetch("/api/auth/refresh", { method: "POST" });
-    return res.ok;
-  } catch {
-    return false;
-  }
 }
 
 export const fetcher = async <T>(url: string): Promise<T> => {
@@ -44,7 +31,10 @@ export const fetcher = async <T>(url: string): Promise<T> => {
 
   if (res.status === 401) {
     const error = await toFetchError(res);
-    if (error.code === "TOKEN_EXPIRED" && (await tryRefreshAccessToken())) {
+    if (
+      isRemintableAuthCode(error.code) &&
+      (await restoreApiSession(error.code))
+    ) {
       res = await fetch(url);
       if (!res.ok) {
         throw await toFetchError(res);

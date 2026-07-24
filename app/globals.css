@@ -1,4 +1,8 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+/* ---break---       */
+@custom-variant dark (&:is(.dark *));
 
 /* ── Design Tokens (Tailwind v4 @theme) ──────────────────────────────────────
    Toàn bộ token brand Nutein khai báo trong @theme để tự sinh utility class
@@ -53,8 +57,87 @@
 /* Font — tham chiếu biến CSS do next/font tạo ra (đặt trên <html>), dùng
    @theme inline vì đây là biến runtime, không phải giá trị tĩnh.            */
 @theme inline {
-  --font-sans:    var(--font-mulish), "Inter", system-ui, -apple-system, sans-serif;
+  --font-sans: var(--font-mulish), "Inter", system-ui, -apple-system, sans-serif;
   --font-display: var(--font-quicksand), "Inter", system-ui, -apple-system, sans-serif;
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring:      var(--sidebar-ring);
+  --color-sidebar-border:      var(--sidebar-border);
+  --color-sidebar-accent-foreground:      var(--sidebar-accent-foreground);
+  --color-sidebar-accent:      var(--sidebar-accent);
+  --color-sidebar-primary-foreground:      var(--sidebar-primary-foreground);
+  --color-sidebar-primary:      var(--sidebar-primary);
+  --color-sidebar-foreground:      var(--sidebar-foreground);
+  --color-sidebar:      var(--sidebar);
+  --color-chart-5:      var(--chart-5);
+  --color-chart-4:      var(--chart-4);
+  --color-chart-3:      var(--chart-3);
+  --color-chart-2:      var(--chart-2);
+  --color-chart-1:      var(--chart-1);
+  --color-ring:      var(--ring);
+  --color-input:      var(--input);
+  --color-border:      var(--border);
+  --color-destructive:      var(--destructive);
+  --color-accent-foreground:      var(--accent-foreground);
+  --color-accent:      var(--accent);
+  --color-muted-foreground:      var(--muted-foreground);
+  --color-muted:      var(--muted);
+  --color-secondary-foreground:      var(--secondary-foreground);
+  --color-secondary:      var(--secondary);
+  --color-primary-foreground:      var(--primary-foreground);
+  --color-primary:      var(--primary);
+  --color-popover-foreground:      var(--popover-foreground);
+  --color-popover:      var(--popover);
+  --color-card-foreground:      var(--card-foreground);
+  --color-card:      var(--card);
+  --color-foreground:      var(--foreground);
+  --color-background:      var(--background);
+  --radius-sm:      calc(var(--radius) * 0.6);
+  --radius-md:      calc(var(--radius) * 0.8);
+  --radius-lg:      var(--radius);
+  --radius-xl:      calc(var(--radius) * 1.4);
+  --radius-2xl:      calc(var(--radius) * 1.8);
+  --radius-3xl:      calc(var(--radius) * 2.2);
+  --radius-4xl:      calc(var(--radius) * 2.6);
+  --color-chart-scale-pattern-color:      var(--chart-scale-pattern-color);
+  --color-chart-scale-05:      var(--chart-scale-05);
+  --color-chart-scale-04:      var(--chart-scale-04);
+  --color-chart-scale-03:      var(--chart-scale-03);
+  --color-chart-scale-02:      var(--chart-scale-02);
+  --color-chart-scale-01:      var(--chart-scale-01);
+  --color-chart-label:      var(--chart-label);
+  --color-chart-marker-foreground:      var(--chart-marker-foreground);
+  --color-chart-marker-border:      var(--chart-marker-border);
+  --color-chart-marker-background:      var(--chart-marker-background);
+  --color-chart-tooltip-muted:      var(--chart-tooltip-muted);
+  --color-chart-tooltip-foreground:      var(--chart-tooltip-foreground);
+  --color-chart-tooltip-background:      var(--chart-tooltip-background);
+  --chart-brush-border:      var(--chart-brush-border);
+  --color-chart-grid:      var(--chart-grid);
+  --color-chart-crosshair:      var(--chart-crosshair);
+  --chart-line-secondary:      var(--chart-line-secondary);
+  --chart-line-primary:      var(--chart-line-primary);
+  --color-chart-foreground-muted:      var(--chart-foreground-muted);
+  --color-chart-foreground:      var(--chart-foreground);
+  --color-chart-background:      var(--chart-background);
+}
+
+/* Khôi phục token brand Nutein — shadcn init ghi đè --color-primary / radius. */
+@theme {
+  --color-primary: #E2A55D;
+  --color-primary-deep: #C08635;
+  --color-primary-soft: #FBEEDA;
+  --color-ink: #351E29;
+  --color-bg: #FFFDFD;
+  --color-surface: #FFFFFF;
+  --color-border: rgba(53, 30, 41, 0.08);
+  --color-border-subtle: rgba(53, 30, 41, 0.04);
+  --color-text-body: #5A4550;
+  --color-text-muted: #8B7680;
+  --color-text-faint: #B7A8AC;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
 }
 
 /* ── Reset ──────────────────────────────────────────────────────────────────── */
@@ -71,6 +154,8 @@ html, body {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Chặn kéo ngang do absolute/transform lòi mép (marquee đã clip; FAB/star/process). */
+  overflow-x: clip;
 }
 
 body {
@@ -175,7 +260,6 @@ h1, h2, h3, h4, h5, h6 {
 .animate-nav-mega-in {
   animation: navMegaIn 0.4s cubic-bezier(0.215, 0.61, 0.355, 1) both;
 }
-
 
 /* Ẩn scrollbar cho track carousel ngang (Intro/Testimonials) — điều hướng qua
    CarouselArrows, không cần thanh cuộn hệ điều hành hiển thị. */
@@ -535,7 +619,7 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
-/* ── Section responsive helpers (tránh inject <style> mỗi section) ────────── */
+/* ── Section responsive helpers (tránh inject \3c style> mỗi section) ────────── */
 @keyframes floatYSlowRotated {
   0%,
   100% {
@@ -578,12 +662,16 @@ h1, h2, h3, h4, h5, h6 {
     grid-template-columns: 1fr !important;
   }
   .diff-frame-cluster {
+    /* % width con cần parent có chiều ngang thật — thiếu width → collapse 0 trên mobile */
+    width: 100%;
     max-width: 320px;
-    margin: 0 auto;
+    margin-inline: auto;
   }
   .diff-row {
-    grid-template-columns: 40px 52px 1fr !important;
-    row-gap: 10px !important;
+    /* Số + icon | copy — rộng hơn 40|52|1fr; !important vì utility/md:grid-cols cũng set columns */
+    grid-template-columns: 2.5rem 3.5rem minmax(0, 1fr) !important;
+    column-gap: 1rem !important;
+    row-gap: 0.75rem !important;
   }
 }
 
@@ -623,4 +711,121 @@ h1, h2, h3, h4, h5, h6 {
   text-decoration: underline;
   text-underline-offset: 2px;
 }
-
+/* ---break---       */
+:root {
+  --background:      oklch(1 0 0);
+  --foreground:      oklch(0.145 0 0);
+  --card:      oklch(1 0 0);
+  --card-foreground:      oklch(0.145 0 0);
+  --popover:      oklch(1 0 0);
+  --popover-foreground:      oklch(0.145 0 0);
+  --primary:      oklch(0.205 0 0);
+  --primary-foreground:      oklch(0.985 0 0);
+  --secondary:      oklch(0.97 0 0);
+  --secondary-foreground:      oklch(0.205 0 0);
+  --muted:      oklch(0.97 0 0);
+  --muted-foreground:      oklch(0.556 0 0);
+  --accent:      oklch(0.97 0 0);
+  --accent-foreground:      oklch(0.205 0 0);
+  --destructive:      oklch(0.577 0.245 27.325);
+  --border:      oklch(0.922 0 0);
+  --input:      oklch(0.922 0 0);
+  --ring:      oklch(0.708 0 0);
+  --chart-1:      #E2A55D;
+  --chart-2:      #C08635;
+  --chart-3:      #8B7680;
+  --chart-4:      #AFB9A1;
+  --chart-5:      #477236;
+  --radius:      0.625rem;
+  --sidebar:      oklch(0.985 0 0);
+  --sidebar-foreground:      oklch(0.145 0 0);
+  --sidebar-primary:      oklch(0.205 0 0);
+  --sidebar-primary-foreground:      oklch(0.985 0 0);
+  --sidebar-accent:      oklch(0.97 0 0);
+  --sidebar-accent-foreground:      oklch(0.205 0 0);
+  --sidebar-border:      oklch(0.922 0 0);
+  --sidebar-ring:      oklch(0.708 0 0);
+  --chart-background:      #FFFDFD;
+  --chart-foreground:      #351E29;
+  --chart-foreground-muted:      #8B7680;
+  --chart-line-primary:      #E2A55D;
+  --chart-line-secondary:      #C08635;
+  --chart-crosshair:      #351E29;
+  --chart-grid:      rgba(53, 30, 41, 0.12);
+  --chart-brush-border:      var(--chart-grid);
+  --chart-tooltip-background:      oklch(0.21 0.006 285 / 0.8);
+  --chart-tooltip-foreground:      oklch(0.985 0 0);
+  --chart-tooltip-muted:      oklch(0.65 0.01 260);
+  --chart-marker-background:      oklch(0.97 0.005 260);
+  --chart-marker-border:      oklch(0.85 0.01 260);
+  --chart-marker-foreground:      oklch(0.3 0.01 260);
+  --chart-label:      oklch(0.45 0.01 260);
+  --chart-scale-01:      oklch(0.98 0.003 106);
+  --chart-scale-02:      oklch(0.92 0.008 106);
+  --chart-scale-03:      oklch(0.82 0.015 106);
+  --chart-scale-04:      oklch(0.68 0.02 106);
+  --chart-scale-05:      oklch(0.55 0.025 106);
+  --chart-scale-pattern-color:      oklch(0.96 0.005 106);
+}
+/* ---break---       */
+.dark {
+  --background:      oklch(0.145 0 0);
+  --foreground:      oklch(0.985 0 0);
+  --card:      oklch(0.205 0 0);
+  --card-foreground:      oklch(0.985 0 0);
+  --popover:      oklch(0.205 0 0);
+  --popover-foreground:      oklch(0.985 0 0);
+  --primary:      oklch(0.922 0 0);
+  --primary-foreground:      oklch(0.205 0 0);
+  --secondary:      oklch(0.269 0 0);
+  --secondary-foreground:      oklch(0.985 0 0);
+  --muted:      oklch(0.269 0 0);
+  --muted-foreground:      oklch(0.708 0 0);
+  --accent:      oklch(0.269 0 0);
+  --accent-foreground:      oklch(0.985 0 0);
+  --destructive:      oklch(0.704 0.191 22.216);
+  --border:      oklch(1 0 0 / 10%);
+  --input:      oklch(1 0 0 / 15%);
+  --ring:      oklch(0.556 0 0);
+  --chart-1:      oklch(0.87 0 0);
+  --chart-2:      oklch(0.556 0 0);
+  --chart-3:      oklch(0.439 0 0);
+  --chart-4:      oklch(0.371 0 0);
+  --chart-5:      oklch(0.269 0 0);
+  --sidebar:      oklch(0.205 0 0);
+  --sidebar-foreground:      oklch(0.985 0 0);
+  --sidebar-primary:      oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground:      oklch(0.985 0 0);
+  --sidebar-accent:      oklch(0.269 0 0);
+  --sidebar-accent-foreground:      oklch(0.985 0 0);
+  --sidebar-border:      oklch(1 0 0 / 10%);
+  --sidebar-ring:      oklch(0.556 0 0);
+  --chart-background:      oklch(0.145 0 0);
+  --chart-foreground:      oklch(0.45 0 0);
+  --chart-foreground-muted:      oklch(0.65 0.01 260);
+  --chart-crosshair:      oklch(0.45 0 0);
+  --chart-grid:      oklch(0.25 0 0);
+  --chart-brush-border:      var(--chart-grid);
+  --chart-marker-background:      oklch(0.25 0.01 260);
+  --chart-marker-border:      oklch(0.4 0.01 260);
+  --chart-marker-foreground:      oklch(0.9 0 0);
+  --chart-label:      oklch(0.75 0.01 260);
+  --chart-scale-01:      oklch(0.28 0.03 270);
+  --chart-scale-02:      oklch(0.38 0.04 270);
+  --chart-scale-03:      oklch(0.48 0.05 270);
+  --chart-scale-04:      oklch(0.58 0.06 270);
+  --chart-scale-05:      oklch(0.68 0.07 270);
+  --chart-scale-pattern-color:      oklch(0.145 0 0);
+}
+/* ---break---       */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}

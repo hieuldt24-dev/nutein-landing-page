@@ -3,36 +3,11 @@
 import { useCallback, useState } from "react";
 import type { CreateOrderRequest } from "@/features/checkout/schemas/checkout.schema";
 import type { CreateOrderResult } from "@/features/checkout/types";
-import type { FetchError } from "@/lib/swr-fetcher";
-import type { ApiResponse } from "@/src/api/response";
-
-async function postCheckout(body: CreateOrderRequest): Promise<CreateOrderResult> {
-  const res = await fetch("/api/checkout", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-
-  const json: ApiResponse<CreateOrderResult> = await res.json().catch(() => ({
-    success: false,
-    data: null,
-    error: { message: "Không đọc được phản hồi máy chủ", code: "PARSE_ERROR" },
-  }));
-
-  if (!res.ok || !json.success || !json.data) {
-    const error = new Error(
-      json.error?.message || "Đặt hàng thất bại — vui lòng thử lại"
-    ) as FetchError;
-    error.status = res.status;
-    error.code = json.error?.code || "CHECKOUT_ERROR";
-    throw error;
-  }
-
-  return json.data;
-}
+import { apiRequest } from "@/lib/api-client";
 
 /**
- * Submit checkout — fetch POST /api/checkout + cờ isSubmitting (loading guide).
+ * Submit checkout — POST /api/checkout + cờ isSubmitting (loading guide).
+ * Tự remint JWT khi thiếu/hết hạn cookie access.
  */
 export function useCheckoutSubmit() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,7 +15,10 @@ export function useCheckoutSubmit() {
   const submitOrder = useCallback(async (body: CreateOrderRequest) => {
     setIsSubmitting(true);
     try {
-      return await postCheckout(body);
+      return await apiRequest<CreateOrderResult>("/api/checkout", {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
     } finally {
       setIsSubmitting(false);
     }

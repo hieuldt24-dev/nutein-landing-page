@@ -13,10 +13,8 @@ import { auditLogService } from "@/features/auth/services/audit-log.service";
 
 /**
  * POST /api/auth/logout
- * Thu hồi refresh token thật sự trong DB (không chỉ xoá cookie) — nếu cookie
- * từng bị đánh cắp trước đó, token cũ không còn dùng được nữa dù chưa hết
- * hạn tự nhiên. Supabase signOut() được gọi riêng phía client (xem
- * features/auth/services/auth.repository.ts#signOut) — 2 việc độc lập.
+ * Thu hồi refresh token trong DB + xoá JWT cookies. Supabase signOut() gọi
+ * riêng phía client.
  */
 export const POST = withErrorHandler(async (req: NextRequest) => {
   const refreshToken = req.cookies.get(REFRESH_TOKEN_COOKIE)?.value;

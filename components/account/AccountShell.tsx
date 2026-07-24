@@ -1,14 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { useSWRConfig } from "swr";
 import { LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ACCOUNT_LOGGING_OUT_SWR_KEY, OPEN_AUTH_MODAL_STORAGE_KEY } from "@/features/account/constants";
 import { useAuthStore } from "@/lib/useAuthStore";
+import { useAccountProfile } from "@/lib/useAccountProfile";
+import { UserAvatar } from "@/components/ui/UserAvatar";
 import { notify } from "@/lib/toast";
 
 const TABS = [
-  { href: "/account", label: "Hồ sơ", match: (path: string) => path === "/account" },
+  {
+    href: "/account",
+    label: "Hồ sơ",
+    match: (path: string) => path === "/account",
+  },
+  {
+    href: "/account/addresses",
+    label: "Địa chỉ",
+    match: (path: string) => path.startsWith("/account/addresses"),
+  },
   {
     href: "/account/orders",
     label: "Đơn hàng",
@@ -23,17 +36,26 @@ interface AccountShellProps {
 }
 
 /**
- * Shell tab Hồ sơ / Đơn hàng / Đăng xuất — account portal.
+ * Shell tab Hồ sơ / Địa chỉ / Đơn hàng / Đăng xuất — account portal.
  */
 export function AccountShell({ children, title, description }: AccountShellProps) {
   const pathname = usePathname();
-  const router = useRouter();
+  const { mutate } = useSWRConfig();
   const { signOut, user } = useAuthStore();
+  const { profile } = useAccountProfile();
+  const displayName = profile?.fullName || user?.fullName;
 
   const handleLogout = async () => {
+    // Bật cờ TRƯỚC signOut — layout guest-guard không ghi open-auth flag.
+    await mutate(ACCOUNT_LOGGING_OUT_SWR_KEY, true, { revalidate: false });
+    try {
+      sessionStorage.removeItem(OPEN_AUTH_MODAL_STORAGE_KEY);
+    } catch {
+      /* private mode */
+    }
     await signOut();
     notify.success("Đã đăng xuất.");
-    router.push("/");
+    window.location.replace("/");
   };
 
   return (
@@ -42,15 +64,25 @@ export function AccountShell({ children, title, description }: AccountShellProps
         <p className="text-[12px] font-bold tracking-[0.08em] text-primary uppercase">
           Tài khoản
         </p>
-        <h1 className="mt-2 font-display text-[clamp(28px,4vw,40px)] font-bold tracking-[-0.03em] text-ink">
-          {title}
-        </h1>
-        {description ? (
-          <p className="mt-2 max-w-[520px] text-[15px] text-text-muted">{description}</p>
-        ) : null}
-        {user?.email ? (
-          <p className="mt-1 text-[13px] font-medium text-text-muted">{user.email}</p>
-        ) : null}
+        <div className="mt-3 flex items-start gap-4">
+          <UserAvatar
+            fullName={displayName}
+            email={user?.email}
+            size="lg"
+            className="mt-1"
+          />
+          <div className="min-w-0 flex-1">
+            <h1 className="font-display text-[clamp(28px,4vw,40px)] font-bold tracking-[-0.03em] text-ink">
+              {title}
+            </h1>
+            {description ? (
+              <p className="mt-2 max-w-[520px] text-[15px] text-text-muted">{description}</p>
+            ) : null}
+            {user?.email ? (
+              <p className="mt-1 text-[13px] font-medium text-text-muted">{user.email}</p>
+            ) : null}
+          </div>
+        </div>
       </header>
 
       <div className="mb-8 flex flex-wrap items-center gap-2 border-b border-ink/10 pb-4">
@@ -76,7 +108,7 @@ export function AccountShell({ children, title, description }: AccountShellProps
           onClick={() => {
             void handleLogout();
           }}
-          className="ml-auto inline-flex cursor-pointer items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-bold text-ink/70 transition-colors hover:bg-ink/5 hover:text-ink"
+          className="ml-auto inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-danger/10 px-4 py-2 text-[13px] font-bold text-danger transition-colors hover:bg-danger/15"
         >
           <LogOut size={15} strokeWidth={2.2} />
           Đăng xuất

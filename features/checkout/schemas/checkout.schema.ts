@@ -6,17 +6,24 @@ const phoneSchema = z
   .trim()
   .regex(/^(0|\+84)[0-9]{9}$/, "Số điện thoại không hợp lệ");
 
-/**
- * Request tạo đơn — dùng client (RHF) + server (API route).
- * Địa chỉ 2 cấp (Tỉnh → Phường/Xã) theo NQ 202/2025 — không còn quận/huyện.
- * Server tính lại tiền từ `quantity`; không tin total client.
- */
-export const createOrderRequestSchema = z.object({
+const orderLineSchema = z.object({
+  variantId: z.string().trim().min(1),
   quantity: z
     .number()
     .int("Số lượng phải là số nguyên")
-    .min(MIN_CART_QUANTITY + 1, "Giỏ hàng trống")
+    .min(MIN_CART_QUANTITY + 1, "Số lượng không hợp lệ")
     .max(MAX_CART_QUANTITY, `Số lượng tối đa là ${MAX_CART_QUANTITY}`),
+});
+
+/**
+ * Request tạo đơn — dùng client (RHF) + server (API route).
+ * `lines` = các gói trong giỏ; server tính tiền theo giá gói và quy đổi hũ khi ghi DB.
+ */
+export const createOrderRequestSchema = z.object({
+  lines: z
+    .array(orderLineSchema)
+    .min(1, "Giỏ hàng trống")
+    .max(10, "Quá nhiều dòng trong giỏ"),
 
   buyer: z.object({
     fullName: z
@@ -39,7 +46,7 @@ export const createOrderRequestSchema = z.object({
   note: z.string().trim().max(500, "Ghi chú không được vượt quá 500 ký tự").optional(),
 
   shippingMethod: z.enum(["standard", "express"]),
-  paymentMethod: z.enum(["cod", "bank_transfer", "ewallet"]),
+  paymentMethod: z.enum(["cod", "bank_transfer"]),
 
   /** Chỉ UI — không bắt buộc gửi; server bỏ qua. */
   saveInfo: z.boolean().optional(),
@@ -47,7 +54,7 @@ export const createOrderRequestSchema = z.object({
 
 export type CreateOrderRequest = z.infer<typeof createOrderRequestSchema>;
 
-/** Form checkout = request trừ quantity (quantity lấy từ cart store). */
-export const checkoutFormSchema = createOrderRequestSchema.omit({ quantity: true });
+/** Form checkout = request trừ lines (lines lấy từ cart store). */
+export const checkoutFormSchema = createOrderRequestSchema.omit({ lines: true });
 
 export type CheckoutFormValues = z.infer<typeof checkoutFormSchema>;

@@ -8,13 +8,13 @@ import { useCartStore } from "@/lib/useCartStore";
 import { cn } from "@/lib/utils";
 
 /**
- * FAB dock góc dưới-phải:
- * - Cart: luôn hiện
- * - Scroll-to-top: slide in từ mép phải khi `#navbar` khỏi viewport; click → đầu trang smooth
+ * FAB góc dưới-phải:
+ * - Scroll-to-top: mọi viewport — slide từ mép phải khi `#navbar` khỏi view
+ * - Cart: chỉ desktop (`md+`) — mobile dùng cart pill trên header (Joy Rush)
  */
 export function FloatingActionDock() {
   const { open } = useCartDrawer();
-  const { quantity } = useCartStore();
+  const { lineCount } = useCartStore();
   const [showScrollTop, setShowScrollTop] = useState(false);
 
   useEffect(() => {
@@ -25,7 +25,7 @@ export function FloatingActionDock() {
       ([entry]) => {
         setShowScrollTop(!entry.isIntersecting);
       },
-      { threshold: 0 }
+      { threshold: 0 },
     );
 
     observer.observe(navbar);
@@ -37,19 +37,20 @@ export function FloatingActionDock() {
   };
 
   return (
-    <div className="pointer-events-none fixed right-5 bottom-5 z-40 md:right-8 md:bottom-8">
+    <div className="pointer-events-none fixed right-5 bottom-5 z-40 flex flex-col items-end gap-3 md:right-8 md:bottom-8">
       <div
         className={cn(
-          "pointer-events-auto absolute right-0 bottom-[calc(100%+0.75rem)] transition-transform duration-300 ease-[cubic-bezier(0.215,0.61,0.355,1)]",
+          "transition-transform duration-300 ease-[cubic-bezier(0.215,0.61,0.355,1)]",
           showScrollTop
-            ? "translate-x-0"
-            : "pointer-events-none translate-x-[calc(100%+1.25rem)] md:translate-x-[calc(100%+2rem)]"
+            ? "pointer-events-auto translate-x-0"
+            : "pointer-events-none translate-x-[calc(100%+1.25rem)] md:translate-x-[calc(100%+2rem)]",
         )}
         aria-hidden={!showScrollTop}
       >
         <FillButton
           variant="cream"
           onClick={scrollToTop}
+          tabIndex={showScrollTop ? 0 : -1}
           aria-label="Lên đầu trang"
           className="size-14 items-center justify-center p-0"
         >
@@ -57,20 +58,22 @@ export function FloatingActionDock() {
         </FillButton>
       </div>
 
-      <div className="pointer-events-auto relative">
+      <div className="pointer-events-auto relative hidden md:block">
         <FillButton
           variant="cream"
           onClick={open}
           aria-label={
-            quantity > 0 ? `Mở giỏ hàng, ${quantity} sản phẩm` : "Mở giỏ hàng"
+            lineCount > 0
+              ? `Mở giỏ hàng, ${lineCount} dòng sản phẩm`
+              : "Mở giỏ hàng"
           }
           className="size-14 items-center justify-center p-0"
         >
           <ShoppingBag size={22} strokeWidth={2.2} aria-hidden />
         </FillButton>
-        {quantity > 0 ? (
+        {lineCount > 0 ? (
           <span className="pointer-events-none absolute -top-1 -right-1 z-20 flex h-5 min-w-5 items-center justify-center rounded-full bg-ink px-1 text-[11px] font-extrabold text-[var(--color-bg)]">
-            {quantity > 99 ? "99+" : quantity}
+            {lineCount > 99 ? "99+" : lineCount}
           </span>
         ) : null}
       </div>

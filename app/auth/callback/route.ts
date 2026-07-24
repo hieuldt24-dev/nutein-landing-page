@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
+import { sanitizeAuthReturnTo } from "@/features/auth/sanitize-return-to";
 
 /**
- * OAuth callback (redirectTo của supabase.auth.signInWithOAuth trỏ về đây).
+ * OAuth / email-confirm callback (redirectTo / emailRedirectTo trỏ về đây).
  * Đây là route điều hướng trình duyệt (redirect), không phải JSON API —
  * cố tình KHÔNG dùng withErrorHandler/successResponse như app/api/**,
  * vì response bắt buộc phải là redirect để trình duyệt thoát khỏi luồng OAuth.
@@ -10,7 +11,7 @@ import { getSupabaseServerClient } from "@/lib/supabase-server";
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/";
+  const next = sanitizeAuthReturnTo(searchParams.get("next")) ?? "/";
 
   if (code) {
     const supabase = await getSupabaseServerClient();

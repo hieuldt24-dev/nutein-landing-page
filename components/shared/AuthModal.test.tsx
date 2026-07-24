@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   notifyError: vi.fn(),
   notifyInfo: vi.fn(),
   routerPush: vi.fn(),
+  apiRequest: vi.fn(),
 }));
 
 vi.mock("@/lib/useAuthStore", () => ({
@@ -34,6 +35,11 @@ vi.mock("@/lib/toast", () => ({
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mocks.routerPush }),
+  usePathname: () => "/",
+}));
+
+vi.mock("@/lib/api-client", () => ({
+  apiRequest: mocks.apiRequest,
 }));
 
 import AuthModal from "./AuthModal";
@@ -85,6 +91,7 @@ describe("AuthModal — đăng nhập", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.useAuthStore.mockReturnValue(authStoreState());
+    mocks.apiRequest.mockResolvedValue({ exists: true });
   });
 
   it("mở ở tab Đăng nhập theo mặc định với email + mật khẩu", async () => {
@@ -164,6 +171,28 @@ describe("AuthModal — đăng nhập", () => {
     );
   });
 
+  it("email chưa tồn tại: toast + chuyển tab Đăng ký, không gọi signIn", async () => {
+    mocks.apiRequest.mockResolvedValue({ exists: false });
+    const signIn = vi.fn();
+    mocks.useAuthStore.mockReturnValue(authStoreState({ signIn }));
+
+    const user = userEvent.setup();
+    renderAuthModal();
+    await screen.findByRole("dialog");
+
+    await user.type(screen.getByPlaceholderText("tenban@example.com"), "new@example.com");
+    await user.type(screen.getByPlaceholderText("••••••••"), "matkhau123");
+    await user.click(getSubmitButton());
+
+    await waitFor(() =>
+      expect(mocks.notifyError).toHaveBeenCalledWith(
+        "Tài khoản chưa tồn tại, mời bạn đăng ký.",
+      ),
+    );
+    expect(signIn).not.toHaveBeenCalled();
+    expect(await screen.findByText("Tạo tài khoản mới")).toBeInTheDocument();
+  });
+
   it("submit sai mật khẩu: hiển thị toast lỗi từ Supabase, modal vẫn mở", async () => {
     const signIn = vi.fn().mockRejectedValue(new Error("Email hoặc mật khẩu không đúng."));
     mocks.useAuthStore.mockReturnValue(authStoreState({ signIn }));
@@ -231,21 +260,18 @@ describe("AuthModal — đăng nhập", () => {
     expect(screen.getByRole("button", { name: "Quên mật khẩu?" })).toBeDisabled();
   });
 
-  it("đã đăng nhập: hiện thông tin user + nút Đăng xuất thay vì form", async () => {
+  it("đã đăng nhập + mở modal: tự đóng (không còn panel Xin chào / Đăng xuất)", async () => {
     mocks.useAuthStore.mockReturnValue(
       authStoreState({
-        user: { email: "user@example.com", fullName: "Nguyễn Văn A" },
+        user: { email: "user@example.com", fullName: "Nguyễn Văn A", role: "user" },
         isLoggedIn: true,
       })
     );
 
     renderAuthModal();
-    await screen.findByRole("dialog");
 
-    expect(screen.queryByPlaceholderText("tenban@example.com")).not.toBeInTheDocument();
-    // Email hiện 2 lần (subtitle header + khối thông tin tài khoản) — hợp lệ.
-    expect(screen.getAllByText("user@example.com").length).toBe(2);
-    expect(screen.getByText("Nguyễn Văn A")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Đăng xuất" })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
   });
 });

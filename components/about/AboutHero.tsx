@@ -38,11 +38,11 @@ export default function AboutHero() {
           Về Nutein
         </FadeInOnView>
         <h1 className="font-display text-[clamp(30px,6.2vw,72px)] font-black uppercase leading-[1.02] tracking-[-0.04em] text-[var(--color-bg)]">
-          {/* Mỗi dòng nowrap — tránh orphan kiểu “RỘN,” / “SẠCH.” */}
-          <span className="block whitespace-nowrap">
+          {/* Desktop nowrap tránh orphan; mobile cho xuống dòng — tránh overflow-x */}
+          <span className="block md:whitespace-nowrap">
             <BounceChars staggerMs={22}>{ABOUT_HERO.titleLine1}</BounceChars>
           </span>
-          <span className="block whitespace-nowrap">
+          <span className="block md:whitespace-nowrap">
             <BounceChars staggerMs={22} delayMs={260}>
               {ABOUT_HERO.titleLine2}
             </BounceChars>

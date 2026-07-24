@@ -7,9 +7,16 @@ import { formatCurrencyVnd } from "@/lib/utils";
 
 interface CheckoutSuccessViewProps {
   order: CreateOrderResult;
+  /** Trạng thái thanh toán payOS đối soát trực tiếp — chỉ có ý nghĩa khi paymentMethod = bank_transfer. */
+  livePaymentStatus?: "UNPAID" | "PAID" | null;
 }
 
-export function CheckoutSuccessView({ order }: CheckoutSuccessViewProps) {
+export function CheckoutSuccessView({
+  order,
+  livePaymentStatus,
+}: CheckoutSuccessViewProps) {
+  const isPayos = order.paymentMethod === "bank_transfer";
+  const isPayosPaid = isPayos && livePaymentStatus === "PAID";
   const shippingLabel =
     SHIPPING_OPTIONS.find((o) => o.value === order.shippingMethod)?.label ?? order.shippingMethod;
   const paymentLabel =
@@ -68,16 +75,22 @@ export function CheckoutSuccessView({ order }: CheckoutSuccessViewProps) {
           </div>
         </dl>
 
-        {order.paymentInstructions ? (
-          <div className="mt-5 rounded-[var(--radius-md)] border border-primary/25 bg-primary/10 px-4 py-3">
+        {isPayos ? (
+          <div
+            className={
+              isPayosPaid
+                ? "mt-5 rounded-[var(--radius-md)] border border-primary/25 bg-primary/10 px-4 py-3"
+                : "mt-5 rounded-[var(--radius-md)] border border-ink/10 bg-bg px-4 py-3"
+            }
+          >
             <p className="text-[13px] font-extrabold text-ink">
-              {order.paymentInstructions.title}
+              {isPayosPaid ? "Đã thanh toán qua payOS" : "Đang chờ xác nhận thanh toán"}
             </p>
-            <ul className="mt-2 list-disc space-y-1 pl-4 text-[12px] font-medium text-text-body">
-              {order.paymentInstructions.lines.map((line) => (
-                <li key={line}>{line.replace("<mã đơn>", order.orderCode)}</li>
-              ))}
-            </ul>
+            <p className="mt-1 text-[12px] font-medium text-text-body">
+              {isPayosPaid
+                ? "Chúng tôi đã nhận được thanh toán của bạn qua payOS."
+                : "Nếu bạn đã thanh toán, hệ thống sẽ tự động xác nhận trong ít phút."}
+            </p>
           </div>
         ) : null}
       </div>
@@ -99,9 +112,11 @@ export function CheckoutSuccessView({ order }: CheckoutSuccessViewProps) {
         </FillButton>
       </div>
 
-      <p className="mt-8 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted">
-        Đơn demo — chưa trừ tiền / chưa đồng bộ kho thật
-      </p>
+      {!isPayos ? (
+        <p className="mt-8 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted">
+          Đơn demo — chưa trừ tiền / chưa đồng bộ kho thật
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -177,6 +177,7 @@ describe("toAuthUser", () => {
       email: "user@example.com",
       fullName: "Trần Thị B",
       phone: undefined,
+      role: "user",
     });
   });
 
@@ -198,5 +199,17 @@ describe("toAuthUser", () => {
   it("email null/undefined map về chuỗi rỗng", () => {
     const user = makeUser({ email: undefined });
     expect(toAuthUser(user).email).toBe("");
+  });
+
+  it("role lấy từ tham số serverRole (public.users)", () => {
+    const user = makeUser({ email: "anyone@example.com", user_metadata: {} });
+    expect(toAuthUser(user, "admin").role).toBe("admin");
+    expect(toAuthUser(user, "staff").role).toBe("staff");
+    expect(toAuthUser(user).role).toBe("user");
+  });
+
+  it("không dùng email allowlist — thiếu serverRole luôn là user", () => {
+    const user = makeUser({ email: "admin@nutein.com", user_metadata: {} });
+    expect(toAuthUser(user).role).toBe("user");
   });
 });

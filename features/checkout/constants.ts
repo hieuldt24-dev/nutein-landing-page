@@ -20,9 +20,6 @@ export const CHECKOUT_FORM_DEFAULT_VALUES: CheckoutFormValues = {
 /** sessionStorage — snapshot đơn sau submit (chưa có GET /orders). */
 export const CHECKOUT_ORDER_SNAPSHOT_KEY = "nutein:checkout-order-snapshot";
 
-/** Delay giả lập khi mock createOrder. */
-export const CHECKOUT_MOCK_LATENCY_MS = 450;
-
 /** Phí ship ước tính v1 (VND) — freeship voucher ghi đè về 0. */
 export const SHIPPING_FEES_VND: Record<ShippingMethod, number> = {
   standard: 25_000,
@@ -61,34 +58,10 @@ export const PAYMENT_OPTIONS: {
   },
   {
     value: "bank_transfer",
-    label: "Chuyển khoản ngân hàng",
-    description: "Chuyển khoản theo nội dung đơn — xác nhận sau khi nhận chuyển khoản.",
-  },
-  {
-    value: "ewallet",
-    label: "Ví điện tử",
-    description: "Hướng dẫn thanh toán ví sẽ gửi kèm xác nhận đơn (demo).",
+    label: "Chuyển khoản ngân hàng (payOS)",
+    description: "Quét mã QR hoặc chuyển khoản qua payOS — xác nhận tự động.",
   },
 ];
-
-/** Copy demo — không phải STK thật. */
-export const BANK_TRANSFER_INSTRUCTIONS = {
-  title: "Hướng dẫn chuyển khoản (demo)",
-  lines: [
-    "Ngân hàng: Nutein Demo Bank",
-    "Số tài khoản: 0123456789",
-    "Chủ tài khoản: CONG TY NUTEIN DEMO",
-    "Nội dung: NT-<mã đơn> <SĐT>",
-  ],
-};
-
-export const EWALLET_INSTRUCTIONS = {
-  title: "Hướng dẫn ví điện tử (demo)",
-  lines: [
-    "Sau khi đặt hàng, chúng tôi gửi link/QR thanh toán demo qua email hoặc Zalo.",
-    "Môi trường hiện tại chưa kết nối cổng thanh toán thật — không trừ tiền.",
-  ],
-};
 
 export const CHECKOUT_SUBMIT_LABEL = "Đặt hàng ngay";
 export const CHECKOUT_SHIPPING_GATE_MESSAGE =
