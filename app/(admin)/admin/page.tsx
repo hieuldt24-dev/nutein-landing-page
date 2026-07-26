@@ -12,12 +12,13 @@ import { adminDashboardService } from "@/features/admin-dashboard/services/admin
 
 function HomeSkeleton() {
   return (
-    <div className="mt-6 space-y-4 sm:mt-8 sm:space-y-6">
-      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 xl:grid-cols-4">
+    <div className="mt-6 space-y-6 sm:mt-7">
+      <div className="h-56 animate-pulse rounded-[var(--radius-lg)] border border-ink/10 bg-border-subtle" />
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
-            className="h-[76px] animate-pulse rounded-[var(--radius-lg)] border border-ink/10 bg-border-subtle sm:h-[96px]"
+            className="h-[96px] animate-pulse rounded-[var(--radius-lg)] border border-ink/10 bg-border-subtle"
           />
         ))}
       </div>
@@ -26,7 +27,7 @@ function HomeSkeleton() {
   );
 }
 
-/** /admin — Tổng quan Admin: doanh thu + users + audit. */
+/** /admin — Tổng quan: 1 chart doanh thu + users cards + audit. */
 export default function AdminHomePage() {
   const { data, error, isLoading } = useSWR(
     ADMIN_HOME_SWR_KEY,
@@ -40,7 +41,7 @@ export default function AdminHomePage() {
   return (
     <AdminPageFrame>
       <div className="min-w-0">
-        <h1 className="font-display text-[clamp(26px,6vw,36px)] font-bold tracking-[-0.03em] text-ink">
+        <h1 className="font-display text-[clamp(26px,6vw,32px)] font-bold tracking-[-0.03em] text-ink">
           Tổng quan
         </h1>
       </div>
@@ -48,19 +49,14 @@ export default function AdminHomePage() {
       {isLoading ? <HomeSkeleton /> : null}
 
       {error ? (
-        <p className="mt-6 rounded-[var(--radius-lg)] border border-red-200 bg-red-50 px-5 py-6 text-center text-sm font-semibold text-red-700 sm:mt-8">
+        <p className="mt-6 rounded-[var(--radius-lg)] border border-red-200 bg-red-50 px-5 py-6 text-center text-sm font-semibold text-red-700 sm:mt-7">
           Không tải được tổng quan. Thử tải lại trang.
         </p>
       ) : null}
 
       {data ? (
-        <div className="mt-6 flex flex-col gap-8 sm:mt-8 sm:gap-10">
-          <section>
-            <h2 className="mb-3 font-display text-lg font-bold text-ink">
-              Doanh thu
-            </h2>
-            <DashboardRevenuePanel revenue={data.revenue} />
-          </section>
+        <div className="mt-6 flex flex-col gap-7 sm:mt-7 sm:gap-8">
+          <DashboardRevenuePanel revenue={data.revenue} />
           <AdminHomeUsersPanel users={data.users} />
           <AdminHomeAuditPanel recentAudit={data.recentAudit} />
         </div>

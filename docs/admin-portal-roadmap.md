@@ -14,10 +14,12 @@ Tài liệu này mô tả lộ trình khu vực quản trị (Staff / Admin).
 
 Role từ `public.users` qua `POST /api/auth/session` → SWR `auth-role` + gate `StaffOnlyGate`/`AdminOnlyGate` ở layout mỗi khu vực (đã bỏ `AdminAccessGate` — dư thừa sau khi tách route, 2 gate trên đã tự đủ). Không còn email allowlist mock.
 
-## Phase 1 — Dashboard (mock UI)
+## Phase 1 — Dashboard (UI theo mock ops portal)
 
-- Staff [`/staff`](../app/(staff)/staff/page.tsx): doanh thu chính + chỉ số vận hành phụ · [`DashboardRevenuePanel`](../components/admin/dashboard/DashboardRevenuePanel.tsx) · [`AdminDashboardSummary`](../components/admin/dashboard/AdminDashboardSummary.tsx) · [`features/admin-dashboard/`](../features/admin-dashboard/)
-- Admin [`/admin`](../app/(admin)/admin/page.tsx): doanh thu + users snapshot + audit gần đây · cùng `features/admin-dashboard/` (`getAdminHome`)
+- **1 chart duy nhất = doanh thu** (Area) trên Staff + Admin — không bar/pie phụ.
+- Staff [`/staff`](../app/(staff)/staff/page.tsx): revenue + KPI vận hành + list “Cần chú ý” · [`DashboardRevenuePanel`](../components/admin/dashboard/DashboardRevenuePanel.tsx) · [`AdminDashboardSummary`](../components/admin/dashboard/AdminDashboardSummary.tsx) · [`DashboardAttentionList`](../components/admin/dashboard/DashboardAttentionList.tsx) · data từ API (orders / contact / products), không mock file.
+- Admin [`/admin`](../app/(admin)/admin/page.tsx): revenue + 4 cards users (không pie) + audit gần đây · `getAdminHome`
+- Shell: top bar sticky ([`AdminTopBar`](../components/admin/shell/AdminTopBar.tsx)) — hamburger mobile trong top bar.
 
 ## Phase 2 — S3 Đơn hàng (mock UI)
 
