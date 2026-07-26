@@ -1,29 +1,65 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import useSWR from "swr";
+import useSWR, { useSWRConfig } from "swr";
+import { AdminFilterChip } from "@/components/admin/ui/AdminFilterChip";
+import { UserAvatar } from "@/components/ui/UserAvatar";
 import { ADMIN_USERS_SWR_KEY } from "@/features/admin-users/constants";
 import { adminUsersService } from "@/features/admin-users/services/admin-users.service";
 import type { AuthRole } from "@/features/auth/types";
+import { revalidateAfterUserMutation } from "@/lib/admin-swr-revalidate";
 import { notify } from "@/lib/toast";
-import { formatDate } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import { useAuthStore } from "@/lib/useAuthStore";
+
+const ROLES: { value: AuthRole | "all"; label: string }[] = [
+  { value: "all", label: "Tất cả" },
+  { value: "user", label: "Khách" },
+  { value: "staff", label: "Staff" },
+  { value: "admin", label: "Admin" },
+];
+
+const ROLE_LABEL: Record<AuthRole, string> = {
+  user: "Khách",
+  staff: "Staff",
+  admin: "Admin",
+};
 
 export function AdminUsersPanel() {
   const { user: currentUser } = useAuthStore();
+  const { mutate: globalMutate } = useSWRConfig();
   const [q, setQ] = useState("");
   const [role, setRole] = useState<AuthRole | "all">("all");
   const key = useMemo(() => `${ADMIN_USERS_SWR_KEY}:${q}:${role}`, [q, role]);
-  const { data, error, isLoading, mutate } = useSWR(
+  const { data, error, isLoading } = useSWR(
     key,
     () => adminUsersService.list({ q, role }),
-    { revalidateOnFocus: false, revalidateOnReconnect: false }
+    { revalidateOnFocus: false, revalidateOnReconnect: false },
   );
+
+  const { data: allUsers } = useSWR(
+    `${ADMIN_USERS_SWR_KEY}:counts`,
+    () => adminUsersService.list({ q: "", role: "all" }),
+    { revalidateOnFocus: false, revalidateOnReconnect: false },
+  );
+
+  const roleCounts = useMemo(() => {
+    const counts: Record<AuthRole | "all", number> = {
+      all: allUsers?.length ?? 0,
+      user: 0,
+      staff: 0,
+      admin: 0,
+    };
+    for (const u of allUsers ?? []) {
+      counts[u.role] += 1;
+    }
+    return counts;
+  }, [allUsers]);
 
   const changeRole = async (id: string, next: AuthRole) => {
     try {
       await adminUsersService.setRole(id, next);
-      await mutate();
+      await revalidateAfterUserMutation(globalMutate);
       notify.success("Đã cập nhật vai trò.");
     } catch (err) {
       notify.error(err instanceof Error ? err.message : "Thất bại.");
@@ -33,7 +69,7 @@ export function AdminUsersPanel() {
   const toggleLock = async (id: string, locked: boolean) => {
     try {
       await adminUsersService.setLocked(id, !locked);
-      await mutate();
+      await revalidateAfterUserMutation(globalMutate);
       notify.success(locked ? "Đã mở khóa." : "Đã khóa tài khoản.");
     } catch (err) {
       notify.error(err instanceof Error ? err.message : "Thất bại.");
@@ -41,80 +77,117 @@ export function AdminUsersPanel() {
   };
 
   return (
-    <div>
-      <div className="mb-4 flex flex-wrap gap-3">
-        <label className="flex flex-col gap-1 text-[13px] font-bold">
-          Tìm kiếm
+    <div className="mx-auto max-w-[1100px]">
+      <div className="mb-5">
+        <h1 className="font-display text-[clamp(26px,6vw,32px)] font-bold tracking-[-0.03em] text-ink">
+          Người dùng
+        </h1>
+      </div>
+
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="flex flex-wrap gap-2">
+          {ROLES.map((opt) => (
+            <AdminFilterChip
+              key={opt.value}
+              active={role === opt.value}
+              onClick={() => setRole(opt.value)}
+            >
+              {opt.label}
+              {opt.value === "staff" || opt.value === "admin"
+                ? ` · ${roleCounts[opt.value]}`
+                : opt.value === "all"
+                  ? ` · ${roleCounts.all}`
+                  : ""}
+            </AdminFilterChip>
+          ))}
+        </div>
+        <label className="relative ml-auto min-w-0 flex-1 sm:max-w-xs">
+          <span className="sr-only">Tìm email hoặc tên</span>
           <input
-            className="rounded-[var(--radius-md)] border border-ink/20 bg-surface px-3 py-2"
+            className="h-10 w-full rounded-full border border-ink/15 bg-surface px-4 text-[14px] font-medium text-ink placeholder:text-text-faint"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Email hoặc tên"
+            placeholder="Email hoặc tên…"
           />
         </label>
-        <label className="flex flex-col gap-1 text-[13px] font-bold">
-          Vai trò
-          <select
-            className="rounded-[var(--radius-md)] border border-ink/20 bg-surface px-3 py-2"
-            value={role}
-            onChange={(e) => setRole(e.target.value as AuthRole | "all")}
-          >
-            <option value="all">Tất cả</option>
-            <option value="user">User</option>
-            <option value="staff">Staff</option>
-            <option value="admin">Admin</option>
-          </select>
-        </label>
       </div>
+
       {isLoading ? (
-        <div className="h-40 animate-pulse rounded-[var(--radius-lg)] bg-[color:var(--color-border-subtle)]" />
+        <div className="h-40 animate-pulse rounded-[20px] border border-ink/10 bg-border-subtle" />
       ) : null}
       {error ? (
-        <p className="text-sm font-semibold text-red-700">Không tải được users.</p>
+        <p className="rounded-[20px] border border-red-200 bg-red-50 px-5 py-6 text-center text-sm font-semibold text-red-700">
+          Không tải được danh sách người dùng.
+        </p>
       ) : null}
-      {data ? (
+      {data && data.length === 0 ? (
+        <p className="rounded-[20px] border border-dashed border-ink/15 px-5 py-8 text-center text-sm text-text-muted">
+          Không tìm thấy người dùng.
+        </p>
+      ) : null}
+      {data && data.length > 0 ? (
         <ul className="m-0 flex list-none flex-col gap-3 p-0">
           {data.map((u) => {
-            const isSelf = Boolean(currentUser?.email) && u.email === currentUser?.email;
+            const isSelf =
+              Boolean(currentUser?.email) && u.email === currentUser?.email;
             return (
               <li
                 key={u.id}
-                className="rounded-[var(--radius-lg)] border border-ink/15 bg-surface px-4 py-4"
+                className={cn(
+                  "rounded-[20px] border border-ink/10 bg-surface px-4 py-4 shadow-sm md:px-5",
+                  u.locked && "opacity-75",
+                )}
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="font-bold text-ink">
-                      {u.fullName}
-                      {isSelf ? (
-                        <span className="ml-2 rounded-full bg-primary-soft px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-[0.04em] text-primary-deep">
-                          Bạn
+                  <div className="flex min-w-0 items-center gap-3">
+                    <UserAvatar
+                      fullName={u.fullName}
+                      email={u.email}
+                      size="md"
+                    />
+                    <div className="min-w-0">
+                      <p className="font-bold text-ink">
+                        {u.fullName}
+                        {isSelf ? (
+                          <span className="ml-2 rounded-full bg-primary-soft px-2 py-0.5 text-[10px] font-extrabold tracking-[0.04em] text-primary-deep uppercase">
+                            Bạn
+                          </span>
+                        ) : null}
+                      </p>
+                      <p className="truncate text-[13px] text-text-muted">
+                        {u.email} · tham gia {formatDate(u.createdAt)}
+                      </p>
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        <span className="rounded-full bg-primary-soft px-2.5 py-0.5 text-[10px] font-extrabold tracking-[0.04em] text-primary-deep uppercase">
+                          {ROLE_LABEL[u.role]}
                         </span>
-                      ) : null}
-                    </p>
-                    <p className="text-[13px] text-text-muted">
-                      {u.email} · {formatDate(u.createdAt)}
-                      {u.locked ? " · Đã khóa" : ""}
-                    </p>
+                        {u.locked ? (
+                          <span className="rounded-full bg-danger/10 px-2.5 py-0.5 text-[10px] font-extrabold tracking-[0.04em] text-danger uppercase">
+                            Đã khóa
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {isSelf ? (
                       <span
                         title="Không thể tự đổi vai trò của chính mình"
-                        className="rounded-[var(--radius-md)] border border-ink/10 bg-border-subtle px-2.5 py-1.5 text-[13px] font-bold text-text-muted"
+                        className="rounded-full border border-ink/10 bg-border-subtle px-3 py-1.5 text-[12px] font-bold text-text-muted"
                       >
-                        {u.role}
+                        {ROLE_LABEL[u.role]}
                       </span>
                     ) : (
                       <select
-                        className="rounded-[var(--radius-md)] border border-ink/20 bg-bg px-2 py-1.5 text-[13px] font-bold"
+                        className="h-9 rounded-full border border-ink/20 bg-bg px-3 text-[13px] font-bold text-ink"
                         value={u.role}
                         onChange={(e) =>
                           void changeRole(u.id, e.target.value as AuthRole)
                         }
                       >
-                        <option value="user">user</option>
-                        <option value="staff">staff</option>
-                        <option value="admin">admin</option>
+                        <option value="user">Khách</option>
+                        <option value="staff">Staff</option>
+                        <option value="admin">Admin</option>
                       </select>
                     )}
                     {isSelf ? (
@@ -128,7 +201,12 @@ export function AdminUsersPanel() {
                       <button
                         type="button"
                         onClick={() => void toggleLock(u.id, u.locked)}
-                        className="cursor-pointer rounded-full border border-ink/20 px-3 py-1.5 text-[12px] font-bold"
+                        className={cn(
+                          "h-9 cursor-pointer rounded-full px-3.5 text-[12px] font-bold",
+                          u.locked
+                            ? "bg-danger text-bg hover:opacity-90"
+                            : "border border-danger/40 text-danger hover:bg-danger/10",
+                        )}
                       >
                         {u.locked ? "Mở khóa" : "Khóa"}
                       </button>

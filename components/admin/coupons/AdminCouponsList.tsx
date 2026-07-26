@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useState } from "react";
 import useSWR from "swr";
+import { ChevronRight } from "lucide-react";
+import { AdminToggle } from "@/components/admin/ui/AdminToggle";
+import { FillButton } from "@/components/ui/FillButton";
 import { ADMIN_COUPONS_SWR_KEY } from "@/features/admin-coupons/constants";
 import { adminCouponsService } from "@/features/admin-coupons/services/admin-coupons.service";
 import { notify } from "@/lib/toast";
@@ -12,7 +15,7 @@ export function AdminCouponsList() {
   const { data, error, isLoading, mutate } = useSWR(
     ADMIN_COUPONS_SWR_KEY,
     () => adminCouponsService.list(),
-    { revalidateOnFocus: false, revalidateOnReconnect: false }
+    { revalidateOnFocus: false, revalidateOnReconnect: false },
   );
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -22,7 +25,7 @@ export function AdminCouponsList() {
         {Array.from({ length: 3 }).map((_, i) => (
           <div
             key={i}
-            className="h-16 animate-pulse rounded-[var(--radius-lg)] bg-[color:var(--color-border-subtle)]"
+            className="h-16 animate-pulse rounded-[var(--radius-lg)] border border-ink/10 bg-border-subtle"
           />
         ))}
       </div>
@@ -51,56 +54,82 @@ export function AdminCouponsList() {
   };
 
   return (
-    <div>
-      <div className="mb-4 flex justify-end">
-        <Link
+    <div className="mx-auto max-w-[1100px]">
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <h1 className="font-display text-[clamp(26px,6vw,32px)] font-bold tracking-[-0.03em] text-ink">
+          Coupon
+        </h1>
+        <FillButton
           href="/staff/coupons/new"
-          className="rounded-full bg-ink px-4 py-2 text-[13px] font-bold text-bg"
+          variant="ink-solid"
+          className="h-11 w-full px-5 text-[13px] font-bold sm:w-auto"
         >
           Tạo coupon
-        </Link>
+        </FillButton>
       </div>
-      <ul className="m-0 flex list-none flex-col gap-3 p-0">
-        {data.map((c) => (
-          <li
-            key={c.id}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-ink/15 bg-surface px-4 py-4"
-          >
-            <div>
-              <Link
-                href={`/staff/coupons/${c.id}`}
-                className="text-[15px] font-bold text-ink underline-offset-2 hover:underline"
-              >
-                {c.code}
-              </Link>
-              <p className="mt-1 text-[13px] text-text-muted">
-                {c.discountType === "PERCENTAGE"
-                  ? `${c.discount}%`
-                  : formatCurrencyVnd(c.discount)}
-                {c.expiresAt ? ` · Hết ${formatDate(c.expiresAt)}` : " · Không hết hạn"}
-                {` · Dùng ${c.usedCount}${c.usageLimit != null ? `/${c.usageLimit}` : ""}`}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span
-                className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold uppercase ${
-                  c.isActive ? "bg-lime/50 text-forest" : "bg-ink/10 text-text-muted"
+
+      {data.length === 0 ? (
+        <p className="rounded-[20px] border border-dashed border-ink/15 px-5 py-8 text-center text-sm text-text-muted">
+          Chưa có coupon.
+        </p>
+      ) : (
+        <ul className="m-0 flex list-none flex-col gap-3 p-0">
+          {data.map((c) => (
+            <li key={c.id}>
+              <div
+                className={`flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-ink/10 bg-surface px-4 py-4 shadow-sm md:px-5 ${
+                  c.isActive ? "" : "opacity-75"
                 }`}
               >
-                {c.isActive ? "Active" : "Off"}
-              </span>
-              <button
-                type="button"
-                disabled={busyId === c.id}
-                onClick={() => void toggle(c.id, c.isActive)}
-                className="cursor-pointer rounded-full border border-ink/20 px-3 py-1.5 text-[12px] font-bold text-ink hover:bg-ink/5 disabled:opacity-50"
-              >
-                {c.isActive ? "Tắt" : "Bật"}
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
+                <Link
+                  href={`/staff/coupons/${c.id}`}
+                  className="min-w-0 flex-1 transition-colors hover:opacity-90"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-mono text-[16px] font-extrabold tracking-wide text-ink">
+                      {c.code}
+                    </p>
+                    <ChevronRight
+                      size={16}
+                      className="text-text-faint"
+                      aria-hidden
+                    />
+                  </div>
+                  <p className="mt-1 text-[13px] text-text-muted">
+                    {c.discountType === "PERCENTAGE"
+                      ? `Giảm ${c.discount}%`
+                      : `Giảm ${formatCurrencyVnd(c.discount)}`}
+                    {c.minOrderValue != null
+                      ? ` · Đơn từ ${formatCurrencyVnd(c.minOrderValue)}`
+                      : ""}
+                    {c.expiresAt
+                      ? ` · Hết ${formatDate(c.expiresAt)}`
+                      : " · Không hết hạn"}
+                    {` · ${c.usedCount}${c.usageLimit != null ? `/${c.usageLimit}` : ""} lượt`}
+                  </p>
+                </Link>
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold uppercase ${
+                      c.isActive
+                        ? "bg-lime/50 text-forest"
+                        : "bg-ink/10 text-text-muted"
+                    }`}
+                  >
+                    {c.isActive ? "Đang bật" : "Tắt"}
+                  </span>
+                  <AdminToggle
+                    checked={c.isActive}
+                    disabled={busyId === c.id}
+                    label={c.isActive ? "Tắt coupon" : "Bật coupon"}
+                    onChange={() => void toggle(c.id, c.isActive)}
+                  />
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
