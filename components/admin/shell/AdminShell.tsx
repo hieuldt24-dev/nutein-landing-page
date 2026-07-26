@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import { Menu, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useAuthStore } from "@/lib/useAuthStore";
 import { useAccountProfile } from "@/lib/useAccountProfile";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,7 @@ import { ADMIN_NAV, STAFF_NAV } from "./admin-nav.constants";
 import { AdminNavGroups } from "./AdminNavGroups";
 import { AdminSidebarBrand } from "./AdminSidebarBrand";
 import { AdminSidebarUserCard } from "./AdminSidebarUserCard";
+import { AdminTopBar } from "./AdminTopBar";
 
 const COMPACT_STORAGE_KEY = "nutein:admin-sidebar-compact";
 const SIDEBAR_EXPANDED_W = 260;
@@ -18,6 +19,7 @@ const SIDEBAR_COMPACT_W = 72;
 
 /**
  * Shell quản trị — compact giữ chỗ layout; hover mở rộng overlay.
+ * Top bar sticky theo design mock (hamburger mobile nằm trong top bar).
  */
 export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -107,7 +109,6 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-bg text-text-body">
-      {/* Desktop: spacer giữ layout khi compact; panel có thể overlay khi hover */}
       <div
         className="relative hidden shrink-0 lg:block"
         style={{
@@ -143,15 +144,6 @@ export function AdminShell({ children }: { children: ReactNode }) {
         </aside>
       </div>
 
-      <button
-        type="button"
-        className="fixed top-4 left-4 z-40 flex size-11 cursor-pointer items-center justify-center rounded-full border border-ink/15 bg-surface text-ink shadow-md lg:hidden"
-        aria-label="Mở menu quản trị"
-        onClick={() => setMobileOpen(true)}
-      >
-        <Menu size={18} strokeWidth={2.2} />
-      </button>
-
       {mobileOpen ? (
         <div className="fixed inset-0 z-50 lg:hidden">
           <button
@@ -178,7 +170,13 @@ export function AdminShell({ children }: { children: ReactNode }) {
       ) : null}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <main className="flex-1 pt-14 lg:pt-0">{children}</main>
+        <AdminTopBar
+          role={role}
+          fullName={displayName}
+          email={user?.email ?? ""}
+          onOpenMobile={() => setMobileOpen(true)}
+        />
+        <main className="flex-1">{children}</main>
       </div>
     </div>
   );

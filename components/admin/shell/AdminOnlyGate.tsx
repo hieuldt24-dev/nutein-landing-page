@@ -27,7 +27,7 @@ export function AdminOnlyGate({ children }: { children: ReactNode }) {
   if (!isReady || role !== "admin") {
     return (
       <div className="flex min-h-[30vh] items-center justify-center px-6">
-        <p className="text-sm font-semibold text-text-muted">Đang kiểm tra quyền Admin…</p>
+        <p className="text-sm font-semibold text-text-muted">Đang tải…</p>
       </div>
     );
   }
