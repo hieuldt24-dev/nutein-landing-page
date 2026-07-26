@@ -14,3 +14,19 @@ export interface AdminAuditEntry {
   summary: string;
   createdAt: string;
 }
+
+export interface AdminAuditListQuery {
+  action?: AdminAuditAction | "all";
+  actor?: string;
+  from?: string;
+  to?: string;
+  /** Số dòng mỗi trang — omit = mặc định 100 (dashboard recent). */
+  limit?: number;
+  /** Offset 0-based — chỉ dùng khi phân trang UI. */
+  offset?: number;
+}
+
+export interface AdminAuditListResult {
+  items: AdminAuditEntry[];
+  total: number;
+}

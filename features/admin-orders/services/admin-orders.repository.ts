@@ -10,6 +10,7 @@ import {
 import type {
   AdminOrder,
   AdminOrderListQuery,
+  AdminOrderListResult,
   AdminOrderStatus,
   AdminOrderStatusLog,
   AdminOrderSummaryRow,
@@ -96,6 +97,11 @@ function endOfDayIso(dateIso: string): string {
   return d.toISOString();
 }
 
+/** Escape ký tự đặc biệt của PostgREST `ilike` / filter. */
+function escapeIlike(value: string): string {
+  return value.replace(/[%_,.\\]/g, "\\$&");
+}
+
 function toAdminOrder(order: OrderRow, logs: OrderStatusLogRow[]): AdminOrder {
   const address = order.shipping_address;
   const lines = (order.order_items ?? []).map((item) => ({
@@ -177,9 +183,9 @@ async function listSummary(): Promise<AdminOrderSummaryRow[]> {
   );
 }
 
-async function list(query: AdminOrderListQuery = {}): Promise<AdminOrder[]> {
+async function list(query: AdminOrderListQuery = {}): Promise<AdminOrderListResult> {
   const client = requireAdminClient();
-  let builder = client.from("orders").select(ORDER_SELECT);
+  let builder = client.from("orders").select(ORDER_SELECT, { count: "exact" });
 
   if (query.status && query.status !== "all") {
     builder = builder.eq("status", toDbStatus(query.status));
@@ -190,14 +196,33 @@ async function list(query: AdminOrderListQuery = {}): Promise<AdminOrder[]> {
   if (query.to) {
     builder = builder.lte("created_at", endOfDayIso(query.to));
   }
+  const needle = query.q?.trim();
+  if (needle) {
+    const q = escapeIlike(needle);
+    builder = builder.or(
+      `order_code.ilike.%${q}%,shipping_address->>fullName.ilike.%${q}%,shipping_address->>email.ilike.%${q}%`,
+    );
+  }
 
-  const { data, error } = await builder.order("created_at", { ascending: false });
+  builder = builder.order("created_at", { ascending: false });
+
+  // Có `limit` → phân trang; omit → trả hết (dashboard Staff ops).
+  if (query.limit != null) {
+    const offset = query.offset ?? 0;
+    builder = builder.range(offset, offset + query.limit - 1);
+  }
+
+  const { data, error, count } = await builder;
 
   if (error) {
     throw new Error(`Không tải được danh sách đơn: ${error.message}`);
   }
 
-  return ((data as OrderRow[]) ?? []).map((row) => toAdminOrder(row, []));
+  const items = ((data as OrderRow[]) ?? []).map((row) => toAdminOrder(row, []));
+  return {
+    items,
+    total: count ?? items.length,
+  };
 }
 
 async function getById(id: string): Promise<AdminOrder | null> {

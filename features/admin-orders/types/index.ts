@@ -68,4 +68,16 @@ export interface AdminOrderListQuery {
   from?: string;
   /** ISO date đến (inclusive end of day) — lọc createdAt. */
   to?: string;
+  /** Tìm mã đơn / tên / email (tuỳ chọn). */
+  q?: string;
+  /** Số dòng mỗi trang — omit = trả hết (dashboard). */
+  limit?: number;
+  /** Offset 0-based — chỉ dùng khi có limit. */
+  offset?: number;
+}
+
+/** Kết quả list có tổng để phân trang. */
+export interface AdminOrderListResult {
+  items: AdminOrder[];
+  total: number;
 }
