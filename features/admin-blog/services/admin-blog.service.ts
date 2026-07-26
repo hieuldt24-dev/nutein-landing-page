@@ -44,4 +44,15 @@ export const adminBlogService = {
       body: JSON.stringify(input),
     });
   },
+
+  /** Upload ảnh bìa lên Cloudinary qua `/api/staff/uploads`. */
+  async uploadImage(file: File): Promise<string> {
+    const formData = new FormData();
+    formData.append("file", file);
+    const { url } = await apiRequest<{ url: string }>("/api/staff/uploads", {
+      method: "POST",
+      body: formData,
+    });
+    return url;
+  },
 };

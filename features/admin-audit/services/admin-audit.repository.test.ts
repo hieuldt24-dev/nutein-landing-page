@@ -6,14 +6,24 @@ const mocks = vi.hoisted(() => ({
   from: vi.fn(),
 }));
 
-function makeBuilder(result: { data?: unknown; error?: unknown }) {
+function makeBuilder(result: {
+  data?: unknown;
+  error?: unknown;
+  count?: number | null;
+}) {
+  const resolved = {
+    ...result,
+    count:
+      result.count ??
+      (Array.isArray(result.data) ? result.data.length : (result.data ? 1 : 0)),
+  };
   const builder: Record<string, unknown> = {
     select: vi.fn(() => builder),
     eq: vi.fn(() => builder),
     gte: vi.fn(() => builder),
     lte: vi.fn(() => builder),
     order: vi.fn(() => builder),
-    limit: vi.fn(async () => result),
+    range: vi.fn(async () => resolved),
   };
   return builder;
 }
@@ -54,7 +64,8 @@ describe("adminAuditRepository.list", () => {
 
     const result = await adminAuditRepository.list();
 
-    expect(result[0].actorEmail).toBeNull();
+    expect(result.items[0].actorEmail).toBeNull();
+    expect(result.total).toBe(1);
   });
 
   it("orders + status đổi -> summary 'Đổi trạng thái đơn → processing'", async () => {
@@ -62,7 +73,7 @@ describe("adminAuditRepository.list", () => {
 
     const result = await adminAuditRepository.list();
 
-    expect(result[0].summary).toBe("Đổi trạng thái đơn → processing");
+    expect(result.items[0].summary).toBe("Đổi trạng thái đơn → processing");
   });
 
   it("CREATE -> summary 'Tạo mới trong <table>', actor join map đúng email", async () => {
@@ -70,7 +81,7 @@ describe("adminAuditRepository.list", () => {
 
     const result = await adminAuditRepository.list();
 
-    expect(result[0]).toMatchObject({
+    expect(result.items[0]).toMatchObject({
       summary: "Tạo mới trong coupons",
       actorEmail: "admin@nutein.com",
     });
@@ -83,6 +94,15 @@ describe("adminAuditRepository.list", () => {
     await adminAuditRepository.list({ action: "DELETE" });
 
     expect(builder.eq).toHaveBeenCalledWith("action", "DELETE");
+  });
+
+  it("limit/offset -> gọi .range", async () => {
+    const builder = makeBuilder({ data: [], error: null, count: 0 });
+    mocks.from.mockReturnValue(builder);
+
+    await adminAuditRepository.list({ limit: 20, offset: 40 });
+
+    expect(builder.range).toHaveBeenCalledWith(40, 59);
   });
 
   it("lỗi query -> throw", async () => {

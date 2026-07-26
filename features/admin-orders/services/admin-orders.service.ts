@@ -2,6 +2,7 @@ import { apiRequest, type FetchError } from "@/lib/api-client";
 import type {
   AdminOrder,
   AdminOrderListQuery,
+  AdminOrderListResult,
   AdminOrderStatus,
   AdminOrderSummaryRow,
 } from "../types";
@@ -14,6 +15,9 @@ function buildListQueryString(query: AdminOrderListQuery): string {
   if (query.status && query.status !== "all") params.set("status", query.status);
   if (query.from) params.set("from", query.from);
   if (query.to) params.set("to", query.to);
+  if (query.q?.trim()) params.set("q", query.q.trim());
+  if (query.limit != null) params.set("limit", String(query.limit));
+  if (query.offset != null) params.set("offset", String(query.offset));
   const qs = params.toString();
   return qs ? `?${qs}` : "";
 }
@@ -23,8 +27,8 @@ function buildListQueryString(query: AdminOrderListQuery): string {
  * Business logic/DB thật nằm ở `admin-orders.repository.ts` (server-only).
  */
 export const adminOrdersService = {
-  async list(query: AdminOrderListQuery = {}): Promise<AdminOrder[]> {
-    return apiRequest<AdminOrder[]>(`${BASE_PATH}${buildListQueryString(query)}`);
+  async list(query: AdminOrderListQuery = {}): Promise<AdminOrderListResult> {
+    return apiRequest<AdminOrderListResult>(`${BASE_PATH}${buildListQueryString(query)}`);
   },
 
   async getById(id: string): Promise<AdminOrder | null> {
