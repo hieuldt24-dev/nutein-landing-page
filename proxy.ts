@@ -45,14 +45,17 @@ async function guardAdminArea(request: NextRequest): Promise<NextResponse | null
 
 /**
  * Route thật sự đọc session Supabase server-side (`lib/supabase-server.ts`)
- * — đã grep xác nhận, chỉ 2 chỗ này. Toàn bộ `app/api/**` còn lại (checkout,
- * cart, staff/orders, account...) chỉ dùng JWT app riêng (`authenticate()`),
- * không đụng Supabase session — refresh cho các route đó là round-trip thừa
- * tới Supabase Auth server trên mọi request, không có tác dụng.
+ * — đã grep xác nhận toàn bộ codebase (kể cả mọi Server Component trang
+ * public/account/staff/admin), chỉ đúng 2 chỗ: `/api/auth/session` và
+ * `/auth/callback` (OAuth). Mọi path khác — mọi page navigation, mọi
+ * `app/api/**` khác (checkout, cart, staff/*, admin/*, account...) — chỉ
+ * dùng JWT app riêng (`authenticate()`), không đụng session Supabase.
+ * Refresh cho các path đó là 1 network round-trip thật tới Supabase Auth
+ * server trên MỌI request mà không có tác dụng gì — bỏ để mọi trang (kể cả
+ * trang chủ/PDP/Blog cho khách vãng lai) không phải chờ round-trip thừa này.
  */
 function needsSupabaseRefresh(pathname: string): boolean {
-  if (!pathname.startsWith("/api/")) return true; // page navigation — giữ nguyên, chưa audit hết Server Component
-  return pathname === "/api/auth/session";
+  return pathname === "/api/auth/session" || pathname === "/auth/callback";
 }
 
 /**

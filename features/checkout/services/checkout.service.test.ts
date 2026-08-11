@@ -12,7 +12,26 @@ const mocks = vi.hoisted(() => ({
   reconcileByPayosOrderCode: vi.fn(),
   cancelPaymentLink: vi.fn(),
   sendOrderConfirmation: vi.fn(),
+  afterCallbacks: [] as Array<() => unknown>,
+  refreshCatalogCache: vi.fn(),
 }));
+
+/**
+ * next/server thật: after() throw nếu gọi ngoài request scope (Next quản lý
+ * qua AsyncLocalStorage) — trong test không có request nào cả. Mock thu
+ * thập callback, test nào cần assert side-effect bên trong after() thì tự
+ * `await flushAfterCallbacks()` trước khi kiểm tra.
+ */
+vi.mock("next/server", () => ({
+  after: (fn: () => unknown) => {
+    mocks.afterCallbacks.push(fn);
+  },
+}));
+
+async function flushAfterCallbacks() {
+  const callbacks = mocks.afterCallbacks.splice(0);
+  await Promise.all(callbacks.map((fn) => fn()));
+}
 
 vi.mock("./order.repository", () => ({
   buildOrderCode: () => "NT-20260722-AB12",
@@ -49,7 +68,7 @@ vi.mock("@/features/product/services/product.service", async (importOriginal) =>
   return {
     productService: {
       ...actual.productService,
-      refreshCatalogCache: vi.fn().mockResolvedValue(undefined),
+      refreshCatalogCache: mocks.refreshCatalogCache,
     },
   };
 });
@@ -91,6 +110,10 @@ const orderRow = {
 describe("checkoutService.createOrder", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Mặc định giả lập refresh "không có data kèm stock" (null) — buộc rơi
+    // vào fallback getAvailableStock() như hành vi cũ, giữ nguyên các test
+    // hiện có. Test riêng cho nhánh gộp-query tự override giá trị này.
+    mocks.refreshCatalogCache.mockResolvedValue(null);
     mocks.getAvailableStock.mockResolvedValue(9999);
     mocks.sendOrderConfirmation.mockResolvedValue(undefined);
   });
@@ -99,6 +122,7 @@ describe("checkoutService.createOrder", () => {
     mocks.createOrder.mockResolvedValue(orderRow);
 
     const result = await checkoutService.createOrder("user-1", baseInput);
+    await flushAfterCallbacks(); // sendOrderConfirmation giờ chạy trong after()
 
     expect(mocks.createPaymentLink).not.toHaveBeenCalled();
     expect(mocks.sendOrderConfirmation).toHaveBeenCalledWith(
@@ -172,6 +196,27 @@ describe("checkoutService.createOrder", () => {
     const result = await checkoutService.createOrder("user-1", baseInput);
 
     expect(result.status).toBe("pending");
+  });
+
+  it("refreshCatalogCache trả kèm stock → dùng luôn, KHÔNG gọi getAvailableStock riêng", async () => {
+    mocks.refreshCatalogCache.mockResolvedValue({ stock: 9999 });
+    mocks.createOrder.mockResolvedValue(orderRow);
+
+    const result = await checkoutService.createOrder("user-1", baseInput);
+
+    expect(mocks.getAvailableStock).not.toHaveBeenCalled();
+    expect(result.status).toBe("pending");
+  });
+
+  it("refreshCatalogCache trả stock không đủ → BadRequestError, không cần gọi getAvailableStock riêng", async () => {
+    mocks.refreshCatalogCache.mockResolvedValue({ stock: 0 });
+
+    await expect(
+      checkoutService.createOrder("user-1", { ...baseInput, paymentMethod: "bank_transfer" }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+
+    expect(mocks.getAvailableStock).not.toHaveBeenCalled();
+    expect(mocks.createOrder).not.toHaveBeenCalled();
   });
 });
 

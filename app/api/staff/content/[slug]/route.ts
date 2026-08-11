@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { revalidatePath } from "next/cache";
 import { successResponse } from "@/src/api/response";
 import { withErrorHandler } from "@/src/middlewares/error-handler.middleware";
 import { authenticate, requireRole } from "@/src/middlewares/authenticate.middlware";
@@ -8,6 +9,7 @@ import {
   adminStaticSlugSchema,
 } from "@/features/admin-content/schemas/admin-content.schema";
 import { adminContentRepository } from "@/features/admin-content/services/admin-content.repository";
+import { isPolicySlug } from "@/features/policies/types";
 
 /**
  * GET /api/staff/content/[slug] — chỉ Staff.
@@ -40,6 +42,11 @@ export const PATCH = withErrorHandler<{ slug: string }>(
     const body = await req.json();
     const patch = adminContentUpdateSchema.parse(body);
     const page = await adminContentRepository.updatePage(parsedSlug, patch);
+    // Chỉ các slug chính sách mới có trang public /policies/[slug] (ISR 1h)
+    // — "about" chưa có route công khai nào đọc, không cần revalidate.
+    if (isPolicySlug(parsedSlug)) {
+      revalidatePath(`/policies/${parsedSlug}`);
+    }
     return successResponse(page);
   },
 );
