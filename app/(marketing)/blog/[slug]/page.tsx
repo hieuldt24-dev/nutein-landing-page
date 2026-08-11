@@ -10,6 +10,10 @@ type BlogDetailPageProps = {
   params: Promise<{ slug: string }>;
 };
 
+// ISR — cache 1h, Staff sửa bài ở /staff/blog thấy ngay nhờ
+// revalidatePath(`/blog/${slug}`) gọi trong PATCH app/api/staff/blog/[id]/route.ts.
+export const revalidate = 3600;
+
 export async function generateStaticParams() {
   const slugs = await blogService.listSlugs();
   return slugs.map((slug) => ({ slug }));

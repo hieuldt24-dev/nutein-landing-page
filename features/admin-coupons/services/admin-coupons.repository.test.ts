@@ -25,6 +25,15 @@ vi.mock("@/lib/supabase", () => ({
   supabaseAdmin: { from: mocks.from },
 }));
 
+// next/server thật: after() throw nếu gọi ngoài request scope (Next quản lý
+// qua AsyncLocalStorage) — không có request nào trong test. Chạy callback
+// ngay (không ai trong file này assert riêng nội dung audit log).
+vi.mock("next/server", () => ({
+  after: (fn: () => unknown) => {
+    void fn();
+  },
+}));
+
 import { adminCouponsRepository } from "./admin-coupons.repository";
 
 const couponRow = {

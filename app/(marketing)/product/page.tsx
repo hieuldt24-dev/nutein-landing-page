@@ -14,6 +14,10 @@ export const metadata: Metadata = {
   },
 };
 
+// ISR — cache 1h, Staff sửa giá/tồn kho ở /staff/products thấy ngay nhờ
+// revalidatePath("/product") gọi trong PATCH app/api/staff/products/route.ts.
+export const revalidate = 3600;
+
 /**
  * Product PDP — buy-box. CTA cuối trang nằm trong Footer (marketing layout).
  */

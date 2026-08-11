@@ -1,5 +1,6 @@
 import "server-only";
 
+import { after } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { BadRequestError, NotFoundError } from "@/src/errors/app.error";
 import { auditLogRepository } from "@/features/admin-audit/services/audit-log.repository";
@@ -100,12 +101,16 @@ async function create(input: AdminCouponInput, staffUserId: string): Promise<Adm
   }
 
   const created = toAdminCoupon(data as CouponRow);
-  await auditLogRepository.record({
-    userId: staffUserId,
-    action: "CREATE",
-    tableName: "coupons",
-    recordId: created.id,
-    newData: { code: created.code, discount: created.discount, discountType: created.discountType },
+  // Best-effort, không ảnh hưởng response — chạy sau khi Staff đã nhận coupon
+  // vừa tạo thay vì chờ thêm 1 round-trip DB ghi audit log.
+  after(async () => {
+    await auditLogRepository.record({
+      userId: staffUserId,
+      action: "CREATE",
+      tableName: "coupons",
+      recordId: created.id,
+      newData: { code: created.code, discount: created.discount, discountType: created.discountType },
+    });
   });
 
   return created;
@@ -145,12 +150,16 @@ async function update(
   }
 
   const updated = toAdminCoupon(data as CouponRow);
-  await auditLogRepository.record({
-    userId: staffUserId,
-    action: "UPDATE",
-    tableName: "coupons",
-    recordId: updated.id,
-    newData: { code: updated.code, isActive: updated.isActive, discount: updated.discount },
+  // Best-effort, không ảnh hưởng response — chạy sau khi Staff đã nhận coupon
+  // vừa cập nhật thay vì chờ thêm 1 round-trip DB ghi audit log.
+  after(async () => {
+    await auditLogRepository.record({
+      userId: staffUserId,
+      action: "UPDATE",
+      tableName: "coupons",
+      recordId: updated.id,
+      newData: { code: updated.code, isActive: updated.isActive, discount: updated.discount },
+    });
   });
 
   return updated;

@@ -28,6 +28,7 @@ const productRow = {
   name: "Nutein (DB)",
   description: "Mô tả thật từ DB",
   price: 259000,
+  stock: 42,
   marketing_meta: {
     tagline: "Tagline thật",
     unitLabel: "Hộp thật",
@@ -43,10 +44,10 @@ const productRow = {
 describe("productService.refreshCatalogCache", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("cập nhật cache từ DB -> getProductDetail()/getCatalogProduct() phản ánh giá trị mới", async () => {
+  it("cập nhật cache từ DB -> getProductDetail()/getCatalogProduct() phản ánh giá trị mới, trả kèm stock", async () => {
     mocks.from.mockReturnValue(makeBuilder({ data: productRow, error: null }));
 
-    await productService.refreshCatalogCache();
+    await expect(productService.refreshCatalogCache()).resolves.toEqual({ stock: 42 });
 
     const detail = productService.getProductDetail();
     expect(detail.name).toBe("Nutein (DB)");
@@ -82,7 +83,7 @@ describe("productService.refreshCatalogCache", () => {
     mocks.from.mockReturnValue(
       makeBuilder({ data: null, error: { message: "column does not exist" } }),
     );
-    await expect(productService.refreshCatalogCache()).resolves.toBeUndefined();
+    await expect(productService.refreshCatalogCache()).resolves.toBeNull();
 
     expect(productService.getProductDetail()).toEqual(beforeError);
   });

@@ -18,8 +18,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     actor: req.nextUrl.searchParams.get("actor") ?? undefined,
     from: req.nextUrl.searchParams.get("from") ?? undefined,
     to: req.nextUrl.searchParams.get("to") ?? undefined,
+    limit: req.nextUrl.searchParams.get("limit") ?? undefined,
+    offset: req.nextUrl.searchParams.get("offset") ?? undefined,
   });
 
-  const entries = await adminAuditRepository.list(query);
-  return successResponse(entries);
+  const result = await adminAuditRepository.list(query);
+  return successResponse(result);
 });

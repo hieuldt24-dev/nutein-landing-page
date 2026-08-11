@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { revalidatePath } from "next/cache";
 import { createdResponse, successResponse } from "@/src/api/response";
 import { withErrorHandler } from "@/src/middlewares/error-handler.middleware";
 import { authenticate, requireRole } from "@/src/middlewares/authenticate.middlware";
@@ -33,5 +34,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const body = await req.json();
   const input = adminBlogInputSchema.parse(body);
   const post = await adminBlogRepository.create(input);
+  // Bài mới publish cần hiện ngay ở /blog và trang chi tiết của nó.
+  revalidatePath("/blog");
+  revalidatePath(`/blog/${post.slug}`);
   return createdResponse(post);
 });

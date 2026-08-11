@@ -7,28 +7,49 @@ const mocks = vi.hoisted(() => ({
 }));
 
 /** Query builder giả — mọi method chain trả về chính nó, awaitable qua `then`. */
-function makeBuilder(result: { data?: unknown; error?: unknown }) {
+function makeBuilder(result: {
+  data?: unknown;
+  error?: unknown;
+  count?: number | null;
+}) {
+  const resolved = {
+    ...result,
+    count:
+      result.count ??
+      (Array.isArray(result.data) ? result.data.length : (result.data ? 1 : 0)),
+  };
   const builder: Record<string, unknown> = {
     select: vi.fn(() => builder),
     eq: vi.fn(() => builder),
     neq: vi.fn(() => builder),
     gte: vi.fn(() => builder),
     lte: vi.fn(() => builder),
+    or: vi.fn(() => builder),
     order: vi.fn(() => builder),
     limit: vi.fn(() => builder),
+    range: vi.fn(() => builder),
     insert: vi.fn(() => builder),
     update: vi.fn(() => builder),
     delete: vi.fn(() => builder),
     is: vi.fn(() => builder),
-    single: vi.fn(async () => result),
-    maybeSingle: vi.fn(async () => result),
-    then: (resolve: (v: unknown) => unknown) => Promise.resolve(result).then(resolve),
+    single: vi.fn(async () => resolved),
+    maybeSingle: vi.fn(async () => resolved),
+    then: (resolve: (v: unknown) => unknown) => Promise.resolve(resolved).then(resolve),
   };
   return builder;
 }
 
 vi.mock("@/lib/supabase", () => ({
   supabaseAdmin: { from: mocks.from },
+}));
+
+// next/server thật: after() throw nếu gọi ngoài request scope (Next quản lý
+// qua AsyncLocalStorage) — không có request nào trong test. Chạy callback
+// ngay (không ai trong file này assert riêng nội dung audit log).
+vi.mock("next/server", () => ({
+  after: (fn: () => unknown) => {
+    void fn();
+  },
 }));
 
 import { adminOrdersRepository } from "./admin-orders.repository";
@@ -74,7 +95,8 @@ describe("adminOrdersRepository.list", () => {
 
     const result = await adminOrdersRepository.list();
 
-    expect(result).toEqual([
+    expect(result.total).toBe(1);
+    expect(result.items).toEqual([
       {
         id: "order-1",
         orderCode: "NT-20260722-AB12",
@@ -104,6 +126,15 @@ describe("adminOrdersRepository.list", () => {
         statusHistory: [],
       },
     ]);
+  });
+
+  it("có limit -> gọi .range(offset, offset+limit-1)", async () => {
+    const builder = makeBuilder({ data: [], error: null, count: 0 });
+    mocks.from.mockReturnValue(builder);
+
+    await adminOrdersRepository.list({ limit: 20, offset: 40 });
+
+    expect(builder.range).toHaveBeenCalledWith(40, 59);
   });
 
   it("lọc theo status khác 'all' -> gọi .eq('status', DB enum)", async () => {

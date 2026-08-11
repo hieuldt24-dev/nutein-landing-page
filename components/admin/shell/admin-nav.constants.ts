@@ -101,13 +101,13 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     items: [
       {
         href: "/admin/users",
-        label: "Users",
+        label: "Người dùng",
         icon: Users,
         match: (p) => p.startsWith("/admin/users"),
       },
       {
         href: "/admin/audit",
-        label: "Audit",
+        label: "Nhật ký",
         icon: ScrollText,
         match: (p) => p.startsWith("/admin/audit"),
       },

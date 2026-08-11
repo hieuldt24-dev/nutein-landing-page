@@ -1,5 +1,6 @@
 import "server-only";
 
+import { after } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { NUTEIN_PRODUCT_DB_ID } from "@/features/product/constants";
 import type {
@@ -128,23 +129,27 @@ async function updateProduct(
   }
 
   const updated = toAdminProduct(data as ProductRow);
-  await auditLogRepository.record({
-    userId: staffUserId,
-    action: "UPDATE",
-    tableName: "products",
-    recordId: NUTEIN_PRODUCT_DB_ID,
-    oldData: {
-      name: current.name,
-      description: current.description,
-      price: current.unitPrice,
-      stock: current.stock,
-    },
-    newData: {
-      name: updated.name,
-      description: updated.description,
-      price: updated.unitPrice,
-      stock: updated.stock,
-    },
+  // Best-effort, không ảnh hưởng response — chạy sau khi Staff đã nhận kết
+  // quả cập nhật thay vì chờ thêm 1 round-trip DB ghi audit log.
+  after(async () => {
+    await auditLogRepository.record({
+      userId: staffUserId,
+      action: "UPDATE",
+      tableName: "products",
+      recordId: NUTEIN_PRODUCT_DB_ID,
+      oldData: {
+        name: current.name,
+        description: current.description,
+        price: current.unitPrice,
+        stock: current.stock,
+      },
+      newData: {
+        name: updated.name,
+        description: updated.description,
+        price: updated.unitPrice,
+        stock: updated.stock,
+      },
+    });
   });
 
   return updated;

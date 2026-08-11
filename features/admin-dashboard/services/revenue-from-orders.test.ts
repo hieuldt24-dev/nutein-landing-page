@@ -49,6 +49,8 @@ describe("buildRevenueSnapshotFromOrders", () => {
     const snap = buildRevenueSnapshotFromOrders(rows);
     expect(snap.todayVnd).toBe(50_000);
     expect(snap.weekVnd).toBe(150_000);
+    expect(snap.previousWeekVnd).toBe(0);
+    expect(snap.weekChangePercent).toBe(100);
     expect(snap.monthOrderCount).toBe(2);
     expect(snap.last7Days).toHaveLength(7);
   });
