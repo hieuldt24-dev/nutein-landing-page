@@ -1,5 +1,6 @@
 import "server-only";
 
+import { after } from "next/server";
 import {
   buildCartSummary,
   resolveCheckoutShippingFee,
@@ -92,7 +93,9 @@ export const checkoutService = {
     // Đảm bảo cartSummary tính theo GIÁ THẬT hiện tại (Staff sửa qua
     // /staff/products) — cache productService là module-level sync, nếu
     // không refresh ở đây sẽ tính theo giá lần refresh gần nhất (có thể cũ).
-    await productService.refreshCatalogCache();
+    // SELECT này kèm luôn `stock` (cùng 1 row products) — dùng lại bên dưới
+    // thay vì bắn thêm 1 round-trip DB riêng cho getAvailableStock().
+    const stockResult = await productService.refreshCatalogCache();
 
     const cartSummary = buildCartSummary({ lines: input.lines });
     if (cartSummary.isEmpty) {
@@ -100,9 +103,13 @@ export const checkoutService = {
     }
 
     // Chặn đặt vượt tồn kho TRƯỚC khi gọi payOS/ghi DB — tránh tạo payment
-    // link hoặc đơn orphan cho số lượng không thể giao.
+    // link hoặc đơn orphan cho số lượng không thể giao. Chỉ fallback sang
+    // query riêng khi refresh ở trên lỗi/thiếu data (best-effort trả null) —
+    // không được phép bỏ qua check tồn kho trong trường hợp đó.
     const requestedUnits = totalRequestedUnits(cartSummary.lines);
-    const availableStock = await orderRepository.getAvailableStock();
+    const availableStock = stockResult
+      ? stockResult.stock
+      : await orderRepository.getAvailableStock();
     if (requestedUnits > availableStock) {
       throw new BadRequestError(
         availableStock > 0
@@ -197,8 +204,12 @@ export const checkoutService = {
     );
 
     // Best-effort — sendOrderConfirmation tự nuốt lỗi, không chặn response
-    // đặt hàng (đơn đã tạo xong dù email gửi lỗi/thiếu cấu hình).
-    await orderEmailService.sendOrderConfirmation(result);
+    // đặt hàng (đơn đã tạo xong dù email gửi lỗi/thiếu cấu hình). Chạy sau
+    // khi response đã gửi (after()) — khách không phải chờ cả lượt gọi
+    // Resend API mới thấy trang "Đặt hàng thành công".
+    after(async () => {
+      await orderEmailService.sendOrderConfirmation(result);
+    });
 
     return result;
   },

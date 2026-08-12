@@ -49,7 +49,8 @@ export function ProductGallery({
               priority={image.id === images[0]?.id}
               aria-hidden={!isActive}
               className={cn(
-                "object-cover transition-[opacity,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                image.fit === "contain" ? "object-contain" : "object-cover",
+                "transition-[opacity,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
                 isActive
                   ? "z-[1] scale-100 opacity-100"
                   : "z-0 scale-[1.04] opacity-0"

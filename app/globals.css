@@ -54,6 +54,15 @@
   --radius-xl: 28px;
 }
 
+:root {
+  --benefit-surface: color-mix(in srgb, var(--color-primary-soft) 82%, var(--color-bg));
+  --audience-surface: linear-gradient(
+    112deg,
+    var(--color-ink),
+    color-mix(in srgb, var(--color-ink) 82%, var(--color-primary-deep))
+  );
+}
+
 /* Font — tham chiếu biến CSS do next/font tạo ra (đặt trên <html>), dùng
    @theme inline vì đây là biến runtime, không phải giá trị tĩnh.            */
 @theme inline {
@@ -302,6 +311,202 @@ h1, h2, h3, h4, h5, h6 {
 .bounce-chars .bc-word {
   display: inline-block;
   white-space: nowrap;
+}
+
+/* Audience — one responsive Nutein surface, with the artwork kept in its native 3:4 frame. */
+.audience-section {
+  background: var(--audience-surface);
+  color: var(--color-bg);
+  overflow: clip;
+}
+
+.audience-section__content {
+  position: relative;
+  isolation: isolate;
+  width: min(100% - 2rem, 75rem);
+  margin-inline: auto;
+  padding-block: clamp(4.5rem, 9vw, 7rem) clamp(4.5rem, 8vw, 6.5rem);
+}
+
+.audience-section__heading {
+  width: min(100%, 45rem);
+  margin-inline: auto;
+  text-align: center;
+}
+
+.audience-section__eyebrow {
+  color: var(--color-primary-soft);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.audience-section__title {
+  margin-block: 0.75rem 1rem;
+  color: var(--color-bg);
+  font-family: var(--font-display);
+  font-size: clamp(2.375rem, 6.5vw, 5.25rem);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 0.98;
+  text-transform: uppercase;
+}
+
+.audience-section__description {
+  color: color-mix(in srgb, var(--color-bg) 76%, transparent);
+  font-size: clamp(1rem, 1.5vw, 1.125rem);
+  line-height: 1.7;
+}
+
+.audience-section__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: clamp(1rem, 2vw, 1.5rem);
+  margin-top: clamp(2.5rem, 6vw, 5rem);
+}
+
+.audience-section__card {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  animation: fadeUp 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.audience-section__card--2 { animation-delay: 120ms; }
+.audience-section__card--3 { animation-delay: 240ms; }
+.audience-section__card--4 { animation-delay: 360ms; }
+
+.audience-section__image {
+  object-fit: cover;
+}
+
+@media (min-width: 40rem) {
+  .audience-section__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 64rem) {
+  .audience-section__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .audience-section__card {
+    animation: none;
+  }
+}
+
+/* Benefits — component-owned geometry keeps the scrub composition responsive. */
+.benefits-section {
+  background: var(--benefit-surface);
+}
+
+/* Homepage hero — old editorial structure with the current product media. */
+.hero-section__headline {
+  font-family: var(--font-display);
+  font-size: clamp(2.75rem, 8.6vw, 7.25rem);
+}
+
+.hero-section__headline--accent {
+  font-size: clamp(2.35rem, 7.6vw, 6.25rem);
+}
+
+.hero-section__glow {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(5rem);
+  animation: hero-ambient-pulse 12s ease-in-out infinite alternate;
+}
+
+.hero-section__glow--center {
+  top: -15%;
+  left: 50%;
+  width: min(85vw, 78rem);
+  aspect-ratio: 1;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--color-primary) 25%, transparent), transparent 72%);
+}
+
+.hero-section__glow--corner {
+  right: -12%;
+  bottom: -16%;
+  width: min(50vw, 46rem);
+  aspect-ratio: 1;
+  background: radial-gradient(circle, color-mix(in srgb, var(--color-lime) 16%, transparent), transparent 76%);
+  animation-delay: -5s;
+}
+
+@keyframes hero-ambient-pulse {
+  to { transform: translate3d(1.5rem, -1.5rem, 0) scale(1.06); }
+}
+
+@media (max-width: 56.25rem) {
+  .hero-section__headline {
+    white-space: normal;
+  }
+
+  .hero-section__visual {
+    max-width: min(27rem, 86vw);
+    margin-top: -1%;
+  }
+}
+
+.benefits-section__container {
+  width: min(100% - 3rem, 75rem);
+  margin-inline: auto;
+}
+
+.benefits-section--static {
+  padding-block: 5rem;
+}
+
+.benefits-section--scroll {
+  --benefit-scroll-height: 270svh;
+  display: none;
+  min-height: var(--benefit-scroll-height);
+}
+
+.benefits-section__stage {
+  position: sticky;
+  top: 0;
+  min-height: 100svh;
+  padding-inline: 1.5rem;
+  overflow: hidden;
+}
+
+.benefits-section__stage-content {
+  position: relative;
+  min-height: 100svh;
+}
+
+.benefits-section__heading-anchor {
+  position: absolute;
+  inset-inline: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.benefits-section__composite {
+  position: absolute;
+  top: var(--benefit-composite-top);
+  right: 0;
+  left: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: var(--benefit-composite-size);
+  margin-inline: auto;
+  overflow: visible;
+}
+
+@media (min-width: 64rem) {
+  .benefits-section--scroll {
+    display: block;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

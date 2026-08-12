@@ -16,7 +16,7 @@ const ADMIN_LINK_LABEL = "Quản Trị";
 const PROMO_CARDS = [
   {
     href: "/product",
-    image: "/images/herosection.png",
+    image: "/media/MJ.png",
     imageAlt: "Protein thực vật Nutein",
     eyebrow: "Sản phẩm",
     title: "Nạp năng lượng sạch từ đạm thực vật",
@@ -25,7 +25,7 @@ const PROMO_CARDS = [
   },
   {
     href: "/about",
-    image: "/images/about.png",
+    image: "/media/MJ2.png",
     imageAlt: "Câu chuyện thương hiệu Nutein",
     eyebrow: "Thương hiệu",
     title: "Câu chuyện đằng sau lối sống lành mạnh",
@@ -88,17 +88,37 @@ export function NavExploreMega({ onNavigate }: NavExploreMegaProps) {
                 alt={card.imageAlt}
                 fill
                 sizes="(max-width: 768px) 100vw, 40vw"
-                className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                className={
+                  card.tone === "primary"
+                    ? "relative z-[1] translate-y-[8%] scale-[1.35] object-contain transition-transform duration-500 group-hover:scale-[1.4]"
+                    : "relative z-[1] translate-x-[4%] translate-y-[9%] scale-[1.14] object-contain object-right transition-transform duration-500 group-hover:scale-[1.19]"
+                }
               />
               <div
                 aria-hidden
                 className={
                   card.tone === "primary"
-                    ? "absolute inset-0 bg-gradient-to-t from-primary-deep/90 via-primary-deep/35 to-transparent"
-                    : "absolute inset-0 bg-gradient-to-t from-ink/85 via-ink/30 to-transparent"
+                    ? "absolute inset-0 z-0 bg-[linear-gradient(145deg,var(--color-primary-soft)_0%,color-mix(in_srgb,var(--color-primary)_42%,var(--color-primary-soft))_100%)]"
+                    : "absolute inset-0 z-0 bg-[linear-gradient(145deg,color-mix(in_srgb,var(--color-ink)_88%,var(--color-primary-deep))_0%,var(--color-ink)_100%)]"
                 }
               />
-              <div className="absolute inset-0 flex flex-col justify-between p-5 md:p-6">
+              <div
+                aria-hidden
+                className={
+                  card.tone === "primary"
+                    ? "absolute -bottom-1/3 -right-1/4 z-0 aspect-square w-[90%] rounded-full bg-primary/35 blur-3xl"
+                    : "absolute -bottom-1/3 -right-1/4 z-0 aspect-square w-[90%] rounded-full bg-primary-deep/45 blur-3xl"
+                }
+              />
+              <div
+                aria-hidden
+                className={
+                  card.tone === "primary"
+                    ? "absolute inset-0 z-[2] bg-gradient-to-t from-primary-deep/88 via-primary-deep/20 to-transparent"
+                    : "absolute inset-0 z-[2] bg-gradient-to-t from-ink/90 via-ink/20 to-transparent"
+                }
+              />
+              <div className="absolute inset-0 z-[3] flex flex-col justify-between p-5 md:p-6">
                 <div>
                   <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-[var(--color-bg)]/80">
                     {card.eyebrow}

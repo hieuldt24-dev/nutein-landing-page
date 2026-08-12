@@ -1,5 +1,6 @@
 import "server-only";
 
+import { after } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { BadRequestError, NotFoundError } from "@/src/errors/app.error";
 import { auditLogRepository } from "@/features/admin-audit/services/audit-log.repository";
@@ -331,13 +332,17 @@ async function updateStatus(
     }
   }
 
-  await auditLogRepository.record({
-    userId: staffUserId,
-    action: "UPDATE",
-    tableName: "orders",
-    recordId: id,
-    oldData: { status: current.status },
-    newData: { status: updatePayload.status, payment_status: updatePayload.payment_status },
+  // Best-effort, không ảnh hưởng response — chạy sau khi Staff đã nhận kết
+  // quả cập nhật trạng thái đơn thay vì chờ thêm 1 round-trip DB ghi audit log.
+  after(async () => {
+    await auditLogRepository.record({
+      userId: staffUserId,
+      action: "UPDATE",
+      tableName: "orders",
+      recordId: id,
+      oldData: { status: current.status },
+      newData: { status: updatePayload.status, payment_status: updatePayload.payment_status },
+    });
   });
 
   const logs = await fetchStatusLogs(id);

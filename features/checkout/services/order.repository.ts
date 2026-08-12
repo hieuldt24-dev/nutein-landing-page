@@ -1,5 +1,6 @@
 import "server-only";
 
+import { after } from "next/server";
 import {
   DEFAULT_PRODUCT_VARIANT_ID,
   NUTEIN_PRODUCT_DB_ID,
@@ -198,17 +199,21 @@ export const orderRepository = {
       throw new Error(`Không lưu được dòng đơn: ${itemError.message}`);
     }
 
-    await auditLogRepository.record({
-      userId,
-      action: "CREATE",
-      tableName: "orders",
-      recordId: row.id,
-      newData: {
-        order_code: row.order_code,
-        status: row.status,
-        payment_method: row.payment_method,
-        final_price: row.final_price,
-      },
+    // Best-effort, không ảnh hưởng response — chạy SAU khi đã trả kết quả
+    // cho khách thay vì bắt khách chờ thêm 1 round-trip DB không cần thiết.
+    after(async () => {
+      await auditLogRepository.record({
+        userId,
+        action: "CREATE",
+        tableName: "orders",
+        recordId: row.id,
+        newData: {
+          order_code: row.order_code,
+          status: row.status,
+          payment_method: row.payment_method,
+          final_price: row.final_price,
+        },
+      });
     });
 
     return row;

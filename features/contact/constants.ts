@@ -27,10 +27,10 @@ export const CONTACT_PAGE_META = {
 
 /** Thông tin hiển thị cột trái (Joy Rush contact info). */
 export const CONTACT_INFO = {
-  email: "hello@nutein.vn",
-  hotline: "1900 xxxx",
-  hotlineHref: "tel:1900xxxx",
-  emailHref: "mailto:hello@nutein.vn",
+  email: "hhs.business.vn@gmail.com",
+  hotline: "0353570977",
+  hotlineHref: "tel:0353570977",
+  emailHref: "mailto:hhs.business.vn@gmail.com",
   socials: [
     { label: "Fanpage", href: "#" },
     { label: "TikTok", href: "#" },

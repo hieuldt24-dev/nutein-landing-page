@@ -8,6 +8,10 @@ interface PolicyPageProps {
   params: Promise<{ slug: string }>;
 }
 
+// ISR — cache 1h, Staff sửa ở /staff/content thấy ngay nhờ
+// revalidatePath(`/policies/${slug}`) gọi trong PATCH app/api/staff/content/[slug]/route.ts.
+export const revalidate = 3600;
+
 export async function generateStaticParams() {
   return policyService.listSlugs().map((slug) => ({ slug }));
 }

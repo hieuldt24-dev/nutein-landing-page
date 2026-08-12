@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { revalidatePath } from "next/cache";
 import { successResponse } from "@/src/api/response";
 import { withErrorHandler } from "@/src/middlewares/error-handler.middleware";
 import { authenticate, requireRole } from "@/src/middlewares/authenticate.middlware";
@@ -26,5 +27,8 @@ export const PATCH = withErrorHandler(async (req: NextRequest) => {
   const body = await req.json();
   const patch = adminProductUpdateSchema.parse(body);
   const product = await adminProductsRepository.updateProduct(patch, user.userId);
+  // PDP dùng ISR (revalidate 1h) — invalidate ngay để khách thấy giá/tồn
+  // kho mới mà không phải chờ hết chu kỳ cache.
+  revalidatePath("/product");
   return successResponse(product);
 });

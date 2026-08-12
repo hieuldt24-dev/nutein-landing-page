@@ -4,6 +4,13 @@ import {
   NUTEIN_PRODUCT,
   NUTEIN_PRODUCT_DETAIL,
 } from "../data/product.mock";
+import {
+  DEFAULT_PRODUCT_GALLERY,
+  DEFAULT_PRODUCT_IMAGE,
+  DEFAULT_PRODUCT_IMAGE_ALT,
+  isLegacyProductGallery,
+  isLegacyProductImage,
+} from "../data/product-media";
 import type {
   Product,
   ProductDetail,
@@ -31,9 +38,10 @@ interface ProductRow {
   description: string | null;
   price: number | string;
   marketing_meta: ProductMarketingMeta | null;
+  stock: number;
 }
 
-const PRODUCT_SELECT = "id, sku, slug, name, description, price, marketing_meta";
+const PRODUCT_SELECT = "id, sku, slug, name, description, price, marketing_meta, stock";
 
 /**
  * Cache module-level — nguồn cho `getProductDetail()`/`getCatalogProduct()`
@@ -56,12 +64,16 @@ function rowToProductDetail(row: ProductRow): ProductDetail {
     unitPrice: Number(row.price),
     currency: "VND",
     rating: NUTEIN_PRODUCT_DETAIL.rating,
-    gallery: meta.gallery?.length ? meta.gallery : NUTEIN_PRODUCT_DETAIL.gallery,
+    gallery: meta.gallery?.length && !isLegacyProductGallery(meta.gallery)
+      ? meta.gallery
+      : DEFAULT_PRODUCT_GALLERY,
     specs: meta.specs?.length ? meta.specs : NUTEIN_PRODUCT_DETAIL.specs,
     variants: meta.variants?.length ? meta.variants : NUTEIN_PRODUCT_DETAIL.variants,
     defaultVariantId: meta.defaultVariantId || DEFAULT_PRODUCT_VARIANT_ID,
-    image: meta.image || NUTEIN_PRODUCT_DETAIL.image,
-    imageAlt: meta.imageAlt || NUTEIN_PRODUCT_DETAIL.imageAlt,
+    image: meta.image && !isLegacyProductImage(meta.image)
+      ? meta.image
+      : DEFAULT_PRODUCT_IMAGE,
+    imageAlt: meta.imageAlt || DEFAULT_PRODUCT_IMAGE_ALT,
     unitLabel: meta.unitLabel || NUTEIN_PRODUCT_DETAIL.unitLabel,
   };
 }
@@ -71,8 +83,16 @@ function rowToProductDetail(row: ProductRow): ProductDetail {
  * làm mới cache. Gọi ở đầu checkout (server) để đảm bảo giá tính tiền đúng
  * giá Staff đang set, và ở client (useCartStore) để giỏ hàng/hiển thị theo
  * kịp thay đổi mà không cần đổi bất kỳ call site sync nào.
+ *
+ * SELECT kèm `stock` để checkout dùng lại luôn giá trị này thay vì phải bắn
+ * thêm 1 query `getAvailableStock()` riêng (cùng 1 row, 2 lượt round-trip
+ * tuần tự trước đây). Cố ý KHÔNG cache stock vào `cachedDetail`/`cachedCatalog`
+ * — 2 biến đó là cache dài hạn dùng lại nhiều nơi (kể cả sync), còn tồn kho
+ * phải luôn là giá trị đọc live tại thời điểm check để không phá bất biến
+ * chặn oversell. Trả `null` khi lỗi/chưa cấu hình (best-effort) — bên gọi tự
+ * fallback sang `orderRepository.getAvailableStock()` nếu cần con số chắc chắn.
  */
-async function refreshCatalogCache(): Promise<void> {
+async function refreshCatalogCache(): Promise<{ stock: number } | null> {
   try {
     const client = getSupabaseClient();
     const { data, error } = await client
@@ -81,9 +101,10 @@ async function refreshCatalogCache(): Promise<void> {
       .eq("id", NUTEIN_PRODUCT_DB_ID)
       .maybeSingle();
 
-    if (error || !data) return;
+    if (error || !data) return null;
 
-    cachedDetail = rowToProductDetail(data as ProductRow);
+    const row = data as ProductRow;
+    cachedDetail = rowToProductDetail(row);
     cachedCatalog = {
       id: cachedDetail.id,
       name: cachedDetail.name,
@@ -92,8 +113,10 @@ async function refreshCatalogCache(): Promise<void> {
       image: cachedDetail.image,
       imageAlt: cachedDetail.imageAlt,
     };
+    return { stock: Number(row.stock) };
   } catch {
     // best-effort — network/config lỗi thì giữ cache cũ, không chặn UI
+    return null;
   }
 }
 
