@@ -3,6 +3,13 @@ import "server-only";
 import { after } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { NUTEIN_PRODUCT_DB_ID } from "@/features/product/constants";
+import {
+  DEFAULT_PRODUCT_GALLERY,
+  DEFAULT_PRODUCT_IMAGE,
+  DEFAULT_PRODUCT_IMAGE_ALT,
+  isLegacyProductGallery,
+  isLegacyProductImage,
+} from "@/features/product/data/product-media";
 import type {
   ProductGalleryImage,
   ProductSpec,
@@ -62,10 +69,12 @@ function toAdminProduct(row: ProductRow): AdminProduct {
     unitPrice: Number(row.price),
     stock: row.stock,
     unitLabel: meta.unitLabel ?? "",
-    image: meta.image ?? "",
-    imageAlt: meta.imageAlt ?? "",
+    image: meta.image && !isLegacyProductImage(meta.image) ? meta.image : DEFAULT_PRODUCT_IMAGE,
+    imageAlt: meta.imageAlt ?? DEFAULT_PRODUCT_IMAGE_ALT,
     defaultVariantId: meta.defaultVariantId ?? "",
-    gallery: meta.gallery ?? [],
+    gallery: meta.gallery?.length && !isLegacyProductGallery(meta.gallery)
+      ? meta.gallery
+      : DEFAULT_PRODUCT_GALLERY,
     specs: meta.specs ?? [],
     variants: meta.variants ?? [],
     updatedAt: row.updated_at,

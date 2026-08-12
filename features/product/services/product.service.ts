@@ -4,6 +4,13 @@ import {
   NUTEIN_PRODUCT,
   NUTEIN_PRODUCT_DETAIL,
 } from "../data/product.mock";
+import {
+  DEFAULT_PRODUCT_GALLERY,
+  DEFAULT_PRODUCT_IMAGE,
+  DEFAULT_PRODUCT_IMAGE_ALT,
+  isLegacyProductGallery,
+  isLegacyProductImage,
+} from "../data/product-media";
 import type {
   Product,
   ProductDetail,
@@ -57,12 +64,16 @@ function rowToProductDetail(row: ProductRow): ProductDetail {
     unitPrice: Number(row.price),
     currency: "VND",
     rating: NUTEIN_PRODUCT_DETAIL.rating,
-    gallery: meta.gallery?.length ? meta.gallery : NUTEIN_PRODUCT_DETAIL.gallery,
+    gallery: meta.gallery?.length && !isLegacyProductGallery(meta.gallery)
+      ? meta.gallery
+      : DEFAULT_PRODUCT_GALLERY,
     specs: meta.specs?.length ? meta.specs : NUTEIN_PRODUCT_DETAIL.specs,
     variants: meta.variants?.length ? meta.variants : NUTEIN_PRODUCT_DETAIL.variants,
     defaultVariantId: meta.defaultVariantId || DEFAULT_PRODUCT_VARIANT_ID,
-    image: meta.image || NUTEIN_PRODUCT_DETAIL.image,
-    imageAlt: meta.imageAlt || NUTEIN_PRODUCT_DETAIL.imageAlt,
+    image: meta.image && !isLegacyProductImage(meta.image)
+      ? meta.image
+      : DEFAULT_PRODUCT_IMAGE,
+    imageAlt: meta.imageAlt || DEFAULT_PRODUCT_IMAGE_ALT,
     unitLabel: meta.unitLabel || NUTEIN_PRODUCT_DETAIL.unitLabel,
   };
 }
