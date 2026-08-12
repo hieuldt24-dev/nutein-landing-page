@@ -1,12 +1,12 @@
 import type { ProductGalleryImage } from "../types";
 
-export const DEFAULT_PRODUCT_IMAGE = "/media/hero-about.png";
+export const DEFAULT_PRODUCT_IMAGE = "/media/product4.png";
 export const DEFAULT_PRODUCT_IMAGE_ALT = "Hộp Protein thực vật Nutein";
 
 export const DEFAULT_PRODUCT_GALLERY: ProductGalleryImage[] = [
   {
     id: "gallery-1",
-    src: "/media/hero-about.png",
+    src: "/media/product4.png",
     alt: "Hộp Protein thực vật Nutein — góc chính",
   },
   {

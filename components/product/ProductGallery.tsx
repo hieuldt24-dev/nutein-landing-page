@@ -36,7 +36,7 @@ export function ProductGallery({
         className
       )}
     >
-      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[18px] border-[1.5px] border-ink bg-primary-soft sm:col-start-1 sm:row-start-1">
+      <div className="relative aspect-[5/4] w-full overflow-hidden rounded-[18px] border-[1.5px] border-ink bg-primary-soft sm:col-start-1 sm:row-start-1">
         {images.map((image) => {
           const isActive = image.id === active.id;
           return (
