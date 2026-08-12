@@ -1,129 +1,214 @@
 "use client";
 
-import { type ReactNode } from "react";
 import Image from "next/image";
-import { Smile, Shield, Sparkles, Globe, Check } from "lucide-react";
-import { SectionHeading } from "@/components/ui/SectionHeading";
-import { Badge } from "@/components/ui/Badge";
-import { RotatingText } from "@/components/ui/RotatingText";
+import { useEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
+import { motion, useReducedMotion, useScroll, useTransform } from "motion/react";
+import type { MotionValue } from "motion/react";
+import { BounceChars } from "@/components/ui/BounceChars";
+import benefitOne from "../../public/media/4 card task 3 t\u00e1ch/4-o\u0302-task-3_01.jpg";
+import benefitTwo from "../../public/media/4 card task 3 t\u00e1ch/4-o\u0302-task-3_02.jpg";
+import benefitThree from "../../public/media/4 card task 3 t\u00e1ch/4-o\u0302-task-3_03.jpg";
+import benefitFour from "../../public/media/4 card task 3 t\u00e1ch/4-o\u0302-task-3_04.jpg";
 
-interface Benefit {
-  icon: ReactNode;
-  title: string;
-  desc: string;
+const BENEFIT_CARDS = [
+  { src: benefitOne, alt: "Protein th\u1ef1c v\u1eadt \u0111a ngu\u1ed3n" },
+  { src: benefitTwo, alt: "Nutein kh\u00f4ng ch\u1ec9 l\u00e0 protein" },
+  { src: benefitThree, alt: "Nutein \u0111\u1ec3 b\u1ed5 sung m\u1ed7i ng\u00e0y" },
+  { src: benefitFour, alt: "Nutein \u0111\u1ed3ng h\u00e0nh c\u00f9ng h\u00e0nh tr\u00ecnh ph\u1ee5c h\u1ed3i" },
+];
+
+const BENEFIT_DESKTOP_QUERY = "(min-width: 1024px)";
+const BENEFIT_SCROLL_RANGE: number[] = [0.44, 0.98];
+const BENEFIT_REVEAL_RANGE: number[] = [0.44, 0.56, 0.98];
+const BENEFIT_HEADING_RANGE: number[] = [0, 0.42];
+const BENEFIT_COMPOSITE_WIDTH_RATIO = 0.74;
+const BENEFIT_COMPOSITE_HEIGHT_RATIO = 0.72;
+const BENEFIT_COMPOSITE_MAX_SIZE = 1088;
+const BENEFIT_HEADING_TOP_RATIO = 0.06;
+const BENEFIT_HEADING_TO_COMPOSITE_GAP_RATIO = 0.035;
+const BENEFIT_COMPOSITE_BOTTOM_INSET_RATIO = 0.06;
+
+type BenefitCard = (typeof BENEFIT_CARDS)[number];
+
+function useDesktopLayout() {
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    const query = window.matchMedia(BENEFIT_DESKTOP_QUERY);
+    const update = () => setIsDesktop(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+
+  return isDesktop;
 }
 
-const BENEFITS: Benefit[] = [
-  {
-    icon: <Smile size={22} strokeWidth={2.2} />,
-    title: "Nhẹ bụng, Dễ tiêu hóa",
-    desc: "Không chứa Lactose và Gluten - hai tác nhân chính gây chướng bụng. Nhờ đạm peptide siêu nhỏ từ hạt hữu cơ thủy phân, bạn sẽ cảm thấy bụng luôn êm dịu, dễ chịu.",
-  },
-  {
-    icon: <Shield size={22} strokeWidth={2.2} />,
-    title: "Bảo vệ hệ tim mạch",
-    desc: "Hàm lượng Cholesterol bằng 0 cùng nguồn chất béo chưa bão hòa dồi dào từ hạt óc chó giúp làm sạch mạch máu, kiểm soát huyết áp và bảo vệ trái tim khỏe mạnh.",
-  },
-  {
-    icon: <Sparkles size={22} strokeWidth={2.2} />,
-    title: "Trẻ hóa làn da, Giữ vóc dáng",
-    desc: "Chứa nhiều chất chống oxy hóa tự nhiên và vitamin E từ rau củ quả giúp nuôi dưỡng làn da sáng khỏe, đồng thời hỗ trợ kiểm soát calo nạp vào cho vóc dáng thon gọn.",
-  },
-  {
-    icon: <Globe size={22} strokeWidth={2.2} />,
-    title: "Bền vững cho môi trường",
-    desc: "Canh tác nguồn đạm thực vật tiêu tốn ít hơn 90% lượng nước và tạo ra lượng khí thải nhà kính cực thấp so với đạm động vật, góp phần bảo vệ hành tinh xanh.",
-  },
-];
+function useViewportSize() {
+  const [viewport, setViewport] = useState({ width: 0, height: 0 });
 
-const COMMITMENTS = [
-  "Không bổ sung đường hóa học",
-  "Không chứa Gluten & Lactose",
-  "Không biến đổi gen (Non-GMO)",
-  "Không chất bảo quản nhân tạo",
-];
+  useEffect(() => {
+    const update = () => setViewport({ width: window.innerWidth, height: window.innerHeight });
+    const observer = new ResizeObserver(update);
 
-export default function BenefitsSection() {
+    update();
+    observer.observe(document.documentElement);
+    window.addEventListener("resize", update);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, []);
+
+  return viewport;
+}
+
+function useElementHeight(elementRef: RefObject<HTMLElement | null>) {
+  const [height, setHeight] = useState(0);
+
+  useEffect(() => {
+    const element = elementRef.current;
+    if (!element) return;
+
+    const update = () => setHeight(element.getBoundingClientRect().height);
+    const observer = new ResizeObserver(update);
+    update();
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [elementRef]);
+
+  return height;
+}
+
+function BenefitImage({ card, priority = false, className = "" }: { card: BenefitCard; priority?: boolean; className?: string }) {
   return (
-    <section id="kien-thuc" className="relative overflow-hidden bg-primary-soft/40 py-24 px-6">
-      <div className="max-w-[1200px] mx-auto">
-        <div className="benefits-split grid gap-14" style={{ gridTemplateColumns: "1.1fr 0.9fr" }}>
-          {/* Column 1 */}
-          <div className="flex flex-col gap-9">
-            <SectionHeading eyebrow="Giá trị sức khỏe" align="left" className="text-[clamp(36px,5.5vw,72px)] tracking-[-0.03em]">
-              Lợi ích vượt trội<br />từ đạm thực vật sạch
-            </SectionHeading>
-            <p className="text-text-body text-[15px] leading-relaxed -mt-4">
-              Khoa học đã chứng minh đạm thực vật hữu cơ là chìa khóa vàng giúp thanh lọc cơ thể nhẹ nhàng, phòng ngừa các bệnh mạn tính và kéo dài tuổi thọ dẻo dai.
-            </p>
+    <article className={`relative aspect-square overflow-hidden ${className}`}>
+      <Image
+        src={card.src}
+        alt={card.alt}
+        fill
+        priority={priority}
+        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 40vw, 22vw"
+        className="object-cover"
+      />
+    </article>
+  );
+}
 
-            <div className="flex flex-col gap-7">
-              {BENEFITS.map((item, idx) => (
-                <div
-                  key={idx}
-                  className="animate-fade-up flex gap-5 items-start"
-                  style={{ animationDelay: `${idx * 0.12}s` }}
-                >
-                  <div className="w-12 h-12 rounded-2xl bg-primary-soft text-primary-deep flex items-center justify-center shrink-0">
-                    {item.icon}
-                  </div>
-                  <div>
-                    <h3 className="font-display font-extrabold text-base text-ink tracking-[-0.01em] mb-1.5">{item.title}</h3>
-                    <p className="text-[13.5px] text-text-body leading-relaxed">{item.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+function Heading({ motionStyle, elementRef }: { motionStyle?: { y: MotionValue<number> }; elementRef?: RefObject<HTMLDivElement | null> }) {
+  return (
+    <motion.div ref={elementRef} style={motionStyle} className="mb-10 text-center lg:mb-0">
+      <p className="mb-2.5 text-xs font-extrabold uppercase tracking-[0.18em] text-primary">
+        {"Gi\u00e1 tr\u1ecb s\u1ee9c kho\u1ebb"}
+      </p>
+      <h2 className="mx-auto max-w-[20ch] font-black text-[clamp(42px,6.25vw,84px)] leading-[1.05] tracking-[-0.03em] text-ink">
+        <BounceChars>{"L\u1ee3i \u00edch v\u01b0\u1ee3t tr\u1ed9i t\u1eeb \u0111\u1ea1m th\u1ef1c v\u1eadt s\u1ea1ch"}</BounceChars>
+      </h2>
+    </motion.div>
+  );
+}
+
+function StaticBenefits({ hideAtDesktop }: { hideAtDesktop: boolean }) {
+  return (
+    <section id="kien-thuc" className={`benefits-section benefits-section--static ${hideAtDesktop ? "lg:hidden" : ""}`}>
+      <div className="benefits-section__container">
+        <Heading />
+        <div className="mx-auto grid max-w-[44rem] grid-cols-2 overflow-hidden rounded-[var(--radius-xl)]">
+          {BENEFIT_CARDS.map((card, index) => (
+            <BenefitImage key={card.src.src} card={card} priority={index === 0} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function BenefitCardGroup({
+  cards,
+  side,
+  progress,
+  viewportWidth,
+  compositeSize,
+}: {
+  cards: [BenefitCard, BenefitCard];
+  side: "left" | "right";
+  progress: MotionValue<number>;
+  viewportWidth: number;
+  compositeSize: number;
+}) {
+  const x = useTransform(
+    progress,
+    BENEFIT_SCROLL_RANGE,
+    [side === "left" ? -(viewportWidth + compositeSize / 2) : viewportWidth + compositeSize / 2, 0],
+  );
+  const opacity = useTransform(progress, BENEFIT_REVEAL_RANGE, [0, 1, 1]);
+  const cornerClasses = side === "left"
+    ? ["rounded-tl-[var(--radius-xl)]", "rounded-bl-[var(--radius-xl)]"]
+    : ["rounded-tr-[var(--radius-xl)]", "rounded-br-[var(--radius-xl)]"];
+
+  return (
+    <motion.div style={{ x, opacity }} className="grid grid-rows-2">
+      {cards.map((card, index) => (
+        <BenefitImage key={card.src.src} card={card} priority={side === "left" && index === 0} className={cornerClasses[index]} />
+      ))}
+    </motion.div>
+  );
+}
+
+function ScrollBenefits() {
+  const sectionRef = useRef<HTMLElement>(null);
+  const headingRef = useRef<HTMLDivElement>(null);
+  const { width: viewportWidth, height: viewportHeight } = useViewportSize();
+  const headingHeight = useElementHeight(headingRef);
+  const { scrollYProgress } = useScroll({ target: sectionRef, offset: ["start start", "end end"] });
+  const headingTop = viewportHeight * BENEFIT_HEADING_TOP_RATIO;
+  const compositeTop = headingTop + headingHeight + viewportHeight * BENEFIT_HEADING_TO_COMPOSITE_GAP_RATIO;
+  const compositeSize = Math.min(
+    viewportWidth * BENEFIT_COMPOSITE_WIDTH_RATIO,
+    viewportHeight * BENEFIT_COMPOSITE_HEIGHT_RATIO,
+    viewportHeight - compositeTop - viewportHeight * BENEFIT_COMPOSITE_BOTTOM_INSET_RATIO,
+    BENEFIT_COMPOSITE_MAX_SIZE,
+  );
+  const headingFinalY = headingTop - (viewportHeight / 2 - headingHeight / 2);
+  const headingY = useTransform(
+    scrollYProgress,
+    BENEFIT_HEADING_RANGE,
+    [0, headingFinalY],
+  );
+
+  return (
+    <section
+      ref={sectionRef}
+      id="kien-thuc"
+      className="benefits-section benefits-section--scroll"
+      style={{
+        "--benefit-composite-size": `${compositeSize}px`,
+        "--benefit-composite-top": `${compositeTop}px`,
+      } as CSSProperties}
+    >
+      <div className="benefits-section__stage">
+        <div className="benefits-section__container benefits-section__stage-content">
+          <div className="benefits-section__heading-anchor">
+            <Heading elementRef={headingRef} motionStyle={{ y: headingY }} />
           </div>
-
-          {/* Column 2 — ảnh sản phẩm bouncing + rotating text + badge cam kết */}
-          <div className="benefits-visual-col relative flex items-center justify-center min-h-[440px]">
-            <div
-              aria-hidden
-              className="absolute w-[90%] h-[90%] rounded-full blur-[20px] z-0"
-              style={{ background: "radial-gradient(circle, rgba(226,165,80,0.16) 0%, transparent 70%)" }}
-            />
-
-            {/* Rotating text — z-[1], nằm sau image, overlap ở góc dưới trái */}
-            <RotatingText
-              radius={84}
-              fontSize={9.5}
-              duration={12}
-              color="rgba(192,134,53,0.85)"
-              className="animate-badge-pop absolute bottom-[12%] -left-10 z-[1]"
-              style={{ animationDelay: "0.4s" }}
-            />
-
-            {/* Main image — z-[2] nổi trên vòng chữ, bouncing */}
-            <div
-              className="relative z-[2] w-full max-w-[460px] aspect-[4/5] rounded-[32px] overflow-hidden"
-              style={{
-                boxShadow: "0 0 0 5px #C08635, 0 24px 72px rgba(0,0,0,0.14)",
-                animation: "floatYSlowRotated 7s ease-in-out infinite",
-              }}
-            >
-              <Image src="/images/example.jpg" alt="Nutein" fill sizes="(max-width: 900px) 90vw, 460px" className="object-cover" />
-            </div>
-
-            <div className="animate-badge-pop absolute top-4 -right-2 md:-right-6 z-[3] bg-surface rounded-3xl border border-[color:var(--color-border)] shadow-lg px-6 py-5 w-[210px] flex flex-col gap-3" style={{ animationDelay: "0.6s" }}>
-              <Badge color="primary" size="sm" className="self-start uppercase">
-                Cam kết 4 Không
-              </Badge>
-              <div className="flex flex-col gap-2 text-left">
-                {COMMITMENTS.map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <span className="w-4 h-4 rounded-full bg-primary-soft text-primary-deep flex items-center justify-center shrink-0">
-                      <Check size={10} strokeWidth={3} />
-                    </span>
-                    <span className="text-[11.5px] font-bold text-text-body leading-tight">{item}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+          <div className="benefits-section__composite">
+            <BenefitCardGroup cards={[BENEFIT_CARDS[0], BENEFIT_CARDS[2]]} side="left" progress={scrollYProgress} viewportWidth={viewportWidth} compositeSize={compositeSize} />
+            <BenefitCardGroup cards={[BENEFIT_CARDS[1], BENEFIT_CARDS[3]]} side="right" progress={scrollYProgress} viewportWidth={viewportWidth} compositeSize={compositeSize} />
           </div>
         </div>
       </div>
-
     </section>
   );
+}
+
+export default function BenefitsSection() {
+  const isDesktop = useDesktopLayout();
+  const reducedMotion = useReducedMotion();
+
+  if (reducedMotion || !isDesktop) {
+    return <StaticBenefits hideAtDesktop={!reducedMotion} />;
+  }
+
+  return <ScrollBenefits />;
 }

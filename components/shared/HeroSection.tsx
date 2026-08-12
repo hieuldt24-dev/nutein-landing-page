@@ -1,125 +1,62 @@
-"use client";
-
-import type { MouseEvent } from "react";
 import Image from "next/image";
 import { CtaCluster } from "@/components/ui/CtaCluster";
-import { BounceChars } from "@/components/ui/BounceChars";
-import { useAddToCart } from "@/lib/useAddToCart";
+import productVisual from "@/public/media/MJ.png";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Sub-components
-// ─────────────────────────────────────────────────────────────────────────────
+const HERO_CTA_SIZE = 72;
+const HERO_CTA_FONT_SIZE = 18;
+const HERO_CTA_ICON_SIZE = 26;
+const HERO_CTA_LABEL_PADDING = "2.25rem";
 
-function MeshBg() {
+function HeroAtmosphere() {
   return (
-    <div aria-hidden className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-      <div className="absolute inset-0 bg-gradient-to-b from-primary-soft via-primary-soft/60 to-bg" />
-      <div
-        className="absolute -top-[15%] left-1/2 -translate-x-1/2 w-[85vw] h-[85vw] rounded-full blur-[80px]"
-        style={{
-          background:
-            "radial-gradient(circle, rgba(226,165,80,0.24) 0%, rgba(192,134,53,0.06) 55%, transparent 75%)",
-          animation: "ambientPulse 12s infinite ease-in-out alternate",
-        }}
-      />
-      <div
-        className="absolute -bottom-[10%] -right-[10%] w-[50vw] h-[50vw] rounded-full blur-[60px]"
-        style={{
-          background:
-            "radial-gradient(circle, rgba(71,114,54,0.1) 0%, rgba(196,226,147,0.04) 60%, transparent 80%)",
-          animation: "ambientPulse 15s infinite ease-in-out alternate-reverse",
-        }}
-      />
-      <div
-        className="absolute inset-0 opacity-90"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(53,30,41,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(53,30,41,0.025) 1px, transparent 1px)",
-          backgroundSize: "48px 48px",
-        }}
-      />
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,var(--color-primary-soft),color-mix(in_srgb,var(--color-primary-soft)_62%,var(--color-bg)))]" />
+      <div className="hero-section__glow hero-section__glow--center" />
+      <div className="hero-section__glow hero-section__glow--corner" />
+      <div className="absolute inset-0 opacity-70 [background-image:linear-gradient(color-mix(in_srgb,var(--color-ink)_3%,transparent)_1px,transparent_1px),linear-gradient(90deg,color-mix(in_srgb,var(--color-ink)_3%,transparent)_1px,transparent_1px)] [background-size:3rem_3rem]" />
     </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Main
-// ─────────────────────────────────────────────────────────────────────────────
 export default function HeroSection() {
-  const addToCart = useAddToCart();
-
-  const handleBuyNow = (e: MouseEvent) => {
-    e.preventDefault();
-    addToCart();
-  };
-
   return (
-    <section
-      id="hero"
-      aria-label="Hero – Nutein Protein thực vật"
-      className="hero-section relative min-h-[calc(100vh-40px)] flex flex-col items-center justify-center overflow-hidden pt-[104px] pb-10"
-    >
-      <MeshBg />
+    <section id="hero" aria-label="Hero Nutein Protein thực vật" className="hero-section relative flex min-h-[calc(100svh-2.5rem)] flex-col items-center justify-center overflow-hidden px-6 pb-10 pt-32 sm:pt-36">
+      <HeroAtmosphere />
 
-      {/* Oversized headline — bounce per-char kiểu Joy Rush */}
-      <h1 className="hero-headline relative z-[2] mt-0 text-center font-black uppercase text-ink leading-[0.9] tracking-[-0.06em] whitespace-nowrap">
-        <BounceChars staggerMs={26}>Nạp năng lượng</BounceChars>
-      </h1>
-      <h1 className="hero-headline hero-headline--accent relative z-[2] -mt-[0.08em] mb-2 text-center font-black uppercase leading-[0.9] tracking-[-0.06em] whitespace-nowrap text-primary-deep">
-        <BounceChars staggerMs={26} delayMs={340}>
+      <div className="relative z-[1] flex w-full max-w-[90rem] flex-col items-center">
+        <h1 className="hero-section__headline font-display text-center font-bold uppercase leading-[0.9] tracking-[-0.03em] text-ink">
+          Nạp năng lượng
+        </h1>
+        <p className="hero-section__headline hero-section__headline--accent -mt-[0.08em] font-display text-center font-bold uppercase leading-[0.9] tracking-[-0.03em] text-primary-deep">
           100% Protein thực vật
-        </BounceChars>
-      </h1>
+        </p>
 
-      {/* Product visual + CTA: khoảng thở giữa headline / ảnh / nút */}
-      <div className="hero-visual relative z-[2] w-full max-w-[520px] aspect-square -mt-[6%] mb-2 flex flex-col items-center justify-center">
-        <div
-          aria-hidden
-          className="absolute w-[74%] h-[74%] rounded-full blur-[22px] z-0"
-          style={{
-            background:
-              "radial-gradient(circle, rgba(226,165,80,0.3) 0%, rgba(192,134,53,0.08) 50%, transparent 70%)",
-            animation: "pulseCircle 5s infinite ease-in-out",
-          }}
-        />
-
-        <div
-          className="relative w-full h-full z-[1]"
-          style={{ animation: "heroFloatYSlow 7s ease-in-out infinite" }}
-        >
-          <Image
-            src="/images/herosection.png"
-            alt="Nutein Organic Fuel – protein thực vật với nguyên liệu tự nhiên"
-            fill
-            sizes="(max-width: 900px) 90vw, 560px"
-            priority
-            className="object-contain object-center"
-            style={{
-              mixBlendMode: "multiply",
-              filter: "drop-shadow(0 32px 64px rgba(192,134,53,0.28))",
-              transform: "scale(1.14)",
-            }}
-          />
+        <div className="hero-section__visual relative mt-2 mb-0 flex aspect-[4/3] w-full max-w-[37rem] items-center justify-center overflow-hidden">
+          <div aria-hidden className="absolute z-0 aspect-square w-3/4 rounded-full bg-[radial-gradient(circle,color-mix(in_srgb,var(--color-primary)_35%,transparent)_0%,transparent_70%)] blur-2xl" />
+          <div className="animate-float-slow pointer-events-none relative z-[1] size-full">
+            <Image
+              src={productVisual}
+              alt="Hộp Nutein cùng hạt hạnh nhân"
+              fill
+              priority
+              sizes="(max-width: 640px) 86vw, (max-width: 900px) 70vw, 37rem"
+              className="-translate-y-[3%] scale-[1.35] object-contain [filter:drop-shadow(0_2rem_4rem_color-mix(in_srgb,var(--color-primary-deep)_28%,transparent))]"
+            />
+          </div>
         </div>
 
-        {/* CTA — xuống nhẹ so với mép ảnh, tránh dính sát */}
-        <div
-          className="relative z-[3] -mt-[6%] animate-fade-up"
-          style={{ animationDelay: "0.25s" }}
-        >
+        <div className="relative z-10 -mt-4 animate-fade-up" style={{ animationDelay: "0.25s" }}>
           <CtaCluster
             label="Mua ngay"
-            href="/#san-pham"
-            onClick={handleBuyNow}
-            size={70}
-            fontSize={20}
-            fontWeight={900}
-            labelPaddingX="2.4rem"
-            iconSize={26}
+            href="#san-pham"
+            size={HERO_CTA_SIZE}
+            fontSize={HERO_CTA_FONT_SIZE}
+            fontWeight={800}
+            labelPaddingX={HERO_CTA_LABEL_PADDING}
+            iconSize={HERO_CTA_ICON_SIZE}
           />
         </div>
       </div>
     </section>
   );
 }
-

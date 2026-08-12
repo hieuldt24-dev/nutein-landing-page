@@ -26,9 +26,9 @@ export default function Home() {
       </div>
       <main>
         <IntroSection />
-        <DifferentiatorsSection />
-        <TargetAudienceSection />
         <BenefitsSection />
+        <TargetAudienceSection />
+        <DifferentiatorsSection />
         <TestimonialsSection />
       </main>
     </>
