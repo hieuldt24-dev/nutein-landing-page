@@ -543,7 +543,7 @@ export function AdminProductEditor() {
               {draft.gallery.map((g, i) => (
                 <div key={g.id} className="w-[100px]">
                   <p className="mb-1.5 truncate text-[11px] font-bold tracking-[0.04em] text-text-muted uppercase">
-                    Gallery {i + 1}
+                    Thành phần {i + 1}
                   </p>
                   <div className="group relative aspect-square overflow-hidden rounded-[12px] bg-sky/40">
                     {g.src ? (
