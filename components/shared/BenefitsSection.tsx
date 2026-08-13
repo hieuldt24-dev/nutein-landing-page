@@ -18,9 +18,7 @@ const BENEFIT_CARDS = [
 ];
 
 const BENEFIT_DESKTOP_QUERY = "(min-width: 1024px)";
-const BENEFIT_SCROLL_RANGE: number[] = [0.44, 0.98];
-const BENEFIT_REVEAL_RANGE: number[] = [0.44, 0.56, 0.98];
-const BENEFIT_HEADING_RANGE: number[] = [0, 0.42];
+const BENEFIT_ENTRANCE_RANGE: number[] = [0, 0.36];
 const BENEFIT_COMPOSITE_WIDTH_RATIO = 0.74;
 const BENEFIT_COMPOSITE_HEIGHT_RATIO = 0.72;
 const BENEFIT_COMPOSITE_MAX_SIZE = 1088;
@@ -81,14 +79,14 @@ function useElementHeight(elementRef: RefObject<HTMLElement | null>) {
   return height;
 }
 
-function BenefitImage({ card, priority = false, className = "" }: { card: BenefitCard; priority?: boolean; className?: string }) {
+function BenefitImage({ card, className = "" }: { card: BenefitCard; className?: string }) {
   return (
     <article className={`relative aspect-square overflow-hidden ${className}`}>
       <Image
         src={card.src}
         alt={card.alt}
         fill
-        priority={priority}
+        loading="eager"
         sizes="(max-width: 640px) 50vw, (max-width: 1024px) 40vw, 22vw"
         className="object-cover"
       />
@@ -115,8 +113,8 @@ function StaticBenefits({ hideAtDesktop }: { hideAtDesktop: boolean }) {
       <div className="benefits-section__container">
         <Heading />
         <div className="mx-auto grid max-w-[44rem] grid-cols-2 overflow-hidden rounded-[var(--radius-xl)]">
-          {BENEFIT_CARDS.map((card, index) => (
-            <BenefitImage key={card.src.src} card={card} priority={index === 0} />
+          {BENEFIT_CARDS.map((card) => (
+            <BenefitImage key={card.src.src} card={card} />
           ))}
         </div>
       </div>
@@ -129,28 +127,25 @@ function BenefitCardGroup({
   side,
   progress,
   viewportWidth,
-  compositeSize,
 }: {
   cards: [BenefitCard, BenefitCard];
   side: "left" | "right";
   progress: MotionValue<number>;
   viewportWidth: number;
-  compositeSize: number;
 }) {
   const x = useTransform(
     progress,
-    BENEFIT_SCROLL_RANGE,
-    [side === "left" ? -(viewportWidth + compositeSize / 2) : viewportWidth + compositeSize / 2, 0],
+    BENEFIT_ENTRANCE_RANGE,
+    [side === "left" ? -viewportWidth / 2 : viewportWidth / 2, 0],
   );
-  const opacity = useTransform(progress, BENEFIT_REVEAL_RANGE, [0, 1, 1]);
   const cornerClasses = side === "left"
     ? ["rounded-tl-[var(--radius-xl)]", "rounded-bl-[var(--radius-xl)]"]
     : ["rounded-tr-[var(--radius-xl)]", "rounded-br-[var(--radius-xl)]"];
 
   return (
-    <motion.div style={{ x, opacity }} className="grid grid-rows-2">
+    <motion.div style={{ x }} className="grid grid-rows-2">
       {cards.map((card, index) => (
-        <BenefitImage key={card.src.src} card={card} priority={side === "left" && index === 0} className={cornerClasses[index]} />
+        <BenefitImage key={card.src.src} card={card} className={cornerClasses[index]} />
       ))}
     </motion.div>
   );
@@ -161,7 +156,7 @@ function ScrollBenefits() {
   const headingRef = useRef<HTMLDivElement>(null);
   const { width: viewportWidth, height: viewportHeight } = useViewportSize();
   const headingHeight = useElementHeight(headingRef);
-  const { scrollYProgress } = useScroll({ target: sectionRef, offset: ["start start", "end end"] });
+  const { scrollYProgress } = useScroll({ target: sectionRef, offset: ["start start", "end start"] });
   const headingTop = viewportHeight * BENEFIT_HEADING_TOP_RATIO;
   const compositeTop = headingTop + headingHeight + viewportHeight * BENEFIT_HEADING_TO_COMPOSITE_GAP_RATIO;
   const compositeSize = Math.min(
@@ -173,7 +168,7 @@ function ScrollBenefits() {
   const headingFinalY = headingTop - (viewportHeight / 2 - headingHeight / 2);
   const headingY = useTransform(
     scrollYProgress,
-    BENEFIT_HEADING_RANGE,
+    BENEFIT_ENTRANCE_RANGE,
     [0, headingFinalY],
   );
 
@@ -193,8 +188,8 @@ function ScrollBenefits() {
             <Heading elementRef={headingRef} motionStyle={{ y: headingY }} />
           </div>
           <div className="benefits-section__composite">
-            <BenefitCardGroup cards={[BENEFIT_CARDS[0], BENEFIT_CARDS[2]]} side="left" progress={scrollYProgress} viewportWidth={viewportWidth} compositeSize={compositeSize} />
-            <BenefitCardGroup cards={[BENEFIT_CARDS[1], BENEFIT_CARDS[3]]} side="right" progress={scrollYProgress} viewportWidth={viewportWidth} compositeSize={compositeSize} />
+            <BenefitCardGroup cards={[BENEFIT_CARDS[0], BENEFIT_CARDS[2]]} side="left" progress={scrollYProgress} viewportWidth={viewportWidth} />
+            <BenefitCardGroup cards={[BENEFIT_CARDS[1], BENEFIT_CARDS[3]]} side="right" progress={scrollYProgress} viewportWidth={viewportWidth} />
           </div>
         </div>
       </div>

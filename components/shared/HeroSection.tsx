@@ -38,7 +38,8 @@ export default function HeroSection() {
               src={productVisual}
               alt="Hộp Nutein cùng hạt hạnh nhân"
               fill
-              priority
+              loading="eager"
+              fetchPriority="high"
               sizes="(max-width: 640px) 86vw, (max-width: 900px) 70vw, 37rem"
               className="-translate-y-[3%] scale-[1.35] object-contain [filter:drop-shadow(0_2rem_4rem_color-mix(in_srgb,var(--color-primary-deep)_28%,transparent))]"
             />
