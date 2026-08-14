@@ -1,7 +1,7 @@
 ﻿import type { BlogCategory, RecipeFilter } from "./types";
 
 export const BLOG_PAGE_META = {
-  title: "Kiến thức | Nutein",
+  title: "Blog | Nutein",
   description:
     "Công thức, protein thực vật, healthy lifestyle và dinh dưỡng — kiến thức giúp bạn nuôi dưỡng lối sống lành mạnh cùng Nutein.",
 } as const;

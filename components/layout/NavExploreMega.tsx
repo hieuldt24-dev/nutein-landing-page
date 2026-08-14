@@ -7,7 +7,7 @@ import { useAuthStore } from "@/lib/useAuthStore";
 
 export const EXPLORE_LINKS = [
   { label: "Về chúng tôi", href: "/about" },
-  { label: "Kiến thức", href: "/blog" },
+  { label: "Blog", href: "/blog" },
   { label: "Liên hệ", href: "/contact" },
 ] as const;
 

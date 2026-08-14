@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
   cancelPaymentLink: vi.fn(),
   sendOrderConfirmation: vi.fn(),
   afterCallbacks: [] as Array<() => unknown>,
-  refreshCatalogCache: vi.fn(),
+  refreshProductCatalogServer: vi.fn(),
 }));
 
 /**
@@ -57,10 +57,14 @@ vi.mock("./order-email.service", () => ({
   },
 }));
 
-// refreshCatalogCache gọi Supabase thật (getSupabaseClient) — stub thành
+// refreshProductCatalogServer gọi Supabase thật (getSupabaseClient) — stub thành
 // no-op trong test, giữ nguyên toàn bộ hàm sync còn lại (resolveVariant,
 // getProductDetail...) để totalRequestedUnits/buildCartSummary vẫn chạy
 // đúng trên data mock có sẵn.
+vi.mock("@/features/product/services/product-catalog.server", () => ({
+  refreshProductCatalogServer: mocks.refreshProductCatalogServer,
+}));
+
 vi.mock("@/features/product/services/product.service", async (importOriginal) => {
   const actual = await importOriginal<
     typeof import("@/features/product/services/product.service")
@@ -68,7 +72,6 @@ vi.mock("@/features/product/services/product.service", async (importOriginal) =>
   return {
     productService: {
       ...actual.productService,
-      refreshCatalogCache: mocks.refreshCatalogCache,
     },
   };
 });
@@ -113,7 +116,7 @@ describe("checkoutService.createOrder", () => {
     // Mặc định giả lập refresh "không có data kèm stock" (null) — buộc rơi
     // vào fallback getAvailableStock() như hành vi cũ, giữ nguyên các test
     // hiện có. Test riêng cho nhánh gộp-query tự override giá trị này.
-    mocks.refreshCatalogCache.mockResolvedValue(null);
+    mocks.refreshProductCatalogServer.mockResolvedValue(null);
     mocks.getAvailableStock.mockResolvedValue(9999);
     mocks.sendOrderConfirmation.mockResolvedValue(undefined);
   });
@@ -199,7 +202,7 @@ describe("checkoutService.createOrder", () => {
   });
 
   it("refreshCatalogCache trả kèm stock → dùng luôn, KHÔNG gọi getAvailableStock riêng", async () => {
-    mocks.refreshCatalogCache.mockResolvedValue({ stock: 9999 });
+    mocks.refreshProductCatalogServer.mockResolvedValue({ stock: 9999 });
     mocks.createOrder.mockResolvedValue(orderRow);
 
     const result = await checkoutService.createOrder("user-1", baseInput);
@@ -209,7 +212,7 @@ describe("checkoutService.createOrder", () => {
   });
 
   it("refreshCatalogCache trả stock không đủ → BadRequestError, không cần gọi getAvailableStock riêng", async () => {
-    mocks.refreshCatalogCache.mockResolvedValue({ stock: 0 });
+    mocks.refreshProductCatalogServer.mockResolvedValue({ stock: 0 });
 
     await expect(
       checkoutService.createOrder("user-1", { ...baseInput, paymentMethod: "bank_transfer" }),
