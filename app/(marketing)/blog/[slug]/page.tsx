@@ -62,7 +62,7 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
           href="/blog"
           className="text-[12px] font-extrabold tracking-[0.14em] text-ink/50 uppercase transition-colors hover:text-primary-deep"
         >
-          ← Kiến thức
+          ← Blog
         </Link>
       </div>
 
