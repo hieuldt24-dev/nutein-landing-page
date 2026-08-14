@@ -11,7 +11,7 @@ import {
 import { cartRepository } from "@/features/cart/services/cart.repository";
 import type { CartLine } from "@/features/cart/types";
 import { DEFAULT_PRODUCT_VARIANT_ID } from "@/features/product/constants";
-import { productService } from "@/features/product/services/product.service";
+import { refreshProductCatalogClient } from "@/features/product/services/product-catalog.client";
 
 const PRODUCT_CATALOG_CACHE_SWR_KEY = "product-catalog-cache";
 
@@ -35,7 +35,7 @@ export function useCartStore() {
   // — mọi component gọi useCartStore() đều tự re-render khi cache này đổi
   // nhờ SWR, nên buildCartSummary/getProductDetail() bên dưới luôn theo kịp
   // mà không cần đổi chữ ký sync đang dùng khắp CartDrawer/CheckoutOrderSummary.
-  useSWR(PRODUCT_CATALOG_CACHE_SWR_KEY, () => productService.refreshCatalogCache(), {
+  useSWR(PRODUCT_CATALOG_CACHE_SWR_KEY, refreshProductCatalogClient, {
     revalidateOnFocus: false,
     dedupingInterval: 60_000,
   });
