@@ -45,8 +45,8 @@ export function ContactPanel() {
 
           <div className="relative mt-10 hidden min-h-[280px] flex-1 overflow-hidden rounded-[var(--radius-xl)] border border-ink/10 lg:block">
             <Image
-              src="/media/task 6-1.png"
-              alt="Nutein — lối sống lành mạnh"
+              src="/media/product3.png"
+              alt="Hộp Protein Nutein cùng nguyên liệu thực vật"
               fill
               sizes="(max-width: 1024px) 0px, 40vw"
               className="scale-[1.22] object-cover object-[center_64%]"
