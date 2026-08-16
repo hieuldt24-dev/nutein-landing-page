@@ -41,7 +41,7 @@ const LEGACY_GALLERY_SOURCES = new Set([
 ]);
 
 export function isLegacyProductGallery(gallery: ProductGalleryImage[] | undefined) {
-  return Boolean(gallery?.length) && gallery.some(({ src }) => LEGACY_GALLERY_SOURCES.has(src));
+  return (gallery ?? []).some(({ src }) => LEGACY_GALLERY_SOURCES.has(src));
 }
 
 export function isLegacyProductImage(image: string | undefined) {

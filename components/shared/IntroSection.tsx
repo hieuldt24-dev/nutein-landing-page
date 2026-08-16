@@ -48,7 +48,7 @@ export default function IntroSection() {
         <div className="scrollbar-hide flex snap-x snap-mandatory gap-6 overflow-x-auto pb-4 md:grid md:grid-cols-4 md:overflow-visible">
           {INGREDIENT_CARDS.map((card, index) => (
             <article
-              key={card.src}
+              key={card.alt}
               className="relative aspect-[3/4] w-[260px] shrink-0 snap-start overflow-hidden rounded-[var(--radius-xl)] md:w-auto"
             >
               <Image
