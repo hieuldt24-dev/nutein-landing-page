@@ -1,134 +1,83 @@
 "use client";
 
-import { type ReactNode } from "react";
 import Image from "next/image";
-import { Leaf, Award, CheckCircle } from "lucide-react";
-import { SectionHeading } from "@/components/ui/SectionHeading";
-import { Badge } from "@/components/ui/Badge";
-import { CtaCluster } from "@/components/ui/CtaCluster";
-import { StarRating } from "@/components/ui/StarRating";
 import { RotatingText } from "@/components/ui/RotatingText";
+import { SectionHeading } from "@/components/ui/SectionHeading";
+import mixingVisual from "@/public/media/MJ.png";
 
-interface Difference {
-  icon: ReactNode;
-  title: string;
-  desc: string;
-  tag: string;
-}
-
-const DIFFERENCES: Difference[] = [
+const PREPARATION_STEPS = [
   {
-    icon: <Leaf size={26} strokeWidth={2.2} />,
-    title: "100% Nguyên Liệu Thật (Real Food)",
-    desc: "Nói không với bột sữa động vật, chất độn rẻ tiền và hương liệu hóa học. Vị ngọt thanh tao của Nutein hoàn toàn từ cỏ ngọt Stevia và các loại hạt tự nhiên, mang lại hương vị ngậy bùi đặc trưng mà không ngấy.",
-    tag: "Định vị sạch",
+    title: "Cho 01 gói (30g) vào ly hoặc bình lắc",
   },
   {
-    icon: <Award size={26} strokeWidth={2.2} />,
-    title: "Chiết Xuất Enzyme Hấp Thu Nhanh",
-    desc: "Ứng dụng công nghệ thủy phân bằng enzyme thực vật tiên tiến, phân tách các chuỗi đạm lớn thành peptide siêu nhỏ. Giúp cơ thể hấp thu trọn vẹn chỉ sau 30 phút mà không gây nóng trong hay chướng bụng khó chịu.",
-    tag: "Khoa học đột phá",
+    title: "Thêm 150–180ml nước ấm (30–50°C)",
   },
   {
-    icon: <CheckCircle size={26} strokeWidth={2.2} />,
-    title: "Canh Tác Hữu Cơ & Truy Xuất Rõ Ràng",
-    desc: "Toàn bộ nguyên liệu hạt đậu nành, đậu Hà Lan, óc chó và rau củ quả đều được tuyển chọn kỹ càng từ các nông trại sạch đạt tiêu chuẩn hữu cơ, cam kết Non-GMO và tuyệt đối không tồn dư hóa chất bảo vệ thực vật.",
-    tag: "Cam kết 100% Organic",
+    title: "Khuấy hoặc lắc đều và thưởng thức",
   },
 ];
 
+const USAGE_TIMES = ["Bữa sáng", "Bữa phụ", "Sau vận động", "Khi cần bổ sung Protein"];
+
 export default function DifferentiatorsSection() {
   return (
-    <section id="differentiators" className="relative overflow-hidden bg-primary-soft/40 py-24 px-6">
-      <div
-        aria-hidden
-        className="absolute bottom-[-5%] left-[-6%] w-[400px] h-[400px] rounded-full blur-[80px] pointer-events-none"
-        style={{ backgroundColor: "rgba(226,165,80,0.1)" }}
-      />
-
-      <div className="relative z-[1] max-w-[1200px] mx-auto">
-        <SectionHeading eyebrow="Triết lý phát triển" className="text-[clamp(40px,6.5vw,92px)] tracking-[-0.03em] mb-16">
-          Vì sao Protein Nutein<br />khác biệt?
+    <section id="differentiators" className="relative overflow-hidden bg-primary-soft/70 px-6 py-16 md:py-24">
+      <div className="mx-auto max-w-[1360px]">
+        <SectionHeading eyebrow="Hướng dẫn pha Nutein" className="mb-12 text-[clamp(2.5rem,4.6vw,4.5rem)] tracking-[-0.035em] md:mb-16">
+          Pha Nutein trong 3 bước
         </SectionHeading>
 
-        {/* Cụm ảnh + quote — 1 cột mobile, 2 cột desktop (không inline grid — tránh đè CSS). */}
-        <div className="diff-brand mb-20 grid grid-cols-1 items-center gap-10 md:grid-cols-[0.9fr_1.1fr] md:gap-16">
-          {/* Product image + rotating text ring ở góc sau */}
-          <div className="diff-frame-cluster relative mx-auto flex h-[360px] w-full max-w-[320px] items-center justify-center overflow-visible md:mx-0 md:h-[500px] md:max-w-none">
-            {/* Ambient glow */}
-            <div
-              aria-hidden
-              className="absolute z-0 h-[70%] w-[70%] rounded-full blur-[40px]"
-              style={{ background: "radial-gradient(circle, rgba(226,165,80,0.28) 0%, transparent 70%)" }}
-            />
-
-            {/* Rotating text ring — z-[1], góc dưới phải, nằm sau ảnh */}
+        <div className="grid items-center gap-10 md:grid-cols-[minmax(22rem,0.85fr)_minmax(0,1.15fr)] md:gap-24 lg:gap-36">
+          <div className="relative mx-auto flex min-h-[27rem] w-full max-w-[32rem] items-center justify-center md:min-h-[36rem]">
             <RotatingText
-              radius={130}
+              text="NUTEIN ✦ DỄ PHA ✦ DỄ UỐNG ✦ DỄ MANG THEO ✦"
+              radius={158}
               fontSize={10.5}
-              duration={18}
-              color="rgba(192,134,53,0.75)"
-              className="absolute right-[-20px] bottom-[-16px] z-[1]"
+              duration={20}
+              color="color-mix(in srgb, var(--color-primary-deep) 74%, transparent)"
+              className="absolute bottom-0 right-1/2 z-0 translate-x-1/2 md:-right-8 md:bottom-2 md:translate-x-0"
             />
-
-            {/* Product visual — z-[2] để nổi trên vòng chữ */}
-            <div className="relative z-[2] aspect-square w-[84%] animate-float-slow">
+            <div aria-hidden className="absolute z-0 aspect-square w-[92%] rounded-full bg-[radial-gradient(circle,color-mix(in_srgb,var(--color-primary)_42%,transparent)_0%,color-mix(in_srgb,var(--color-primary-deep)_18%,transparent)_42%,transparent_72%)] blur-3xl" />
+            <div className="animate-float-slow relative z-[1] h-[25rem] w-[18rem] sm:h-[30rem] sm:w-[21rem] md:h-[34rem] md:w-[24rem]">
               <Image
-                src="/images/herosection.png"
-                alt="Nutein Protein thực vật"
+                src={mixingVisual}
+                alt="Hộp Nutein cùng hạt hạnh nhân"
                 fill
-                sizes="(max-width: 900px) 55vw, 300px"
-                className="object-contain"
-                style={{
-                  mixBlendMode: "multiply",
-                  filter: "drop-shadow(0 20px 48px rgba(192,134,53,0.3))",
-                  transform: "scale(1.08)",
-                }}
+                priority={false}
+                sizes="(max-width: 640px) 18rem, (max-width: 768px) 21rem, 24rem"
+                className="scale-[1.3] object-contain [filter:drop-shadow(0_1.5rem_2.75rem_color-mix(in_srgb,var(--color-ink)_18%,transparent))]"
               />
             </div>
           </div>
-          <div>
-            <p className="font-display mb-6 text-xl leading-snug tracking-[-0.01em] text-ink md:text-2xl">
-              &ldquo;Chúng tôi tin rằng cơ thể bạn xứng đáng nhận được nguồn dinh dưỡng lành mạnh nhất. Không chỉ cung cấp năng lượng sạch, Nutein là lời cam kết bền vững cho sức khỏe của bạn và hệ sinh thái thiên nhiên.&rdquo;
-            </p>
-            <div className="flex flex-wrap items-center gap-4">
-              <CtaCluster label="Về chúng tôi" href="/about" size={44} iconSize={18} />
-              <StarRating
-                rating={4.9}
-                label="50,000+ đánh giá"
-                size={24}
-                interactive
-              />
-            </div>
-          </div>
-        </div>
 
-        <div className="flex flex-col">
-          {DIFFERENCES.map((item, idx) => (
-            <div
-              key={idx}
-              className="diff-row group animate-fade-up grid grid-cols-[2.5rem_3.5rem_minmax(0,1fr)] items-center gap-x-4 gap-y-3 border-t border-[color:var(--color-border)] py-9 transition-colors duration-300 md:grid-cols-[88px_80px_1.6fr_auto] md:gap-6"
-              style={{ animationDelay: `${idx * 0.12}s` }}
-            >
-              <span className="font-display text-[26px] font-black tracking-[-0.02em] text-primary-deep/40 tabular-nums">
-                0{idx + 1}
-              </span>
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white text-primary-deep shadow-sm transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:-translate-y-1.5 group-hover:rotate-6 group-hover:shadow-md md:h-20 md:w-20">
-                {item.icon}
-              </div>
-              <div className="flex min-w-0 flex-col gap-1.5">
-                <h3 className="font-display text-xl font-extrabold tracking-[-0.02em] text-ink">{item.title}</h3>
-                <p className="text-sm leading-relaxed text-text-body">{item.desc}</p>
-              </div>
-              <Badge color="primary" size="md" className="hidden justify-self-end tracking-[0.06em] uppercase md:inline-flex">
-                {item.tag}
-              </Badge>
-            </div>
-          ))}
-          <div className="border-t border-[color:var(--color-border)]" />
+          <div className="max-w-[40rem]">
+            <p className="font-display text-[clamp(1.35rem,2.1vw,2rem)] font-bold leading-snug tracking-[-0.02em] text-ink">
+              Một ly Nutein dinh dưỡng, sẵn sàng theo nhịp sống của bạn.
+            </p>
+            <p className="mt-4 max-w-[36rem] text-base leading-relaxed text-text-body md:text-lg">
+              Quy trình pha chế gọn nhẹ được xây dựng để bạn có thể chuẩn bị nhanh, uống ngon và mang theo dễ dàng.
+            </p>
+
+            <ol className="mt-8 divide-y divide-[color:var(--color-border)] border-y border-[color:var(--color-border)] md:mt-10">
+              {PREPARATION_STEPS.map(({ title }, index) => (
+                <li key={title} className="grid grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-3 py-4 sm:grid-cols-[3.5rem_minmax(0,1fr)] sm:gap-4 md:grid-cols-[4rem_minmax(0,1fr)] md:py-5 md:gap-5">
+                  <span className="font-display text-xl font-black tabular-nums text-primary-deep/50 md:text-2xl">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <h3 className="font-display text-base font-extrabold leading-snug tracking-[-0.015em] text-ink md:text-lg">{title}</h3>
+                </li>
+              ))}
+            </ol>
+
+            <aside className="mt-9 rounded-[var(--radius-lg)] bg-primary-deep px-5 py-4 text-bg md:mt-10 md:max-w-[28rem]">
+              <h3 className="font-display text-lg font-extrabold">Thời điểm sử dụng</h3>
+              <ul className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm leading-relaxed">
+                {USAGE_TIMES.map((time) => <li key={time}>• {time}</li>)}
+              </ul>
+            </aside>
+          </div>
         </div>
       </div>
-
     </section>
   );
 }

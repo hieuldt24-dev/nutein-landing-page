@@ -1,4 +1,9 @@
 import { DEFAULT_PRODUCT_VARIANT_ID } from "../constants";
+import {
+  DEFAULT_PRODUCT_GALLERY,
+  DEFAULT_PRODUCT_IMAGE,
+  DEFAULT_PRODUCT_IMAGE_ALT,
+} from "./product-media";
 import type { Product, ProductDetail } from "../types";
 
 /**
@@ -19,32 +24,11 @@ export const NUTEIN_PRODUCT_DETAIL: ProductDetail = {
   unitPrice: 249_000,
   currency: "VND",
   rating: { average: 4.9, count: 128 },
-  image: "/images/example.jpg",
-  imageAlt: "Hộp Protein thực vật Nutein",
+  image: DEFAULT_PRODUCT_IMAGE,
+  imageAlt: DEFAULT_PRODUCT_IMAGE_ALT,
   unitLabel: "Hộp 1 hũ · Protein thực vật",
   defaultVariantId: DEFAULT_PRODUCT_VARIANT_ID,
-  gallery: [
-    {
-      id: "gallery-1",
-      src: "/images/example.jpg",
-      alt: "Hộp Protein thực vật Nutein — góc chính",
-    },
-    {
-      id: "gallery-2",
-      src: "/images/yogurt.jpg",
-      alt: "Nutein dùng cùng sữa chua",
-    },
-    {
-      id: "gallery-3",
-      src: "/images/beans.jpg",
-      alt: "Nguyên liệu đậu protein thực vật",
-    },
-    {
-      id: "gallery-4",
-      src: "/images/vegetables.jpg",
-      alt: "Lối sống xanh cùng Nutein",
-    },
-  ],
+  gallery: DEFAULT_PRODUCT_GALLERY,
   specs: [
     { id: "spec-protein", value: "20g", label: "Protein / khẩu phần" },
     { id: "spec-plant", value: "100%", label: "Thực vật" },

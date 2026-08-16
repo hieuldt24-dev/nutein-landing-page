@@ -25,7 +25,7 @@ export const ABOUT_HERO = {
   titleLine1: "Khi cuộc sống bận\u00A0rộn,",
   titleLine2: "dinh dưỡng phải đủ\u00A0sạch.",
   lead: "Đó là động lực của chúng tôi: mang nguồn đạm thực vật thật, dễ dùng vào những khoảnh khắc cần năng lượng mỗi ngày.",
-  image: "/images/about.png",
+  image: "/media/hero-about.png",
   imageAlt: "Nutein — lối sống lành mạnh với protein thực vật",
 };
 
@@ -36,7 +36,7 @@ export const ABOUT_STORY = {
   philosophyTitle: "Triết lý sản phẩm",
   philosophyBody:
     "Healthy Lifestyle không phải khẩu hiệu. Mỗi hộp Nutein hướng tới ba điều rõ ràng: nguyên liệu thật, hấp thu nhẹ bụng, và thói quen dùng bền vững — ít phụ gia hơn, nhiều dinh dưỡng có thể cảm nhận sau vài tuần duy trì.",
-  mainImage: "/images/example.jpg",
+  mainImage: "/media/product1.jpg",
   mainImageAlt: "Nutein — năng lượng sạch mỗi ngày",
 };
 
@@ -128,6 +128,6 @@ export const ABOUT_MISSION = {
   titleLine1: "Năng lượng sạch",
   titleLine2: "cho ngày bận rộn",
   body: "Tầm nhìn: trở thành lựa chọn protein thực vật quen thuộc cho lối sống lành mạnh tại Việt Nam. Sứ mệnh: đưa đạm thực vật thật, dễ dùng vào thói quen mỗi ngày — bền vững hơn với môi trường.",
-  image: "/images/about.png",
+  image: "/media/task 6-3.png",
   imageAlt: "Nutein — tầm nhìn lối sống lành mạnh",
 };

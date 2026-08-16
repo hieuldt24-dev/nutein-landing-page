@@ -25,9 +25,19 @@ function toDateKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+function weekChangePercent(
+  weekVnd: number,
+  previousWeekVnd: number,
+): number | null {
+  if (previousWeekVnd === 0) {
+    return weekVnd === 0 ? null : 100;
+  }
+  return ((weekVnd - previousWeekVnd) / previousWeekVnd) * 100;
+}
+
 /**
- * Tính snapshot doanh thu từ list đơn.
- * Neo cửa sổ theo đơn mới nhất (ổn định demo mock, không phụ thuộc “hôm nay” máy).
+ * Snapshot doanh thu từ list đơn tổng hợp (không PII).
+ * Neo cửa sổ theo đơn mới nhất (ổn định khi ít đơn), không phụ thuộc “hôm nay” máy.
  * Chỉ cộng đơn không hủy / không trả.
  */
 export function buildRevenueSnapshotFromOrders(
@@ -42,10 +52,13 @@ export function buildRevenueSnapshotFromOrders(
   const asOf = new Date(asOfMs || Date.now());
   const asOfStart = startOfDay(asOf);
   const weekStart = addDays(asOfStart, -6);
+  const prevWeekStart = addDays(asOfStart, -13);
+  const prevWeekEnd = addDays(asOfStart, -7);
   const monthStart = addDays(asOfStart, -29);
 
   let todayVnd = 0;
   let weekVnd = 0;
+  let previousWeekVnd = 0;
   let monthVnd = 0;
   let monthOrderCount = 0;
 
@@ -62,8 +75,11 @@ export function buildRevenueSnapshotFromOrders(
     if (createdStart.getTime() === asOfStart.getTime()) {
       todayVnd += amount;
     }
-    if (createdStart >= weekStart) {
+    if (createdStart >= weekStart && createdStart <= asOfStart) {
       weekVnd += amount;
+    }
+    if (createdStart >= prevWeekStart && createdStart <= prevWeekEnd) {
+      previousWeekVnd += amount;
     }
     if (createdStart >= monthStart) {
       monthVnd += amount;
@@ -85,6 +101,8 @@ export function buildRevenueSnapshotFromOrders(
     asOf: asOf.toISOString(),
     todayVnd,
     weekVnd,
+    previousWeekVnd,
+    weekChangePercent: weekChangePercent(weekVnd, previousWeekVnd),
     monthVnd,
     monthOrderCount,
     last7Days,

@@ -7,8 +7,6 @@ export function adminOrderDetailSwrKey(id: string): string {
   return `admin-order:${id}`;
 }
 
-export const ADMIN_ORDERS_MOCK_LATENCY_MS = 280;
-
 export const ADMIN_ORDER_STATUS_LABEL: Record<AdminOrderStatus, string> = {
   pending: "Chờ xử lý",
   processing: "Đang xử lý",

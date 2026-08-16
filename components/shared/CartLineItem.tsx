@@ -35,7 +35,7 @@ export function CartLineItem({
           alt={product.imageAlt}
           width={104}
           height={104}
-          className="h-[86%] w-[86%] object-contain transition-transform duration-300 ease-out group-hover:rotate-3 group-hover:scale-105"
+          className="h-full w-full object-cover object-center transition-transform duration-300 ease-out group-hover:scale-105"
         />
       </div>
 

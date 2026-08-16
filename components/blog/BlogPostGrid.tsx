@@ -32,7 +32,7 @@ export function BlogPostGrid({ posts, hasFilters }: BlogPostGridProps) {
             href="/blog"
             className="mt-6 inline-block text-sm font-bold text-primary-deep underline-offset-2 hover:underline"
           >
-            Về trang Kiến thức
+            Về trang Blog
           </Link>
         )}
       </div>

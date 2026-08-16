@@ -20,7 +20,7 @@ export function StaffOnlyGate({ children }: { children: ReactNode }) {
     if (!warned.current) {
       warned.current = true;
       if (role === "admin") {
-        notify.error("Khu vực vận hành dành cho Staff. Admin dùng Tổng quan / Users / Audit.");
+        notify.error("Khu vực này dành cho Staff.");
       }
     }
     router.replace(role === "admin" ? "/admin" : "/");
@@ -29,9 +29,7 @@ export function StaffOnlyGate({ children }: { children: ReactNode }) {
   if (!isReady || role !== "staff") {
     return (
       <div className="flex min-h-[30vh] items-center justify-center px-6">
-        <p className="text-sm font-semibold text-text-muted">
-          Đang kiểm tra quyền Staff…
-        </p>
+        <p className="text-sm font-semibold text-text-muted">Đang tải…</p>
       </div>
     );
   }

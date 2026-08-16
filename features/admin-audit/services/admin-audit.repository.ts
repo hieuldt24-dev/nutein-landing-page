@@ -1,7 +1,12 @@
 import "server-only";
 
 import { supabaseAdmin } from "@/lib/supabase";
-import type { AdminAuditAction, AdminAuditEntry } from "../types";
+import type {
+  AdminAuditAction,
+  AdminAuditEntry,
+  AdminAuditListQuery,
+  AdminAuditListResult,
+} from "../types";
 
 interface AuditLogRow {
   id: string;
@@ -76,47 +81,47 @@ function toAdminAuditEntry(row: AuditLogRow): AdminAuditEntry {
   };
 }
 
-async function list(query?: {
-  action?: AdminAuditAction | "all";
-  actor?: string;
-  from?: string;
-  to?: string;
-  limit?: number;
-}): Promise<AdminAuditEntry[]> {
+async function list(query: AdminAuditListQuery = {}): Promise<AdminAuditListResult> {
   const client = requireAdminClient();
-  let builder = client.from("audit_log").select(AUDIT_SELECT);
+  let builder = client.from("audit_log").select(AUDIT_SELECT, { count: "exact" });
 
-  if (query?.action && query.action !== "all") {
+  if (query.action && query.action !== "all") {
     builder = builder.eq("action", query.action);
   }
-  if (query?.from) {
+  if (query.from) {
     builder = builder.gte("created_at", new Date(query.from).toISOString());
   }
-  if (query?.to) {
+  if (query.to) {
     const to = new Date(query.to);
     to.setHours(23, 59, 59, 999);
     builder = builder.lte("created_at", to.toISOString());
   }
 
-  const { data, error } = await builder
+  const pageSize = query.limit ?? 100;
+  const offset = query.offset ?? 0;
+
+  const { data, error, count } = await builder
     .order("created_at", { ascending: false })
-    .limit(query?.limit ?? 100);
+    .range(offset, offset + pageSize - 1);
 
   if (error) {
     throw new Error(`Không tải được audit log: ${error.message}`);
   }
 
-  let rows = ((data as unknown as AuditLogRow[]) ?? []).map(toAdminAuditEntry);
+  let items = ((data as unknown as AuditLogRow[]) ?? []).map(toAdminAuditEntry);
 
-  // actorEmail luôn null (xem ghi chú ở types) — filter theo actor tạm
+  // actorEmail thường null (xem ghi chú ở types) — filter theo actor tạm
   // thời sẽ không match gì; giữ lại tham số để API không đổi khi actor
   // tracking được bổ sung sau này.
-  const actor = query?.actor?.trim().toLowerCase();
+  const actor = query.actor?.trim().toLowerCase();
   if (actor) {
-    rows = rows.filter((r) => r.actorEmail?.toLowerCase().includes(actor));
+    items = items.filter((r) => r.actorEmail?.toLowerCase().includes(actor));
   }
 
-  return rows;
+  return {
+    items,
+    total: count ?? items.length,
+  };
 }
 
 export const adminAuditRepository = {

@@ -1,82 +1,96 @@
-import { ADMIN_DASHBOARD_MOCK_LATENCY_MS } from "../constants";
-import { MOCK_ADMIN_DASHBOARD_SUMMARY } from "../data/dashboard.mock";
 import type {
   AdminDashboardSummary,
   AdminHomeSummary,
-  DashboardOrdersByDayPoint,
-  DashboardPieSlice,
+  DashboardAttentionItem,
   DashboardRevenueSnapshot,
 } from "../types";
-import { buildOrdersByDayBreakdown } from "./orders-by-day";
 import { buildRevenueSnapshotFromOrders } from "./revenue-from-orders";
 import {
-  buildOrderStatusBreakdown,
-  buildUserRoleBreakdown,
-} from "./pie-breakdown";
+  buildStaffAttentionItems,
+  buildStaffOpsSummary,
+} from "./staff-ops-from-api";
 import { adminOrdersService } from "@/features/admin-orders/services/admin-orders.service";
 import { adminUsersService } from "@/features/admin-users/services/admin-users.service";
 import { adminAuditService } from "@/features/admin-audit/services/admin-audit.service";
+import { adminContactService } from "@/features/admin-contact/services/admin-contact.service";
+import { adminProductsService } from "@/features/admin-products/services/admin-products.service";
+import type { AdminProduct } from "@/features/admin-products/types";
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
+export interface StaffOpsHome {
+  summary: AdminDashboardSummary;
+  attention: DashboardAttentionItem[];
+}
+
+function startOfDay(d: Date): Date {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function addDays(d: Date, days: number): Date {
+  const x = new Date(d);
+  x.setDate(x.getDate() + days);
+  return x;
+}
+
+async function loadProductSafe(): Promise<AdminProduct | null> {
+  try {
+    return await adminProductsService.getProduct();
+  } catch {
+    return null;
+  }
 }
 
 /**
- * Dashboard domain — Staff ops + doanh thu chung + Admin home.
- * Phase mock: tổng hợp từ admin-orders / admin-users / admin-audit.
- * Khi có API: đổi thân method → `GET /api/staff/dashboard` hoặc
- * `GET /api/admin/dashboard` — giữ chữ ký + types.
+ * Dashboard domain — Staff ops + doanh thu + Admin home.
+ * Aggregate phía client từ API đã có (orders-summary / orders / contact / products / users / audit).
  */
 export const adminDashboardService = {
-  /** S2 — chỉ số vận hành (đơn / liên hệ / tồn). */
-  async getSummary(): Promise<AdminDashboardSummary> {
-    await delay(ADMIN_DASHBOARD_MOCK_LATENCY_MS);
-    return { ...MOCK_ADMIN_DASHBOARD_SUMMARY };
+  /** KPI + Cần chú ý — một round-trip, chia SWR key chung. */
+  async getStaffOps(): Promise<StaffOpsHome> {
+    const [{ items: orders }, unreadContacts, product] = await Promise.all([
+      adminOrdersService.list({}),
+      adminContactService.list("unread"),
+      loadProductSafe(),
+    ]);
+    return {
+      summary: buildStaffOpsSummary({ orders, unreadContacts, product }),
+      attention: buildStaffAttentionItems({ orders, unreadContacts, product }),
+    };
   },
 
   /**
-   * Doanh thu — Staff + Admin dùng chung. Gọi `listSummary()` (tổng hợp,
-   * không PII, `/api/admin/orders-summary`) chứ không phải `list()` (chi
-   * tiết đầy đủ, chỉ STAFF) — Admin gọi `list()` sẽ bị 403 (S3).
+   * Doanh thu — Staff + Admin. `listSummary()` (không PII) — Admin gọi `list()` sẽ 403.
    */
   async getRevenue(): Promise<DashboardRevenueSnapshot> {
     const orders = await adminOrdersService.listSummary();
     return buildRevenueSnapshotFromOrders(orders);
   },
 
-  /** Phân bố đơn theo trạng thái — pie Staff + Admin. */
-  async getOrderStatusBreakdown(): Promise<DashboardPieSlice[]> {
-    const orders = await adminOrdersService.listSummary();
-    return buildOrderStatusBreakdown(orders);
-  },
-
-  /** Đơn mới + hủy theo ngày — bar Staff + Admin. */
-  async getOrdersByDay(): Promise<DashboardOrdersByDayPoint[]> {
-    const orders = await adminOrdersService.listSummary();
-    return buildOrdersByDayBreakdown(orders);
-  },
-
   /** Admin `/admin` — doanh thu + users + audit gần đây. */
   async getAdminHome(): Promise<AdminHomeSummary> {
-    const [orders, users, audit] = await Promise.all([
+    const [orders, users, { items: audit }] = await Promise.all([
       adminOrdersService.listSummary(),
       adminUsersService.list({}),
-      adminAuditService.list({}),
+      adminAuditService.list({ limit: 5 }),
     ]);
+
+    const asOf = startOfDay(new Date());
+    const weekStart = addDays(asOf, -6);
+    const newLast7Days = users.filter((u) => {
+      const created = startOfDay(new Date(u.createdAt));
+      return created >= weekStart && created <= asOf;
+    }).length;
 
     return {
       revenue: buildRevenueSnapshotFromOrders(orders),
       users: {
         total: users.length,
-        userCount: users.filter((u) => u.role === "user").length,
+        newLast7Days,
         staffCount: users.filter((u) => u.role === "staff").length,
         adminCount: users.filter((u) => u.role === "admin").length,
-        lockedCount: users.filter((u) => u.locked).length,
-        roleBreakdown: buildUserRoleBreakdown(users),
       },
-      recentAudit: audit.slice(0, 5).map((row) => ({
+      recentAudit: audit.map((row) => ({
         id: row.id,
         action: row.action,
         summary: row.summary,

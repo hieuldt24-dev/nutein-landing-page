@@ -120,7 +120,7 @@ export default function HomePage() {
 ```txt
 components/admin/
   shell/       # AdminShell, gates (StaffOnlyGate / AdminOnlyGate)
-  dashboard/   # Tổng quan: revenue / pie / bar / summary / home panels
+  dashboard/   # Tổng quan: revenue (1 chart) / ops KPI / attention / home panels
   orders/      # Danh sách + chi tiết đơn
   products/    # Editor sản phẩm
   coupons/     # Coupon list + form

@@ -19,55 +19,75 @@ import {
   formatCurrencyVnd,
   formatDate,
 } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 function parseLocalDate(isoDate: string): Date {
   const [y, m, d] = isoDate.split("-").map(Number);
   return new Date(y, m - 1, d);
 }
 
+function formatWeekChange(percent: number): string {
+  const rounded = Math.round(percent * 10) / 10;
+  const sign = rounded > 0 ? "+" : "";
+  return `${sign}${rounded.toLocaleString("vi-VN")}% so với 7 ngày trước`;
+}
+
 function RevenueSkeleton() {
   const margin = useDashboardChartMargin();
   return (
-    <div className="space-y-3 sm:space-y-4">
-      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 xl:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div
-            key={i}
-            className="h-[76px] animate-pulse rounded-[var(--radius-lg)] border border-ink/10 bg-border-subtle sm:h-[96px]"
-          />
-        ))}
-      </div>
-      <div className="pt-2 sm:pt-3">
-        <div className="rounded-[var(--radius-lg)] border border-ink/10 bg-surface px-3 py-4 shadow-sm sm:px-5 sm:py-5">
-          <AreaChartLoading
-            aspectRatio="16 / 9"
-            className="w-full"
-            margin={margin}
-          />
-        </div>
+    <div className="rounded-[var(--radius-lg)] border border-ink/10 bg-surface px-5 py-5 shadow-sm sm:px-7 sm:py-5">
+      <div className="h-5 w-40 animate-pulse rounded bg-border-subtle" />
+      <div className="mt-4 h-9 w-48 animate-pulse rounded bg-border-subtle" />
+      <div className="mt-5">
+        <AreaChartLoading
+          aspectRatio="16 / 9"
+          className="w-full"
+          margin={margin}
+        />
       </div>
     </div>
   );
 }
 
-function RevenueArea({ data }: { data: DashboardRevenueSnapshot }) {
+function RevenueHero({ data }: { data: DashboardRevenueSnapshot }) {
   const margin = useDashboardChartMargin();
   const chartData = data.last7Days.map((day) => ({
     date: parseLocalDate(day.date),
     revenue: day.amountVnd,
   }));
+  const change = data.weekChangePercent;
+  const changePositive = change !== null && change >= 0;
 
   return (
-    <div className="rounded-[var(--radius-lg)] border border-ink/10 bg-surface px-3 py-4 shadow-sm sm:px-5 sm:py-5">
+    <div className="rounded-[var(--radius-lg)] border border-ink/10 bg-surface px-5 py-5 shadow-sm sm:px-7 sm:py-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <h3 className="font-display text-[15px] font-bold text-ink sm:text-base">
-          7 ngày gần đây
-        </h3>
+        <h2 className="font-display text-lg font-bold tracking-[-0.02em] text-ink">
+          Doanh thu 7 ngày
+        </h2>
         <p className="text-[12px] text-text-muted">
           Cập nhật {formatDate(data.asOf)}
         </p>
       </div>
-      <div className="mt-3 w-full sm:mt-4">
+
+      <div className="mt-3 flex flex-wrap items-center gap-3 sm:mt-4">
+        <p className="font-display text-[clamp(28px,6vw,34px)] font-bold tracking-[-0.03em] text-ink">
+          {formatCurrencyVnd(data.weekVnd)}
+        </p>
+        {change !== null ? (
+          <span
+            className={cn(
+              "inline-flex items-center rounded-full px-3 py-1 text-[12px] font-extrabold",
+              changePositive
+                ? "bg-lime/50 text-forest"
+                : "bg-danger/10 text-danger",
+            )}
+          >
+            {formatWeekChange(change)}
+          </span>
+        ) : null}
+      </div>
+
+      <div className="mt-4 w-full sm:mt-5">
         <AreaChart
           data={chartData}
           aspectRatio="16 / 9"
@@ -84,7 +104,7 @@ function RevenueArea({ data }: { data: DashboardRevenueSnapshot }) {
           />
           <XAxis />
           <ChartTooltip
-            showDatePill={false}
+            showDatePill
             content={({ point }) => {
               const dateValue = point.date;
               const title =
@@ -114,11 +134,10 @@ function RevenueArea({ data }: { data: DashboardRevenueSnapshot }) {
 }
 
 /**
- * Khối doanh thu — dùng chung Staff `/staff` và Admin `/admin`.
- * Chart: Bklit UI `@bklit/area-chart` (src/components/charts).
+ * Khối doanh thu — Staff `/staff` và Admin `/admin`.
+ * 1 chart duy nhất (Area) theo design mock.
  */
 export function DashboardRevenuePanel({
-  /** Khi Admin home đã fetch sẵn revenue — tránh double request. */
   revenue,
 }: {
   revenue?: DashboardRevenueSnapshot | null;
@@ -149,42 +168,5 @@ export function DashboardRevenuePanel({
 
   if (!snapshot) return null;
 
-  const cards: { label: string; value: number; format: "money" | "count" }[] = [
-    { label: "Hôm nay", value: snapshot.todayVnd, format: "money" },
-    { label: "7 ngày", value: snapshot.weekVnd, format: "money" },
-    { label: "30 ngày", value: snapshot.monthVnd, format: "money" },
-    {
-      label: "Đơn · 30 ngày",
-      value: snapshot.monthOrderCount,
-      format: "count",
-    },
-  ];
-
-  return (
-    <div className="space-y-3 sm:space-y-4">
-      <p className="text-[13px] text-text-muted">
-        Chưa gồm đơn hủy và trả hàng.
-      </p>
-      <ul className="m-0 grid list-none grid-cols-2 gap-2.5 p-0 sm:gap-3 xl:grid-cols-4">
-        {cards.map((card) => (
-          <li
-            key={card.label}
-            className="rounded-[var(--radius-lg)] border border-ink/10 bg-surface px-3.5 py-3.5 shadow-sm sm:px-5 sm:py-5"
-          >
-            <p className="text-[11px] font-bold tracking-[0.06em] text-text-muted uppercase sm:text-[12px]">
-              {card.label}
-            </p>
-            <p className="mt-1.5 font-display text-[clamp(18px,5vw,28px)] font-bold tracking-[-0.03em] text-ink sm:mt-2">
-              {card.format === "count"
-                ? card.value
-                : formatCurrencyVnd(card.value)}
-            </p>
-          </li>
-        ))}
-      </ul>
-      <div className="pt-2 sm:pt-3">
-        <RevenueArea data={snapshot} />
-      </div>
-    </div>
-  );
+  return <RevenueHero data={snapshot} />;
 }
