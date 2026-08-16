@@ -33,6 +33,10 @@ vi.mock("next/server", () => ({
 
 import { adminProductsRepository } from "./admin-products.repository";
 import { NUTEIN_PRODUCT_DB_ID } from "@/features/product/constants";
+import {
+  DEFAULT_PRODUCT_GALLERY,
+  DEFAULT_PRODUCT_IMAGE,
+} from "@/features/product/data/product-media";
 
 const productRow = {
   id: NUTEIN_PRODUCT_DB_ID,
@@ -74,14 +78,15 @@ describe("adminProductsRepository.getProduct", () => {
     });
   });
 
-  it("marketing_meta rỗng ({}) -> field cosmetic fallback rỗng, không throw", async () => {
+  it("marketing_meta rỗng ({}) -> media fallback mới, không throw", async () => {
     mocks.from.mockReturnValue(
       makeBuilder({ data: { ...productRow, marketing_meta: {} }, error: null }),
     );
 
     const result = await adminProductsRepository.getProduct();
 
-    expect(result.gallery).toEqual([]);
+    expect(result.gallery).toEqual(DEFAULT_PRODUCT_GALLERY);
+    expect(result.image).toBe(DEFAULT_PRODUCT_IMAGE);
     expect(result.tagline).toBe("");
   });
 });
@@ -89,7 +94,7 @@ describe("adminProductsRepository.getProduct", () => {
 describe("adminProductsRepository.updateProduct", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("chỉ sửa stock -> đọc current trước, giữ nguyên marketing_meta cũ, ghi price/name không đổi", async () => {
+  it("chỉ sửa stock -> thay media placeholder cũ bằng default mới, giữ các marketing field khác", async () => {
     const getBuilder = makeBuilder({ data: productRow, error: null });
     const updateBuilder = makeBuilder({
       data: { ...productRow, stock: 10 },
@@ -107,10 +112,10 @@ describe("adminProductsRepository.updateProduct", () => {
       marketing_meta: {
         tagline: "Năng lượng sạch",
         unitLabel: "Hộp 1 hũ",
-        image: "/images/example.jpg",
+        image: DEFAULT_PRODUCT_IMAGE,
         imageAlt: "Nutein",
         defaultVariantId: "pack-1",
-        gallery: productRow.marketing_meta.gallery,
+        gallery: DEFAULT_PRODUCT_GALLERY,
         specs: productRow.marketing_meta.specs,
         variants: productRow.marketing_meta.variants,
       },

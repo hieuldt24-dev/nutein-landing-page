@@ -6,37 +6,23 @@ import { ABOUT_MISSION } from "@/features/about/constants";
 import { cn } from "@/lib/utils";
 
 /** Trái (ảnh trời xanh): cam ấm. Phải (panel primary): sky — đối lập + đỡ nhàm. */
-const CORNER_STARS = {
-  left: "/images/element_stars_1@216x.png",
-  right: "/images/element_stars@216x.png",
-} as const;
+const CORNER_STAR = "/images/element_stars@216x.png";
 
 /**
  * Sao 4 cánh 3D — cam góc trên trái, xanh góc dưới phải.
  * Mobile: giữ hiện nhưng thu nhỏ + đẩy ra góc (không ẩn, không đè chữ).
  */
-function CornerStar({
-  side,
-  vertical,
-}: {
-  side: "left" | "right";
-  vertical: "top" | "bottom";
-}) {
+function CornerStar() {
   return (
     <div
       className={cn(
         "pointer-events-none absolute z-[2] size-28 sm:size-36 md:size-56 lg:size-[270px]",
-        vertical === "top"
-          ? "top-0 -translate-y-[38%] md:-translate-y-[22%]"
-          : "bottom-0 translate-y-[42%] md:translate-y-[22%]",
-        side === "left"
-          ? "left-0 -translate-x-[32%] md:-translate-x-[18%]"
-          : "right-0 translate-x-[32%] md:translate-x-[18%]",
+        "bottom-0 right-0 translate-x-[32%] translate-y-[42%] md:translate-x-[18%] md:translate-y-[22%]",
       )}
       aria-hidden
     >
       <Image
-        src={CORNER_STARS[side]}
+        src={CORNER_STAR}
         alt=""
         fill
         sizes="(max-width: 768px) 144px, (max-width: 1024px) 224px, 270px"
@@ -79,8 +65,7 @@ export default function AboutMission() {
         </div>
       </div>
 
-      <CornerStar side="left" vertical="top" />
-      <CornerStar side="right" vertical="bottom" />
+      <CornerStar />
     </section>
   );
 }

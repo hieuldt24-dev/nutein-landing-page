@@ -30,6 +30,8 @@ export interface ProductGalleryImage {
   id: string;
   src: string;
   alt: string;
+  /** Preserve the entire artwork in the PDP focal panel when it contains copy. */
+  fit?: "cover" | "contain";
 }
 
 export interface ProductSpec {

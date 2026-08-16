@@ -40,3 +40,12 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .vibecode-backup*/
+
+# Local browser-test artefacts
+/.playwright-cli/
+/.playwright-mcp/
+/output/playwright/
+/footer-product-media.png
+/home-media-desktop.png
+/home-media-fixed.png
+/product-gallery-contain-protein.png

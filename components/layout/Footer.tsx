@@ -84,29 +84,29 @@ export default function Footer() {
         <div className="cta-fan relative mx-auto hidden h-[260px] w-full max-w-[300px] md:block">
           <div className="absolute top-5 left-0 z-[1] aspect-[3/4] w-[56%] -rotate-[13deg] overflow-hidden rounded-3xl border-4 border-white shadow-xl">
             <Image
-              src="/images/example.jpg"
-              alt="Nutein"
+              src="/media/product3.png"
+              alt="Hộp và gói Protein thực vật Nutein"
               fill
               sizes="180px"
-              className="object-cover"
+              className="object-cover object-center"
             />
           </div>
           <div className="absolute top-0 left-[14%] z-[2] aspect-[3/4] w-[56%] -rotate-[1deg] overflow-hidden rounded-3xl border-4 border-white shadow-xl">
             <Image
-              src="/images/example.jpg"
-              alt="Nutein"
+              src="/media/hero-about.png"
+              alt="Nutein Protein thực vật"
               fill
               sizes="180px"
-              className="object-cover"
+              className="object-cover object-bottom"
             />
           </div>
           <div className="absolute top-6 left-[28%] z-[3] aspect-[3/4] w-[56%] rotate-[12deg] overflow-hidden rounded-3xl border-4 border-white shadow-xl">
             <Image
-              src="/images/example.jpg"
-              alt="Nutein"
+              src="/media/product2.png"
+              alt="Hộp Nutein cùng ly protein thực vật"
               fill
               sizes="180px"
-              className="object-cover"
+              className="object-cover object-bottom"
             />
           </div>
         </div>
@@ -216,8 +216,8 @@ export default function Footer() {
             Liên hệ
           </h3>
           <ul className="flex list-none flex-col gap-2.5 text-sm text-white/75">
-            <li>Hotline: 1900 xxxx</li>
-            <li>Email: hello@nutein.vn</li>
+            <li>Hotline: 0353570977</li>
+            <li>Email: hhs.business.vn@gmail.com</li>
             <li>Fanpage · TikTok · Shopee</li>
           </ul>
         </div>

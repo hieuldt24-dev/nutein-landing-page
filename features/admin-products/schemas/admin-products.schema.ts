@@ -4,6 +4,7 @@ const galleryImageSchema = z.object({
   id: z.string(),
   src: z.string(),
   alt: z.string(),
+  fit: z.enum(["cover", "contain"]).optional(),
 });
 
 const specSchema = z.object({

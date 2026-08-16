@@ -12,6 +12,7 @@ import {
 } from "@/src/errors/app.error";
 import { logger } from "@/src/logging/logger";
 import { productService } from "@/features/product/services/product.service";
+import { refreshProductCatalogServer } from "@/features/product/services/product-catalog.server";
 import { SHIPPING_FEES_VND } from "../constants";
 import type { CreateOrderRequest } from "../schemas/checkout.schema";
 import type { CreateOrderResult, OrderStatus, RetryPaymentResult } from "../types";
@@ -95,7 +96,7 @@ export const checkoutService = {
     // không refresh ở đây sẽ tính theo giá lần refresh gần nhất (có thể cũ).
     // SELECT này kèm luôn `stock` (cùng 1 row products) — dùng lại bên dưới
     // thay vì bắn thêm 1 round-trip DB riêng cho getAvailableStock().
-    const stockResult = await productService.refreshCatalogCache();
+    const stockResult = await refreshProductCatalogServer();
 
     const cartSummary = buildCartSummary({ lines: input.lines });
     if (cartSummary.isEmpty) {
