@@ -37,7 +37,7 @@ export function BlogPostCard({ post }: { post: BlogPostSummary }) {
         ) : null}
       </p>
 
-      <h2 className="mt-1.5 font-display text-[clamp(18px,1.6vw,22px)] font-bold leading-[1.15] tracking-[-0.03em] text-ink">
+      <h2 className="mt-1.5 font-display text-[clamp(18px,1.6vw,22px)] font-bold leading-tight tracking-[-0.03em] text-ink">
         <Link href={href} className="hover:text-primary-deep">
           {post.title}
         </Link>

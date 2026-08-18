@@ -20,7 +20,7 @@ export function PolicyPageView({ page }: PolicyPageViewProps) {
   return (
     <main className="bg-bg text-ink">
       <header className="px-6 pt-28 pb-8 md:px-10 md:pt-36 md:pb-10">
-        <h1 className="font-display text-center text-[clamp(2.5rem,8vw,4.75rem)] font-bold leading-[0.95] tracking-[-0.04em] text-ink uppercase">
+        <h1 className="font-display text-center text-[clamp(2.5rem,8vw,4.75rem)] font-bold leading-tight tracking-[-0.04em] text-ink uppercase">
           {page.title}
         </h1>
         <div

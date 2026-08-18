@@ -21,7 +21,7 @@ export const NUTEIN_PRODUCT_DETAIL: ProductDetail = {
   tagline: "Protein thực vật — năng lượng sạch cho lối sống lành mạnh mỗi ngày.",
   description:
     "Bột protein thực vật Nutein, dễ pha, phù hợp người ăn chay và tập luyện nhẹ nhàng.",
-  unitPrice: 249_000,
+  unitPrice: 449_000,
   currency: "VND",
   rating: { average: 4.9, count: 128 },
   image: DEFAULT_PRODUCT_IMAGE,
@@ -30,15 +30,48 @@ export const NUTEIN_PRODUCT_DETAIL: ProductDetail = {
   defaultVariantId: DEFAULT_PRODUCT_VARIANT_ID,
   gallery: DEFAULT_PRODUCT_GALLERY,
   specs: [
-    { id: "spec-protein", value: "20g", label: "Protein / khẩu phần" },
-    { id: "spec-plant", value: "100%", label: "Thực vật" },
-    { id: "spec-sugar", value: "0g", label: "Đường thêm" },
-    { id: "spec-serve", value: "15", label: "Khẩu phần / hộp" },
+    { id: "spec-protein", value: "11g", label: "PROTEIN / GÓI 30G" },
+    { id: "spec-plant", value: "ĐẠM", label: "THỰC VẬT LÀNH TÍNH" },
+    { id: "spec-fiber", value: "1.8g", label: "CHẤT XƠ HÒA TAN" },
+    { id: "spec-serve", value: "20", label: "KHẨU PHẦN / HỘP" },
   ],
   variants: [
-    { id: "pack-1", label: "1 hộp", units: 1 },
-    { id: "pack-3", label: "3 hộp", units: 3 },
-    { id: "pack-6", label: "6 hộp", units: 6 },
+    {
+      id: "pack-1",
+      label: "1 hộp",
+      units: 1,
+      price: 449_000,
+      offer: { freeShipping: true },
+    },
+    {
+      id: "pack-2",
+      label: "2 hộp",
+      units: 2,
+      price: 778_000,
+      offer: { freeShipping: true, giftDescription: "Tặng 1 bình nước", giftUnits: 1 },
+    },
+    {
+      id: "pack-3",
+      label: "3 hộp",
+      units: 3,
+      price: 1_167_000,
+      offer: {
+        freeShipping: true,
+        giftDescription: "Tặng 1 hộp + 1 bình nước",
+        giftUnits: 1,
+      },
+    },
+    {
+      id: "pack-5",
+      label: "5 hộp",
+      units: 5,
+      price: 1_945_000,
+      offer: {
+        freeShipping: true,
+        giftDescription: "Tặng 2 hộp + 1 bình nước",
+        giftUnits: 2,
+      },
+    },
   ],
 };
 

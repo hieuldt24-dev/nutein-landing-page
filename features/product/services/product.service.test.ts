@@ -87,4 +87,10 @@ describe("refreshProductCatalogServer", () => {
     await expect(refreshProductCatalogServer()).resolves.toBeNull();
     expect(productService.getProductDetail()).toEqual(beforeError);
   });
+
+  it("prices repeated one-box quantity using the matching bundle", () => {
+    expect(productService.lineTotal(NUTEIN_PRODUCT_DETAIL, "pack-1", 2)).toBe(778_000);
+    expect(productService.lineTotal(NUTEIN_PRODUCT_DETAIL, "pack-1", 3)).toBe(1_167_000);
+    expect(productService.lineTotal(NUTEIN_PRODUCT_DETAIL, "pack-1", 5)).toBe(1_945_000);
+  });
 });

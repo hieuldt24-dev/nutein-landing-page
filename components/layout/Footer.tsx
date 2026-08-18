@@ -112,7 +112,7 @@ export default function Footer() {
         </div>
 
         <div className="cta-copy relative text-center md:text-left">
-          <h2 className="font-display text-[clamp(28px,4vw,44px)] font-black leading-[1.05] tracking-[-0.03em] text-white">
+          <h2 className="font-display text-[clamp(28px,4vw,44px)] font-black leading-tight tracking-[-0.03em] text-white">
             <BounceChars>Sẵn sàng nạp nguồn năng lượng sạch từ thực vật?</BounceChars>
           </h2>
           <p className="mx-auto mt-3 max-w-[440px] text-[15px] leading-relaxed text-white/85 md:mx-0 md:text-base">
@@ -154,7 +154,7 @@ export default function Footer() {
             className="mb-4 h-8 w-auto brightness-0 invert"
           />
           <p className="max-w-[280px] text-sm leading-relaxed text-white/75">
-            100% Protein thực vật từ nguyên liệu thật — nguồn năng lượng sạch cho lối sống
+            Protein thực vật từ nguyên liệu thật — nguồn năng lượng sạch cho lối sống
             lành mạnh mỗi ngày.
           </p>
           <div className="mt-5 flex items-center gap-3">

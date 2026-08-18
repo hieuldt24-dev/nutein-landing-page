@@ -132,11 +132,22 @@ export default function Navbar() {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") setMenuOpen(false);
     };
+    const html = document.documentElement;
+    const body = document.body;
+    const previousHtmlOverflow = html.style.overflow;
+    const previousBodyOverflow = body.style.overflow;
+    const previousBodyOverscrollBehavior = body.style.overscrollBehavior;
+
     window.addEventListener("keydown", onKeyDown);
-    document.body.style.overflow = "hidden";
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    body.style.overscrollBehavior = "none";
+
     return () => {
       window.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = "";
+      html.style.overflow = previousHtmlOverflow;
+      body.style.overflow = previousBodyOverflow;
+      body.style.overscrollBehavior = previousBodyOverscrollBehavior;
     };
   }, [menuOpen]);
 
@@ -292,7 +303,7 @@ export default function Navbar() {
           <div className="min-h-0 overflow-hidden">
             <div
               className={cn(
-                "flex min-h-[calc(100svh-92px)] flex-col transition-opacity",
+                "flex h-[calc(100svh-92px)] max-h-[calc(100svh-92px)] flex-col transition-opacity",
                 navEase,
                 menuOpen
                   ? "pointer-events-auto opacity-100"
@@ -302,7 +313,7 @@ export default function Navbar() {
               aria-modal={menuOpen}
               aria-label="Menu điều hướng"
             >
-              <div className="flex-1 overflow-y-auto px-6 pt-2 pb-6">
+              <div className="flex-1 overscroll-contain overflow-y-auto px-6 pt-2 pb-6">
                 <Link
                   href={PRODUCT_LINK.href}
                   onClick={closeMenu}

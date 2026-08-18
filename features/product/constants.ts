@@ -11,5 +11,5 @@ export const NUTEIN_PRODUCT_DB_ID =
 export const PRODUCT_PAGE_META = {
   title: "Sản phẩm Nutein | Protein thực vật",
   description:
-    "Mua Protein thực vật Nutein — chọn gói 1, 3 hoặc 6 hộp, giao hàng toàn quốc.",
+    "Mua Protein thực vật Nutein — chọn gói 1, 2, 3 hoặc 5 hộp, giao hàng toàn quốc.",
 } as const;

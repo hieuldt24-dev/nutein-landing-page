@@ -17,12 +17,12 @@ const mulish = Mulish({
 });
 
 export const metadata: Metadata = {
-  title: "Nutein – Nạp năng lượng từ 100% Protein thực vật",
+  title: "Nutein – Nạp năng lượng từ protein thực vật",
   description:
     "Khởi đầu ngày mới tràn đầy sức sống với nguồn dinh dưỡng thuần khiết từ thiên nhiên. Nutein giúp bạn luôn khoẻ mạnh dù bận rộn nhất.",
   keywords: ["protein thực vật", "dinh dưỡng", "organic", "nutein", "non-gmo"],
   openGraph: {
-    title: "Nutein – 100% Protein thực vật",
+    title: "Nutein – Protein thực vật",
     description: "Nguồn dinh dưỡng thuần khiết từ thiên nhiên.",
     locale: "vi_VN",
     type: "website",

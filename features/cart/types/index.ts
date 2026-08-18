@@ -1,5 +1,5 @@
 /**
- * Cart Nutein — single-SKU, **nhiều dòng theo gói** (pack-1 / pack-3 / pack-6).
+ * Cart Nutein — single-SKU, **nhiều dòng theo gói**.
  * Mỗi dòng: variantId + quantity (**số gói**). Số hũ = quantity × variant.units
  * chỉ khi pricing chi tiết / ghi order_items.
  */
@@ -19,9 +19,9 @@ export interface CartLineSummary {
   variantId: string;
   label: string;
   quantity: number;
-  /** Đơn giá / gói (VND). */
+  /** Giá tham chiếu / gói (VND), trước khi phân bổ bundle discount. */
   unitPrice: number;
-  /** quantity × unitPrice. */
+  /** Phần giá bundle cuối cùng được phân bổ cho dòng này. */
   lineSubtotal: number;
 }
 
@@ -33,7 +33,7 @@ export interface CartSummary {
   lines: CartLineSummary[];
   /** Tổng số gói mọi dòng — badge navbar / dock. */
   quantity: number;
-  /** Tổng trước giảm = Σ lineSubtotal. */
+  /** Tổng giá niêm yết theo số hũ, trước bundle discount. */
   subtotal: number;
   /** % giảm đang áp dụng (0 nếu chưa đạt mốc discount). */
   discountPercent: number;
@@ -53,6 +53,8 @@ export interface VoucherTier {
   label: string;
   kind: VoucherTierKind;
   discountPercent?: number;
+  /** Copy/benefit for bundle offers, e.g. "Tặng 1 bình nước". */
+  benefit?: string;
 }
 
 export interface VoucherTierProgress extends VoucherTier {

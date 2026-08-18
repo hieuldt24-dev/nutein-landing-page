@@ -70,38 +70,40 @@ export default function TestimonialsSection() {
           </div>
         </div>
 
-        <div className="scrollbar-hide flex gap-6 overflow-x-auto snap-x snap-mandatory pb-4 md:grid md:grid-cols-3 md:overflow-visible">
-          {REVIEWS.map((review, idx) => (
-            <div
-              key={idx}
-              suppressHydrationWarning
-              className="animate-fade-up flex w-[300px] shrink-0 snap-start flex-col gap-5 rounded-[40px] bg-surface p-8 md:w-auto"
-              style={{
-                animationDelay: `${idx * 0.15}s`,
-                border: "2px solid var(--color-ink)",
-              } as CSSProperties}
-            >
-              <div className="flex items-center justify-between">
-                <StarRating rating={review.rating} size={15} />
-                <span className="select-none font-display text-5xl leading-none text-primary/25">&ldquo;</span>
-              </div>
-
-              <p className="grow text-[14.5px] italic leading-relaxed text-text-body">{review.comment}</p>
-
-              <div className="flex items-center gap-3.5 border-t border-[color:var(--color-border)] pt-4" suppressHydrationWarning>
-                <div
-                  suppressHydrationWarning
-                  className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary-soft font-display text-[15px] font-extrabold text-primary-deep"
-                >
-                  {review.avatar}
+        <div className="-mx-6 md:mx-0">
+          <div className="scrollbar-hide flex snap-x snap-mandatory gap-6 overflow-x-auto px-6 pb-4 md:grid md:grid-cols-3 md:overflow-visible md:px-0">
+            {REVIEWS.map((review, idx) => (
+              <div
+                key={idx}
+                suppressHydrationWarning
+                className="animate-fade-up flex w-[300px] shrink-0 snap-start flex-col gap-5 rounded-[40px] bg-surface p-8 md:w-auto"
+                style={{
+                  animationDelay: `${idx * 0.15}s`,
+                  border: "2px solid var(--color-ink)",
+                } as CSSProperties}
+              >
+                <div className="flex items-center justify-between">
+                  <StarRating rating={review.rating} size={15} />
+                  <span className="select-none font-display text-5xl leading-none text-primary/25">&ldquo;</span>
                 </div>
-                <div suppressHydrationWarning>
-                  <h4 className="font-display text-[15px] font-extrabold text-ink">{review.name}</h4>
-                  <p className="mt-0.5 text-xs text-text-muted">{review.age} • {review.role}</p>
+
+                <p className="grow text-[14.5px] italic leading-relaxed text-text-body">{review.comment}</p>
+
+                <div className="flex items-center gap-3.5 border-t border-[color:var(--color-border)] pt-4" suppressHydrationWarning>
+                  <div
+                    suppressHydrationWarning
+                    className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary-soft font-display text-[15px] font-extrabold text-primary-deep"
+                  >
+                    {review.avatar}
+                  </div>
+                  <div suppressHydrationWarning>
+                    <h4 className="font-display text-[15px] font-extrabold text-ink">{review.name}</h4>
+                    <p className="mt-0.5 text-xs text-text-muted">{review.age} • {review.role}</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </section>

@@ -24,6 +24,14 @@ export interface ProductVariant {
   units: number;
   /** Giá gói (VND). Nếu omit, UI/service tính `unitPrice * units`. */
   price?: number;
+  /** Ưu đãi gắn với chính gói này; được lưu trong marketing_meta để Admin chỉnh được. */
+  offer?: ProductVariantOffer;
+}
+
+export interface ProductVariantOffer {
+  freeShipping?: boolean;
+  giftDescription?: string;
+  giftUnits?: number;
 }
 
 export interface ProductGalleryImage {
