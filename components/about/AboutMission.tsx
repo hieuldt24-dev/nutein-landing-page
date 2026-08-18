@@ -50,7 +50,7 @@ export default function AboutMission() {
         </div>
 
         <div className="relative flex flex-col justify-between gap-10 bg-primary px-8 py-14 md:gap-12 md:px-12 md:py-16 lg:min-h-[min(90svh,860px)] lg:px-14 lg:py-20">
-          <h2 className="relative z-[1] font-display text-[clamp(44px,6.2vw,80px)] font-black uppercase leading-[1.02] tracking-[-0.045em] text-ink">
+          <h2 className="relative z-[1] font-display text-[clamp(44px,6.2vw,80px)] font-black uppercase leading-tight tracking-[-0.045em] text-ink">
             <BounceChars staggerMs={22}>
               {ABOUT_MISSION.titleLine1}
               <br />
@@ -59,7 +59,7 @@ export default function AboutMission() {
           </h2>
 
           {/* pr/pb mobile: chừa góc cho sao xanh nhô vào, không đè copy */}
-          <p className="relative z-[1] max-w-[42ch] pr-10 pb-8 text-[15px] font-extrabold uppercase leading-[1.55] tracking-[0.04em] text-ink md:pr-0 md:pb-0 md:text-[17px] lg:text-[18px]">
+          <p className="relative z-[1] max-w-[42ch] whitespace-pre-line pr-10 pb-8 text-[15px] font-extrabold uppercase leading-[1.55] tracking-[0.04em] text-ink md:pr-0 md:pb-0 md:text-[17px] lg:text-[18px]">
             {ABOUT_MISSION.body}
           </p>
         </div>

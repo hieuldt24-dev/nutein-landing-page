@@ -9,6 +9,7 @@ import type { Product } from "@/features/product/types";
 interface CartLineItemProps {
   product: Product;
   quantity: number;
+  lineSubtotal?: number;
   disabled?: boolean;
   onIncrement: () => void;
   onDecrement: () => void;
@@ -22,6 +23,7 @@ interface CartLineItemProps {
 export function CartLineItem({
   product,
   quantity,
+  lineSubtotal,
   disabled = false,
   onIncrement,
   onDecrement,
@@ -60,7 +62,7 @@ export function CartLineItem({
 
         <div className="flex shrink-0 flex-col items-end justify-between">
           <span className="text-[16px] font-bold tracking-[-0.04em] text-ink">
-            {formatCurrencyVnd(product.price)}
+            {formatCurrencyVnd(lineSubtotal ?? product.price * quantity)}
           </span>
           <button
             type="button"

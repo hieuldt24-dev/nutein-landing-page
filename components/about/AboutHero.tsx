@@ -37,7 +37,7 @@ export default function AboutHero() {
         <FadeInOnView className="mb-4 text-xs font-extrabold uppercase tracking-[0.2em] text-primary">
           Về Nutein
         </FadeInOnView>
-        <h1 className="font-display text-[clamp(30px,6.2vw,72px)] font-black uppercase leading-[1.02] tracking-[-0.04em] text-[var(--color-bg)]">
+        <h1 className="font-display text-[clamp(30px,6.2vw,72px)] font-black uppercase leading-tight tracking-[-0.04em] text-[var(--color-bg)]">
           {/* Desktop nowrap tránh orphan; mobile cho xuống dòng — tránh overflow-x */}
           <span className="block md:whitespace-nowrap">
             <BounceChars staggerMs={22}>{ABOUT_HERO.titleLine1}</BounceChars>

@@ -18,7 +18,7 @@ function StoryBlock({
       <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-primary md:text-[13px]">
         {index}
       </p>
-      <h3 className="font-display max-w-[14ch] text-[clamp(32px,4vw,44px)] font-bold leading-[1.08] tracking-[-0.035em] text-ink">
+      <h3 className="font-display max-w-[14ch] text-[clamp(32px,4vw,44px)] font-bold leading-tight tracking-[-0.035em] text-ink">
         {title}
       </h3>
       <p className="max-w-[38rem] text-[17px] leading-[1.7] font-medium text-ink/80 md:text-[19px] md:leading-[1.65]">

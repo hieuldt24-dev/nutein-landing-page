@@ -100,7 +100,7 @@ function Heading({ motionStyle, elementRef }: { motionStyle?: { y: MotionValue<n
       <p className="mb-2.5 text-xs font-extrabold uppercase tracking-[0.18em] text-primary">
         {"Gi\u00e1 tr\u1ecb s\u1ee9c kho\u1ebb"}
       </p>
-      <h2 className="mx-auto max-w-[20ch] font-black text-[clamp(42px,6.25vw,84px)] leading-[1.05] tracking-[-0.03em] text-ink">
+      <h2 className="mx-auto max-w-[20ch] font-black text-[clamp(42px,6.25vw,84px)] leading-tight tracking-[-0.03em] text-ink">
         <BounceChars>{"L\u1ee3i \u00edch v\u01b0\u1ee3t tr\u1ed9i t\u1eeb \u0111\u1ea1m th\u1ef1c v\u1eadt s\u1ea1ch"}</BounceChars>
       </h2>
     </motion.div>

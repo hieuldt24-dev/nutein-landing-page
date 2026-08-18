@@ -23,7 +23,10 @@ export function ProductPurchasePanel({ product, className }: ProductPurchasePane
   const [isAdding, setIsAdding] = useState(false);
 
   const variant = productService.resolveVariant(product, selectedVariantId);
-  const lineTotal = productService.lineTotal(product, selectedVariantId, qty);
+  const safeQty = Math.max(1, qty);
+  const lineTotal = productService.lineTotal(product, selectedVariantId, safeQty);
+  const regularLineTotal = product.unitPrice * variant.units * safeQty;
+  const hasBundleDiscount = lineTotal < regularLineTotal;
 
   const handleAdd = async () => {
     if (isAdding) return;
@@ -47,7 +50,7 @@ export function ProductPurchasePanel({ product, className }: ProductPurchasePane
           interactive
           className="mb-3"
         />
-        <h1 className="font-display text-[clamp(40px,5vw,56px)] font-bold leading-[0.95] tracking-[-0.04em] text-ink">
+        <h1 className="font-display text-[clamp(40px,5vw,56px)] font-bold leading-tight tracking-[-0.04em] text-ink">
           {product.name}
         </h1>
         <p className="mt-3 max-w-[36ch] text-[16px] leading-relaxed font-medium text-ink/80 md:text-[17px]">
@@ -82,18 +85,25 @@ export function ProductPurchasePanel({ product, className }: ProductPurchasePane
         </div>
       </div>
 
-      <ProductBundleBar />
+      <ProductBundleBar product={product} />
 
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-[13px] font-bold uppercase tracking-[-0.01em] text-text-muted">
             Tổng
           </p>
-          <p className="font-display text-[clamp(28px,3vw,36px)] font-bold leading-none tracking-[-0.04em] text-ink">
-            {formatCurrencyVnd(lineTotal)}
-          </p>
+          <div className="flex items-baseline gap-x-3">
+            <p className="font-display text-[clamp(28px,3vw,36px)] font-bold leading-none tracking-[-0.04em] text-ink">
+              {formatCurrencyVnd(lineTotal)}
+            </p>
+            {hasBundleDiscount && (
+              <s className="whitespace-nowrap text-[15px] font-semibold tracking-[-0.03em] text-text-muted">
+                {formatCurrencyVnd(regularLineTotal)}
+              </s>
+            )}
+          </div>
           <p className="mt-1.5 text-[13px] font-medium text-text-muted">
-            {formatCurrencyVnd(product.unitPrice)} / hũ · {variant.label}
+            {formatCurrencyVnd(variant.price ?? product.unitPrice * variant.units)} · {variant.label}
           </p>
         </div>
         <QuantityStepper

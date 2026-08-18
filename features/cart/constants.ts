@@ -44,9 +44,8 @@ export const CART_DRAWER_ANIMATION_MS = 380;
  * Ngưỡng tăng dần — mốc cuối dùng làm mẫu số tính % progress bar.
  */
 export const VOUCHER_TIERS: VoucherTier[] = [
-  { id: "discount-5", thresholdVnd: 500_000, label: "Giảm 5%", kind: "discount", discountPercent: 5 },
-  { id: "free-shipping", thresholdVnd: 750_000, label: "Miễn phí vận chuyển", kind: "free_shipping" },
-  { id: "discount-10", thresholdVnd: 1_000_000, label: "Giảm 10%", kind: "discount", discountPercent: 10 },
-  { id: "discount-15", thresholdVnd: 1_250_000, label: "Giảm 15%", kind: "discount", discountPercent: 15 },
-  { id: "discount-25", thresholdVnd: 1_500_000, label: "Giảm 25%", kind: "discount", discountPercent: 25 },
+  { id: "pack-1", thresholdVnd: 449_000, label: "1 hộp · Freeship", kind: "free_shipping", benefit: "Miễn phí vận chuyển" },
+  { id: "pack-2", thresholdVnd: 778_000, label: "2 hộp · Tặng bình", kind: "free_shipping", benefit: "Freeship + tặng 1 bình nước" },
+  { id: "pack-3", thresholdVnd: 1_167_000, label: "3 hộp · Tặng 1 hộp", kind: "free_shipping", benefit: "Freeship + tặng 1 hộp + 1 bình nước" },
+  { id: "pack-5", thresholdVnd: 1_945_000, label: "5 hộp · Tặng 2 hộp", kind: "free_shipping", benefit: "Freeship + tặng 2 hộp + 1 bình nước" },
 ];

@@ -84,6 +84,37 @@ function setProductDetail(product: ProductDetail): void {
   };
 }
 
+/**
+ * Returns the lowest valid bundle price for an exact number of jars.
+ *
+ * The cart stores a selected package plus its quantity, but the offer table
+ * is based on the total number of jars. Dynamic programming keeps that rule
+ * true for every combination (for example, 1 hộp × 2 uses the 2-hộp price)
+ * and also remains compatible with future variants edited by Staff.
+ */
+function bundlePrice(product: ProductDetail, totalUnits: number): number {
+  const units = Math.max(0, Math.floor(totalUnits));
+  if (units === 0) return 0;
+
+  const best = Array<number>(units + 1).fill(Number.POSITIVE_INFINITY);
+  best[0] = 0;
+
+  for (let target = 1; target <= units; target += 1) {
+    for (const variant of product.variants) {
+      if (variant.units > target) continue;
+      const packagePrice = productService.packPrice(product, variant);
+      const previous = best[target - variant.units];
+      if (Number.isFinite(previous)) {
+        best[target] = Math.min(best[target], previous + packagePrice);
+      }
+    }
+  }
+
+  return Number.isFinite(best[units])
+    ? best[units]
+    : product.unitPrice * units;
+}
+
 /** Product domain helpers shared by server pricing and client UI. */
 export const productService = {
   /** Hydrate the sync cache from the server reader or public catalog API. */
@@ -114,9 +145,11 @@ export const productService = {
     return product.unitPrice * variant.units;
   },
 
+  bundlePrice,
+
   lineTotal(product: ProductDetail, variantId: string, qty: number): number {
     const variant = productService.resolveVariant(product, variantId);
-    return productService.packPrice(product, variant) * Math.max(1, qty);
+    return productService.bundlePrice(product, variant.units * Math.max(1, qty));
   },
 
   toCartProduct(product: ProductDetail, variantId?: string | null): Product {
