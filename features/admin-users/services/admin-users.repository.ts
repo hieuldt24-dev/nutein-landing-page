@@ -2,6 +2,7 @@ import "server-only";
 
 import { supabaseAdmin } from "@/lib/supabase";
 import { NotFoundError } from "@/src/errors/app.error";
+import { refreshTokenService } from "@/features/auth/services/refresh-token.service";
 import type { AuthRole } from "@/features/auth/types";
 import type { AdminManagedUser } from "../types";
 
@@ -104,6 +105,14 @@ async function setLocked(id: string, locked: boolean): Promise<AdminManagedUser>
   if (!data) {
     throw new NotFoundError("User");
   }
+
+  // F2 — khóa tài khoản phải có hiệu lực NGAY: thu hồi mọi refresh token
+  // đang mở của user đó, không đợi tới lần /api/auth/refresh kế tiếp. Mở
+  // khóa thì không thu hồi (không cần buộc user đăng nhập lại).
+  if (locked) {
+    await refreshTokenService.revokeAllForUser(id);
+  }
+
   return toAdminManagedUser(data as UserRow);
 }
 

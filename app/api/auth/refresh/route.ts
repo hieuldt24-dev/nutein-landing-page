@@ -1,8 +1,10 @@
 import { NextRequest } from "next/server";
 import { successResponse } from "@/src/api/response";
 import { withErrorHandler } from "@/src/middlewares/error-handler.middleware";
-import { UnauthorizedError } from "@/src/errors/app.error";
+import { ForbiddenError, UnauthorizedError } from "@/src/errors/app.error";
+import { authLimiter } from "@/src/middlewares/rate-limit.middleware";
 import { getClientIp, getUserAgent } from "@/src/api/request-context";
+import { supabaseAdmin } from "@/lib/supabase";
 import {
   ACCESS_TOKEN_COOKIE,
   REFRESH_TOKEN_COOKIE,
@@ -26,7 +28,22 @@ import { auditLogService } from "@/features/auth/services/audit-log.service";
  * nhập lại (xem lib/swr-fetcher.ts — fetcher tự gọi endpoint này khi gặp 401
  * TOKEN_EXPIRED).
  */
+/**
+ * Route này không có session context của user (chỉ có refresh token cookie),
+ * nên dùng service-role client giống refresh-token.service.ts để đọc cờ khóa.
+ */
+function requireAdminClient() {
+  if (!supabaseAdmin) {
+    throw new Error("Thiếu SUPABASE_SERVICE_ROLE_KEY — kiểm tra lại cấu hình môi trường");
+  }
+  return supabaseAdmin;
+}
+
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // F4 — throttle trước mọi việc khác, cùng tier với /api/auth/session.
+  const limited = await authLimiter(req);
+  if (limited) return limited;
+
   const refreshToken = req.cookies.get(REFRESH_TOKEN_COOKIE)?.value;
   if (!refreshToken) {
     throw new UnauthorizedError("Không tìm thấy refresh token");
@@ -37,6 +54,21 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     payload = jwtService.verifyRefreshToken(refreshToken);
   } catch {
     throw new UnauthorizedError("Refresh token không hợp lệ hoặc đã hết hạn");
+  }
+
+  // F2 — tài khoản bị khóa thì không được rotate. Thu hồi TOÀN BỘ refresh
+  // token của user (không chỉ token đang trình ra) để không còn phiên nào
+  // sống sót, rồi mới từ chối request. Đây là lớp phòng vệ thứ hai bên cạnh
+  // trigger thu hồi ngay lúc admin khóa (admin-users.repository.setLocked).
+  const { data: lockedProfile } = await requireAdminClient()
+    .from("users")
+    .select("is_deleted")
+    .eq("id", payload.sub)
+    .maybeSingle();
+
+  if (lockedProfile?.is_deleted === true) {
+    await refreshTokenService.revokeAllForUser(payload.sub);
+    throw new ForbiddenError("Tài khoản đã bị khóa");
   }
 
   const isActive = await refreshTokenService.isActive(refreshToken);

@@ -83,6 +83,22 @@ export const sessionLimiter = async (req: NextRequest) => {
   });
 };
 
+/**
+ * F5 — /api/auth/email-status là oracle liệt kê email (trả thẳng
+ * `{ exists: boolean }` cho mọi khách chưa đăng nhập). Ngưỡng phải CHẶT hơn
+ * authLimiter (max 20): 5 lần / 15 phút / IP — đủ cho luồng UI thật (khách
+ * gõ 1-2 email trong AuthModal/checkout guest) nhưng vô dụng để quét danh
+ * sách email. Dùng `code` riêng để client phân biệt được với limiter auth chung.
+ */
+export const emailStatusLimiter = async (req: NextRequest) => {
+  return rateLimiter(req, {
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    code: "TOO_MANY_EMAIL_CHECKS",
+    message: "Bạn đã kiểm tra email quá nhiều lần, vui lòng thử lại sau 15 phút",
+  });
+};
+
 export function withAuthRateLimit(
   handler: (request: NextRequest) => Promise<Response>,
   responseType: "redirect" | "json" = "redirect",

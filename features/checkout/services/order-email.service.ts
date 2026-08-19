@@ -8,6 +8,21 @@ import type { CreateOrderResult } from "../types";
 
 const serviceLogger = logger.child({ service: "orderEmailService" });
 
+/**
+ * Escape 5 lớp ký tự nguy hiểm trước khi nội suy chuỗi do khách nhập vào
+ * template HTML của email (chống HTML injection / XSS trong mail client).
+ * Thứ tự quan trọng: `&` phải thay trước, nếu không các entity vừa chèn
+ * (`&lt;`, `&quot;`...) sẽ bị escape lần hai.
+ */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function renderOrderConfirmationHtml(order: CreateOrderResult): string {
   const paymentLabel =
     PAYMENT_OPTIONS.find((o) => o.value === order.paymentMethod)?.label ?? order.paymentMethod;
@@ -21,8 +36,8 @@ function renderOrderConfirmationHtml(order: CreateOrderResult): string {
 
       <h2 style="font-size: 15px; margin-top: 24px;">Thông tin giao hàng</h2>
       <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
-        <tr><td style="padding: 4px 0; color: #666;">Người nhận</td><td style="padding: 4px 0;">${order.buyer.fullName} · ${order.buyer.phone}</td></tr>
-        <tr><td style="padding: 4px 0; color: #666;">Địa chỉ</td><td style="padding: 4px 0;">${order.address.street}, ${order.address.ward}, ${order.address.province}</td></tr>
+        <tr><td style="padding: 4px 0; color: #666;">Người nhận</td><td style="padding: 4px 0;">${escapeHtml(order.buyer.fullName)} · ${escapeHtml(order.buyer.phone)}</td></tr>
+        <tr><td style="padding: 4px 0; color: #666;">Địa chỉ</td><td style="padding: 4px 0;">${escapeHtml(order.address.street)}, ${escapeHtml(order.address.ward)}, ${escapeHtml(order.address.province)}</td></tr>
         <tr><td style="padding: 4px 0; color: #666;">Vận chuyển</td><td style="padding: 4px 0;">${shippingLabel} — ${order.estimatedDeliveryLabel}</td></tr>
         <tr><td style="padding: 4px 0; color: #666;">Thanh toán</td><td style="padding: 4px 0;">${paymentLabel}</td></tr>
       </table>

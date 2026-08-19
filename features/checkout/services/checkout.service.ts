@@ -107,10 +107,15 @@ export const checkoutService = {
     // link hoặc đơn orphan cho số lượng không thể giao. Chỉ fallback sang
     // query riêng khi refresh ở trên lỗi/thiếu data (best-effort trả null) —
     // không được phép bỏ qua check tồn kho trong trường hợp đó.
+    // `stockResult` là object truthy kể cả khi `stock` là NaN (cột DB null/
+    // non-numeric qua Number(row.stock)) — chỉ test truthiness thì
+    // `requestedUnits > NaN` luôn false và guard tồn kho bị vô hiệu hoá. Vì
+    // vậy phải kiểm tra tính hợp lệ của GIÁ TRỊ, không chỉ của object.
     const requestedUnits = totalRequestedUnits(cartSummary.lines);
-    const availableStock = stockResult
-      ? stockResult.stock
-      : await orderRepository.getAvailableStock();
+    const availableStock =
+      stockResult && Number.isFinite(stockResult.stock)
+        ? stockResult.stock
+        : await orderRepository.getAvailableStock();
     if (requestedUnits > availableStock) {
       throw new BadRequestError(
         availableStock > 0
@@ -139,24 +144,44 @@ export const checkoutService = {
     const note = input.note?.trim() ? input.note.trim() : undefined;
     const primaryUnitPrice = cartSummary.lines[0]?.unitPrice ?? 0;
 
-    const row = await orderRepository.create(
-      userId,
-      input,
-      {
-        unitPrice: primaryUnitPrice,
-        subtotal: cartSummary.subtotal,
-        discountAmount: cartSummary.discountAmount,
-        shippingFee,
-        total,
-      },
-      {
-        orderCode,
-        status: "PENDING",
-        paymentStatus: "UNPAID",
-        payosOrderCode,
-        payosPaymentLinkId,
-      },
-    );
+    // F1 — Nếu ghi DB thất bại SAU khi payOS đã tạo link, phải huỷ link đó,
+    // nếu không sẽ để lại payment link "mồ côi" mà khách vẫn trả được tiền
+    // trong khi hệ thống không có đơn tương ứng. Đường COD không có
+    // payosOrderCode nên không đi vào nhánh này (không thay đổi hành vi).
+    let row;
+    try {
+      row = await orderRepository.create(
+        userId,
+        input,
+        {
+          unitPrice: primaryUnitPrice,
+          subtotal: cartSummary.subtotal,
+          discountAmount: cartSummary.discountAmount,
+          shippingFee,
+          total,
+        },
+        {
+          orderCode,
+          status: "PENDING",
+          paymentStatus: "UNPAID",
+          payosOrderCode,
+          payosPaymentLinkId,
+        },
+      );
+    } catch (createError) {
+      if (payosOrderCode) {
+        try {
+          await payosService.cancelPaymentLink(payosOrderCode, "order_create_failed");
+        } catch (cancelError) {
+          // Huỷ link thất bại không được che lỗi gốc — chỉ log.
+          serviceLogger.error(
+            { err: cancelError, orderCode, payosOrderCode },
+            "Huỷ payOS payment link sau khi tạo đơn thất bại không thành công",
+          );
+        }
+      }
+      throw createError;
+    }
 
     const result: CreateOrderResult = {
       orderId: row.id,

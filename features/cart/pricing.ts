@@ -4,7 +4,6 @@ import {
   MAX_CART_QUANTITY,
   MIN_CART_QUANTITY,
   SHIPPING_FEE_NOTE,
-  VOUCHER_TIERS,
 } from "./constants";
 import type {
   CartLine,
@@ -146,7 +145,7 @@ function calculateProgressPercent(subtotal: number, tiers: VoucherTier[]): numbe
 
 export function getVoucherProgress(
   subtotal: number,
-  tiers: VoucherTier[] = VOUCHER_TIERS,
+  tiers: VoucherTier[],
 ): VoucherProgress {
   const tierProgress = buildTierProgress(tiers, subtotal);
   const nextTier = tierProgress.find((tier) => !tier.achieved) ?? null;
@@ -160,6 +159,12 @@ export function getVoucherProgress(
   };
 }
 
+/**
+ * Mốc voucher từ variant sản phẩm — LUÔN sort tăng dần theo `thresholdVnd`.
+ * Thứ tự variant do staff nhập không đảm bảo, nhưng progress bar
+ * (`buildTierProgress`, `calculateProgressPercent`, `CartVoucherProgress`)
+ * giả định thứ tự tăng dần → enforce ngay tại đây.
+ */
 function buildProductVoucherTiers(): VoucherTier[] {
   const detail = productService.getProductDetail();
   return detail.variants.map((variant) => {
@@ -171,7 +176,7 @@ function buildProductVoucherTiers(): VoucherTier[] {
       kind: offer?.freeShipping ? "free_shipping" : "discount",
       benefit: offer?.giftDescription ?? (offer?.freeShipping ? "Miễn phí vận chuyển" : undefined),
     } satisfies VoucherTier;
-  });
+  }).sort((a, b) => a.thresholdVnd - b.thresholdVnd);
 }
 
 export function hasFreeShipping(voucherProgress: VoucherProgress): boolean {

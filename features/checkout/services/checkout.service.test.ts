@@ -181,6 +181,53 @@ describe("checkoutService.createOrder", () => {
     expect(mocks.createOrder).not.toHaveBeenCalled();
   });
 
+  // F1 / AC1 — link đã tạo xong rồi mới ghi DB thất bại → phải huỷ link.
+  it("bank_transfer: create() lỗi SAU khi đã tạo link → cancelPaymentLink(code, \"order_create_failed\") + lỗi gốc vẫn nổi lên", async () => {
+    mocks.createPaymentLink.mockResolvedValue({
+      checkoutUrl: "https://pay.payos.vn/web/abc",
+      payosOrderCode: 1234567890,
+      payosPaymentLinkId: "link-1",
+    });
+    const createError = new Error("DB insert failed");
+    mocks.createOrder.mockRejectedValue(createError);
+    mocks.cancelPaymentLink.mockResolvedValue(undefined);
+
+    await expect(
+      checkoutService.createOrder("user-1", { ...baseInput, paymentMethod: "bank_transfer" }),
+    ).rejects.toBe(createError);
+
+    expect(mocks.cancelPaymentLink).toHaveBeenCalledWith(1234567890, "order_create_failed");
+  });
+
+  // F1 / AC1 — huỷ link cũng lỗi thì KHÔNG được che lỗi gốc.
+  it("bank_transfer: cancelPaymentLink cũng lỗi → lỗi gốc của create() mới là lỗi nổi lên", async () => {
+    mocks.createPaymentLink.mockResolvedValue({
+      checkoutUrl: "https://pay.payos.vn/web/abc",
+      payosOrderCode: 1234567890,
+      payosPaymentLinkId: "link-1",
+    });
+    const createError = new Error("DB insert failed");
+    mocks.createOrder.mockRejectedValue(createError);
+    mocks.cancelPaymentLink.mockRejectedValueOnce(new Error("payOS cancel down"));
+
+    await expect(
+      checkoutService.createOrder("user-1", { ...baseInput, paymentMethod: "bank_transfer" }),
+    ).rejects.toBe(createError);
+
+    expect(mocks.cancelPaymentLink).toHaveBeenCalledTimes(1);
+  });
+
+  // F1 / AC2 — đường COD không có payosOrderCode → không được gọi cancel.
+  it("cod: create() lỗi → KHÔNG gọi cancelPaymentLink (không có link nào để huỷ)", async () => {
+    const createError = new Error("DB insert failed");
+    mocks.createOrder.mockRejectedValue(createError);
+
+    await expect(checkoutService.createOrder("user-1", baseInput)).rejects.toBe(createError);
+
+    expect(mocks.cancelPaymentLink).not.toHaveBeenCalled();
+    expect(mocks.createPaymentLink).not.toHaveBeenCalled();
+  });
+
   it("vượt tồn kho → BadRequestError, không gọi payOS lẫn orderRepository.create", async () => {
     mocks.getAvailableStock.mockResolvedValue(0); // 1 gói pack-1 = 1 hũ > 0 còn lại
 
@@ -209,6 +256,32 @@ describe("checkoutService.createOrder", () => {
 
     expect(mocks.getAvailableStock).not.toHaveBeenCalled();
     expect(result.status).toBe("pending");
+  });
+
+  // Item 1 — stock NaN (cột `stock` DB null/non-numeric → Number(null) = NaN)
+  // KHÔNG được coi là hợp lệ: object truthy nhưng giá trị vô nghĩa, phải rơi
+  // vào fallback getAvailableStock() y như trường hợp stockResult null.
+  it("refreshCatalogCache trả stock NaN → fallback getAvailableStock(), vượt tồn kho vẫn bị chặn", async () => {
+    mocks.refreshProductCatalogServer.mockResolvedValue({ stock: Number.NaN });
+    mocks.getAvailableStock.mockResolvedValue(0);
+
+    await expect(
+      checkoutService.createOrder("user-1", { ...baseInput, paymentMethod: "bank_transfer" }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+
+    expect(mocks.getAvailableStock).toHaveBeenCalled();
+    expect(mocks.createPaymentLink).not.toHaveBeenCalled();
+    expect(mocks.createOrder).not.toHaveBeenCalled();
+  });
+
+  it("refreshCatalogCache trả stock NaN + getAvailableStock lỗi DB → lỗi nổi lên (không âm thầm bỏ qua check)", async () => {
+    mocks.refreshProductCatalogServer.mockResolvedValue({ stock: Number.NaN });
+    const dbError = new Error("stock query failed");
+    mocks.getAvailableStock.mockRejectedValue(dbError);
+
+    await expect(checkoutService.createOrder("user-1", baseInput)).rejects.toBe(dbError);
+
+    expect(mocks.createOrder).not.toHaveBeenCalled();
   });
 
   it("refreshCatalogCache trả stock không đủ → BadRequestError, không cần gọi getAvailableStock riêng", async () => {

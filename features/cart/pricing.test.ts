@@ -61,4 +61,17 @@ describe("bundle pricing", () => {
     expect(summary.total).toBe(1_945_000);
     expect(summary.voucherProgress.isMaxTierAchieved).toBe(true);
   });
+
+  it("returns voucher tiers sorted ascending by thresholdVnd regardless of variant order", () => {
+    productService.setProductDetail({
+      ...NUTEIN_PRODUCT_DETAIL,
+      variants: [...NUTEIN_PRODUCT_DETAIL.variants].reverse(),
+    });
+
+    const summary = buildCartSummary({ lines: [{ variantId: "pack-1", quantity: 1 }] });
+    const thresholds = summary.voucherProgress.tiers.map((tier) => tier.thresholdVnd);
+
+    expect(thresholds).toEqual([...thresholds].sort((a, b) => a - b));
+    expect(thresholds).toEqual([449_000, 778_000, 1_167_000, 1_945_000]);
+  });
 });

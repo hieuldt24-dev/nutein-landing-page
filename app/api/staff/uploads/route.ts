@@ -19,7 +19,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   requireRole(user, "STAFF");
 
   if (!isCloudinaryConfigured) {
+    // Thông điệp gửi client là generic; chi tiết chẩn đoán đi vào `details`
+    // (chỉ log phía server) — tránh lộ tên biến môi trường ra ngoài.
     throw new InternalServerError(
+      "Tải ảnh lên thất bại — vui lòng thử lại sau.",
       "Thiếu CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET — kiểm tra lại file .env",
     );
   }
@@ -46,8 +49,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     });
     return createdResponse({ url: result.secure_url });
   } catch (err) {
+    // Không forward message của SDK ra client (có thể chứa chi tiết nội bộ);
+    // giữ nguyên chi tiết trong `details` để log phía server.
     throw new InternalServerError(
-      err instanceof Error ? err.message : "Upload ảnh thất bại.",
+      "Tải ảnh lên thất bại — vui lòng thử lại sau.",
+      err instanceof Error ? err.message : String(err),
     );
   }
 });

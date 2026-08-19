@@ -4,6 +4,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   from: vi.fn(),
+  revokeAllForUser: vi.fn(),
+}));
+
+vi.mock("@/features/auth/services/refresh-token.service", () => ({
+  refreshTokenService: { revokeAllForUser: mocks.revokeAllForUser },
 }));
 
 function makeBuilder(result: { data?: unknown; error?: unknown }) {
@@ -106,6 +111,28 @@ describe("adminUsersRepository.setRole / setLocked", () => {
 
     expect(builder.update).toHaveBeenCalledWith({ is_deleted: true });
     expect(result.locked).toBe(true);
+  });
+
+  // F2 / AC4 — khóa tài khoản phải thu hồi mọi refresh token NGAY lập tức.
+  it("setLocked(true) -> gọi refreshTokenService.revokeAllForUser(id)", async () => {
+    mocks.from.mockReturnValue(makeBuilder({ data: { ...userRow, is_deleted: true }, error: null }));
+    mocks.revokeAllForUser.mockResolvedValue(undefined);
+
+    await adminUsersRepository.setLocked("user-1", true);
+
+    expect(mocks.revokeAllForUser).toHaveBeenCalledWith("user-1");
+  });
+
+  // Mở khóa thì KHÔNG thu hồi (không buộc user đăng nhập lại).
+  it("setLocked(false) -> KHÔNG thu hồi refresh token", async () => {
+    mocks.from.mockReturnValue(
+      makeBuilder({ data: { ...userRow, is_deleted: false }, error: null }),
+    );
+
+    const result = await adminUsersRepository.setLocked("user-1", false);
+
+    expect(mocks.revokeAllForUser).not.toHaveBeenCalled();
+    expect(result.locked).toBe(false);
   });
 
   it("không tìm thấy -> NotFoundError", async () => {
