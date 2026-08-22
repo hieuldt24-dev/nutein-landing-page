@@ -18,6 +18,11 @@ const variantSchema = z.object({
   label: z.string(),
   units: z.number().int().min(1, "Số hũ / gói phải >= 1."),
   price: z.number().min(0).optional(),
+  offer: z.object({
+    freeShipping: z.boolean().optional(),
+    giftDescription: z.string().trim().optional(),
+    giftUnits: z.number().int().min(0).optional(),
+  }).optional(),
 });
 
 export const adminProductUpdateSchema = z.object({

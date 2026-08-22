@@ -22,7 +22,7 @@ export default function ContactPage() {
   return (
     <main className="bg-bg pt-32 md:pt-40">
       <header className="mx-auto max-w-[1200px] px-6 pb-10 md:px-10 md:pb-14">
-        <h1 className="max-w-[12ch] font-display text-[clamp(48px,9vw,96px)] font-black uppercase leading-[0.9] tracking-[-0.045em] text-ink">
+        <h1 className="max-w-[12ch] font-display text-[clamp(48px,9vw,96px)] font-black uppercase leading-tight tracking-[-0.045em] text-ink">
           <BounceChars staggerMs={22}>Kết nối cùng Nutein.</BounceChars>
         </h1>
       </header>

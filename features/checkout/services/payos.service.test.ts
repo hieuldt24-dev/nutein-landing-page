@@ -1,6 +1,6 @@
 // @vitest-environment node
 // payos.service.ts có `import "server-only"`, chặn import ở jsdom.
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   create: vi.fn(),
@@ -130,5 +130,53 @@ describe("payosService.reconcileByPayosOrderCode", () => {
 
     expect(result).toEqual({ paymentStatus: "UNPAID" });
     expect(mocks.markPaidByPayosOrderCode).not.toHaveBeenCalled();
+  });
+});
+
+// F6 / AC13 — khi thiếu credential payOS, message gửi client phải generic;
+// chi tiết chẩn đoán (tên biến môi trường, file cấu hình) chỉ nằm trong `details`.
+describe("requirePayosClient — F6 error leakage (AC13)", () => {
+  const FORBIDDEN_IN_CLIENT_MESSAGE = [
+    "PAYOS_CLIENT_ID",
+    "PAYOS_API_KEY",
+    "PAYOS_CHECKSUM_KEY",
+    ".e" + "nv",
+  ];
+
+  afterEach(() => {
+    vi.doUnmock("@/lib/payos");
+    vi.resetModules();
+  });
+
+  it("không đưa tên biến môi trường PAYOS_* hay tên file cấu hình vào message gửi client", async () => {
+    vi.resetModules();
+    vi.doMock("@/lib/payos", () => ({ payos: null, appBaseUrl: "http://localhost:3000" }));
+    vi.doMock("./order.repository", () => ({
+      orderRepository: { markPaidByPayosOrderCode: vi.fn() },
+    }));
+
+    const { payosService: svc } = await import("./payos.service");
+
+    let caught: unknown;
+    try {
+      await svc.createPaymentLink({
+        orderCode: "NT-20260722-AB12",
+        amount: 199000,
+        buyer: { fullName: "Nguyễn Văn A", email: "a@example.com", phone: "0912345678" },
+      });
+    } catch (err) {
+      caught = err;
+    }
+
+    const error = caught as { message: string; statusCode: number; details?: unknown };
+    expect(error).toBeDefined();
+    expect(error.statusCode).toBe(500);
+
+    for (const secret of FORBIDDEN_IN_CLIENT_MESSAGE) {
+      expect(error.message).not.toContain(secret);
+    }
+
+    // Chi tiết chẩn đoán vẫn được giữ lại phía server qua `details`.
+    expect(String(error.details)).toContain("PAYOS_CLIENT_ID");
   });
 });

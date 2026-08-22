@@ -45,22 +45,24 @@ export default function IntroSection() {
           Khám phá nguồn dinh dưỡng thực vật dồi dào từ nguyên liệu thật, đem đến giải pháp bổ sung đạm an lành cho cuộc sống bận rộn.
         </p>
 
-        <div className="scrollbar-hide flex snap-x snap-mandatory gap-6 overflow-x-auto pb-4 md:grid md:grid-cols-4 md:overflow-visible">
-          {INGREDIENT_CARDS.map((card, index) => (
-            <article
-              key={card.alt}
-              className="relative aspect-[3/4] w-[260px] shrink-0 snap-start overflow-hidden rounded-[var(--radius-xl)] md:w-auto"
-            >
-              <Image
-                src={card.src}
-                alt={card.alt}
-                fill
-                priority={index === 0}
-                sizes="(max-width: 768px) 260px, 25vw"
-                className="object-cover"
-              />
-            </article>
-          ))}
+        <div className="-mx-6 md:mx-0">
+          <div className="scrollbar-hide flex snap-x snap-mandatory gap-6 overflow-x-auto px-6 pb-4 md:grid md:grid-cols-4 md:overflow-visible md:px-0">
+            {INGREDIENT_CARDS.map((card, index) => (
+              <article
+                key={card.alt}
+                className="relative aspect-[3/4] w-[260px] shrink-0 snap-start overflow-hidden rounded-[var(--radius-xl)] md:w-auto"
+              >
+                <Image
+                  src={card.src}
+                  alt={card.alt}
+                  fill
+                  priority={index === 0}
+                  sizes="(max-width: 768px) 260px, 25vw"
+                  className="object-cover"
+                />
+              </article>
+            ))}
+          </div>
         </div>
       </div>
     </section>

@@ -22,6 +22,8 @@ interface OrderListRow {
   payment_status: "UNPAID" | "PAID" | "FAILED" | "REFUNDED";
   shipping_address: {
     variantLabel?: string;
+    couponCode?: string;
+    couponDiscountAmount?: number;
   } | null;
   order_items:
     | {
@@ -93,6 +95,14 @@ function toAccountOrder(row: OrderListRow): AccountOrder {
     estimatedDeliveryLabel: estimatedDeliveryLabel(row.shipping_method, status),
     paymentStatus,
     canRetryPayment: row.payment_method === "PAYOS" && paymentStatus === "UNPAID",
+    // Snapshot lúc đặt hàng — `shipping_address` JSONB đã nằm sẵn trong SELECT,
+    // không cần thêm cột nào.
+    ...(row.shipping_address?.couponCode
+      ? { couponCode: row.shipping_address.couponCode }
+      : {}),
+    ...(typeof row.shipping_address?.couponDiscountAmount === "number"
+      ? { couponDiscountAmount: row.shipping_address.couponDiscountAmount }
+      : {}),
   };
 }
 

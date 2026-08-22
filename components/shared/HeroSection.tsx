@@ -24,11 +24,11 @@ export default function HeroSection() {
       <HeroAtmosphere />
 
       <div className="relative z-[1] flex w-full max-w-[90rem] flex-col items-center">
-        <h1 className="hero-section__headline font-display text-center font-bold uppercase leading-[0.9] tracking-[-0.03em] text-ink">
+        <h1 className="hero-section__headline font-display text-center font-bold uppercase leading-tight tracking-[-0.03em] text-ink">
           Nạp năng lượng
         </h1>
-        <p className="hero-section__headline hero-section__headline--accent -mt-[0.08em] font-display text-center font-bold uppercase leading-[0.9] tracking-[-0.03em] text-primary-deep">
-          100% Protein thực vật
+        <p className="hero-section__headline hero-section__headline--accent font-display text-center font-bold uppercase leading-tight tracking-[-0.03em] text-primary-deep">
+          Protein thực vật
         </p>
 
         <div className="hero-section__visual relative mt-2 mb-0 flex aspect-[4/3] w-full max-w-[37rem] items-center justify-center overflow-hidden">

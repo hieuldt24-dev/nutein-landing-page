@@ -445,6 +445,48 @@ export function AdminProductEditor() {
                         />
                       </Field>
                     </div>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-[auto_minmax(0,1fr)_minmax(0,120px)] sm:items-end">
+                      <label className="flex h-10 items-center gap-2 rounded-[10px] border border-ink/10 bg-surface px-3 text-[12px] font-bold text-text-body">
+                        <input
+                          type="checkbox"
+                          checked={v.offer?.freeShipping ?? false}
+                          onChange={(e) =>
+                            updateVariant(i, {
+                              offer: { ...v.offer, freeShipping: e.target.checked },
+                            })
+                          }
+                        />
+                        Freeship
+                      </label>
+                      <Field label="Quà tặng / quyền lợi">
+                        <input
+                          className={inputClass}
+                          value={v.offer?.giftDescription ?? ""}
+                          placeholder="Ví dụ: Tặng 1 bình nước"
+                          onChange={(e) =>
+                            updateVariant(i, {
+                              offer: { ...v.offer, giftDescription: e.target.value || undefined },
+                            })
+                          }
+                        />
+                      </Field>
+                      <Field label="Số hộp tặng">
+                        <input
+                          type="number"
+                          min={0}
+                          className={inputClass}
+                          value={v.offer?.giftUnits ?? ""}
+                          onChange={(e) =>
+                            updateVariant(i, {
+                              offer: {
+                                ...v.offer,
+                                giftUnits: e.target.value === "" ? undefined : Number(e.target.value),
+                              },
+                            })
+                          }
+                        />
+                      </Field>
+                    </div>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {!isDefault ? (
                         <button

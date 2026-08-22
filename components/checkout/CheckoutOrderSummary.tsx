@@ -9,6 +9,9 @@ interface CheckoutOrderSummaryProps {
   summary: CartSummary;
   shippingFee: number | null;
   shippingNote: string;
+  /** Mã giảm giá đang áp dụng — hiện thành dòng RIÊNG, không gộp vào dòng "Giảm giá (x%)". */
+  couponCode?: string;
+  couponDiscountAmount?: number;
   className?: string;
 }
 
@@ -19,12 +22,20 @@ export function CheckoutOrderSummary({
   summary,
   shippingFee,
   shippingNote,
+  couponCode,
+  couponDiscountAmount,
   className,
 }: CheckoutOrderSummaryProps) {
+  const couponDiscount = couponDiscountAmount ?? 0;
+  const hasCoupon = Boolean(couponCode) && couponDiscount > 0;
+  // Giảm giá coupon CỘNG THÊM vào giảm giá theo mốc voucher (đã nằm trong
+  // summary.total), không thay thế.
   const merchandiseTotal = summary.total;
+  const payableMerchandise = merchandiseTotal - couponDiscount;
   const orderTotal =
-    shippingFee === null ? merchandiseTotal : merchandiseTotal + shippingFee;
+    shippingFee === null ? payableMerchandise : payableMerchandise + shippingFee;
   const hasDiscount = summary.discountAmount > 0;
+  const totalSaved = summary.discountAmount + couponDiscount;
   const detail = productService.getProductDetail();
   const primary = summary.lines[0];
   const catalog = productService.toCartProduct(
@@ -89,6 +100,15 @@ export function CheckoutOrderSummary({
           </div>
         )}
 
+        {hasCoupon && (
+          <div className="flex items-center justify-between gap-3">
+            <dt className="font-semibold text-forest">Mã giảm giá: {couponCode}</dt>
+            <dd className="font-bold text-forest">
+              −{formatCurrencyVnd(couponDiscount)}
+            </dd>
+          </div>
+        )}
+
         <div className="flex items-center justify-between gap-3">
           <dt className="font-semibold text-text-body">Phí vận chuyển</dt>
           <dd className="text-right font-bold text-ink">
@@ -105,15 +125,13 @@ export function CheckoutOrderSummary({
             Tổng
           </dt>
           <dd className="font-display text-[22px] font-bold tracking-[-0.03em] text-ink">
-            {shippingFee === null
-              ? formatCurrencyVnd(merchandiseTotal)
-              : formatCurrencyVnd(orderTotal)}
+            {formatCurrencyVnd(orderTotal)}
           </dd>
         </div>
 
-        {hasDiscount && (
+        {totalSaved > 0 && (
           <p className="text-[12px] font-bold uppercase tracking-[0.04em] text-forest">
-            Tiết kiệm {formatCurrencyVnd(summary.discountAmount)}
+            Tiết kiệm {formatCurrencyVnd(totalSaved)}
           </p>
         )}
       </dl>

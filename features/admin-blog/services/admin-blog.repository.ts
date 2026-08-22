@@ -2,6 +2,7 @@ import "server-only";
 
 import { supabaseAdmin } from "@/lib/supabase";
 import { BadRequestError, NotFoundError } from "@/src/errors/app.error";
+import { sanitizeBlogHtml } from "@/lib/sanitize-blog-html";
 import type { BlogCategoryId, RecipeFilterId } from "@/features/blog/types";
 import type { AdminBlogInput, AdminBlogPost, AdminBlogStatus } from "../types";
 
@@ -80,7 +81,8 @@ function toInsertPayload(input: AdminBlogInput) {
     thumbnail: input.coverImage || null,
     cover_alt: input.coverAlt || null,
     excerpt: input.excerpt || null,
-    content: input.bodyHtml,
+    // F3 — sanitize ngay trước khi giá trị vào payload ghi DB (write-time).
+    content: sanitizeBlogHtml(input.bodyHtml),
     is_published: input.status === "published",
     published_at: input.status === "published" ? input.publishedAt ?? new Date().toISOString() : null,
     reading_minutes: input.readingMinutes,
@@ -99,7 +101,8 @@ function toUpdatePayload(input: Partial<AdminBlogInput>) {
   if (input.coverImage !== undefined) payload.thumbnail = input.coverImage || null;
   if (input.coverAlt !== undefined) payload.cover_alt = input.coverAlt || null;
   if (input.excerpt !== undefined) payload.excerpt = input.excerpt || null;
-  if (input.bodyHtml !== undefined) payload.content = input.bodyHtml;
+  // F3 — sanitize write-time, dùng CHUNG allowlist với read-time.
+  if (input.bodyHtml !== undefined) payload.content = sanitizeBlogHtml(input.bodyHtml);
   if (input.readingMinutes !== undefined) payload.reading_minutes = input.readingMinutes;
   if (input.featured !== undefined) payload.featured = input.featured;
   if (input.favorite !== undefined) payload.favorite = input.favorite;

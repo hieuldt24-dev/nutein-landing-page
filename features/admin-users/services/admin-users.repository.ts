@@ -2,8 +2,13 @@ import "server-only";
 
 import { supabaseAdmin } from "@/lib/supabase";
 import { NotFoundError } from "@/src/errors/app.error";
+import { refreshTokenService } from "@/features/auth/services/refresh-token.service";
 import type { AuthRole } from "@/features/auth/types";
-import type { AdminManagedUser } from "../types";
+import type {
+  AdminManagedUser,
+  AdminManagedUserListResult,
+  AdminUsersListQuery,
+} from "../types";
 
 type DbRole = "USER" | "STAFF" | "ADMIN";
 
@@ -42,33 +47,41 @@ function toAdminManagedUser(row: UserRow): AdminManagedUser {
   };
 }
 
-async function list(query?: {
-  q?: string;
-  role?: AuthRole | "all";
-}): Promise<AdminManagedUser[]> {
-  const client = requireAdminClient();
-  let builder = client.from("users").select(USER_SELECT);
+/**
+ * PostgREST `or()` phân tách bằng dấu phẩy/ngoặc — input thô chưa lọc sẽ làm
+ * hỏng cả biểu thức filter. Strip các ký tự có ý nghĩa cú pháp trước khi nội suy.
+ */
+function sanitizeOrPattern(value: string): string {
+  return value.replace(/[,%()]/g, "");
+}
 
-  if (query?.role && query.role !== "all") {
+async function list(query: AdminUsersListQuery = {}): Promise<AdminManagedUserListResult> {
+  const client = requireAdminClient();
+  let builder = client.from("users").select(USER_SELECT, { count: "exact" });
+
+  if (query.role && query.role !== "all") {
     builder = builder.eq("role", query.role.toUpperCase());
   }
 
-  const { data, error } = await builder.order("created_at", { ascending: false });
+  const q = sanitizeOrPattern(query.q?.trim() ?? "");
+  if (q) {
+    builder = builder.or(`email.ilike.%${q}%,name.ilike.%${q}%`);
+  }
+
+  const pageSize = query.limit ?? 100;
+  const offset = query.offset ?? 0;
+
+  const { data, error, count } = await builder
+    .order("created_at", { ascending: false })
+    .range(offset, offset + pageSize - 1);
 
   if (error) {
     throw new Error(`Không tải được danh sách user: ${error.message}`);
   }
 
-  let rows = ((data as UserRow[]) ?? []).map(toAdminManagedUser);
+  const items = ((data as UserRow[]) ?? []).map(toAdminManagedUser);
 
-  const q = query?.q?.trim().toLowerCase();
-  if (q) {
-    rows = rows.filter(
-      (u) => u.email.toLowerCase().includes(q) || u.fullName.toLowerCase().includes(q),
-    );
-  }
-
-  return rows;
+  return { items, total: count ?? items.length };
 }
 
 async function setRole(id: string, role: AuthRole): Promise<AdminManagedUser> {
@@ -104,6 +117,14 @@ async function setLocked(id: string, locked: boolean): Promise<AdminManagedUser>
   if (!data) {
     throw new NotFoundError("User");
   }
+
+  // F2 — khóa tài khoản phải có hiệu lực NGAY: thu hồi mọi refresh token
+  // đang mở của user đó, không đợi tới lần /api/auth/refresh kế tiếp. Mở
+  // khóa thì không thu hồi (không cần buộc user đăng nhập lại).
+  if (locked) {
+    await refreshTokenService.revokeAllForUser(id);
+  }
+
   return toAdminManagedUser(data as UserRow);
 }
 

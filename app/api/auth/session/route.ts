@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
 import { successResponse } from "@/src/api/response";
 import { withErrorHandler } from "@/src/middlewares/error-handler.middleware";
-import { UnauthorizedError } from "@/src/errors/app.error";
+import { ForbiddenError, UnauthorizedError } from "@/src/errors/app.error";
+import { authLimiter } from "@/src/middlewares/rate-limit.middleware";
 import { getClientIp, getUserAgent } from "@/src/api/request-context";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 import {
@@ -32,6 +33,11 @@ import { auditLogService } from "@/features/auth/services/audit-log.service";
  * chỗ gọi không kèm body — signUp, AuthProvider restore session/OAuth).
  */
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // F4 — throttle TRƯỚC mọi thứ khác (kể cả parse body / gọi Supabase) để
+  // brute-force không tiêu tốn round-trip Supabase nào.
+  const limited = await authLimiter(req);
+  if (limited) return limited;
+
   const body = (await req.json().catch(() => null)) as { rememberMe?: boolean } | null;
   const remember = body?.rememberMe !== false;
 
@@ -45,11 +51,18 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     throw new UnauthorizedError("Chưa đăng nhập hoặc phiên Supabase đã hết hạn");
   }
 
+  // `is_deleted` đọc chung 1 query với `role` — không thêm round-trip DB.
   const { data: profile } = await supabase
     .from("users")
-    .select("role")
+    .select("role, is_deleted")
     .eq("id", user.id)
     .single();
+
+  // F2 — tài khoản đã bị admin khóa thì không được cấp JWT mới. Phải chặn
+  // TRƯỚC signAccessToken/store bên dưới (không mint, không lưu token nào).
+  if (profile?.is_deleted === true) {
+    throw new ForbiddenError("Tài khoản đã bị khóa");
+  }
 
   const dbRole = (profile?.role as JwtPayload["role"] | undefined) ?? "USER";
   const payload: JwtPayload = {

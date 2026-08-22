@@ -76,6 +76,25 @@ async function getById(id: string): Promise<AdminCoupon | null> {
   return data ? toAdminCoupon(data as CouponRow) : null;
 }
 
+/**
+ * Tra coupon theo `code` (UNIQUE ở DB). Checkout dùng để pre-validate mã khách
+ * nhập — chỉ ĐỌC, không đụng `used_count` (trigger `validate_and_apply_coupon()`
+ * mới là nơi tăng lượt dùng, atomic lúc insert order).
+ */
+async function findByCode(code: string): Promise<AdminCoupon | null> {
+  const client = requireAdminClient();
+  const { data, error } = await client
+    .from("coupons")
+    .select(COUPON_SELECT)
+    .eq("code", code)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Không tra được coupon: ${error.message}`);
+  }
+  return data ? toAdminCoupon(data as CouponRow) : null;
+}
+
 async function create(input: AdminCouponInput, staffUserId: string): Promise<AdminCoupon> {
   const client = requireAdminClient();
   const { data, error } = await client
@@ -168,6 +187,7 @@ async function update(
 export const adminCouponsRepository = {
   list,
   getById,
+  findByCode,
   create,
   update,
 };

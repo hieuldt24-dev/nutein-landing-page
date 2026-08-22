@@ -108,6 +108,32 @@ describe("adminBlogRepository.create", () => {
     );
   });
 
+  // F3 / AC6 — payload XSS không bao giờ được ghi xuống DB.
+  it("sanitize bodyHtml write-time: payload <script>/onerror không vào cột content", async () => {
+    const builder = makeBuilder({ data: postRow, error: null });
+    mocks.from.mockReturnValue(builder);
+
+    await adminBlogRepository.create({
+      slug: "xss",
+      title: "x",
+      excerpt: "",
+      category: "protein",
+      coverImage: "",
+      coverAlt: "",
+      bodyHtml: '<p>Nội dung</p><script>alert(1)</script><img src="x" onerror="alert(1)" alt="a" />',
+      status: "draft",
+      publishedAt: null,
+      readingMinutes: 3,
+    });
+
+    const insertMock = builder.insert as ReturnType<typeof vi.fn>;
+    const payload = insertMock.mock.calls[0][0] as { content: string };
+    expect(payload.content).not.toContain("<script");
+    expect(payload.content).not.toContain("onerror");
+    expect(payload.content).not.toContain("alert(1)");
+    expect(payload.content).toContain("<p>Nội dung</p>");
+  });
+
   it("slug trùng (23505) -> BadRequestError", async () => {
     mocks.from.mockReturnValue(
       makeBuilder({ data: null, error: { code: "23505", message: "duplicate key" } }),
@@ -143,6 +169,20 @@ describe("adminBlogRepository.update", () => {
       is_published: false,
       published_at: null,
     });
+  });
+
+  // F3 / AC6 — cùng allowlist ở đường update.
+  it("sanitize bodyHtml write-time trên update: <script> bị loại khỏi payload", async () => {
+    const builder = makeBuilder({ data: postRow, error: null });
+    mocks.from.mockReturnValue(builder);
+
+    await adminBlogRepository.update("post-1", {
+      bodyHtml: '<p>ok</p><script>alert(1)</script>',
+    });
+
+    const updateMock = builder.update as ReturnType<typeof vi.fn>;
+    const payload = updateMock.mock.calls[0][0] as { content: string };
+    expect(payload.content).toBe("<p>ok</p>");
   });
 
   it("không tìm thấy -> NotFoundError", async () => {

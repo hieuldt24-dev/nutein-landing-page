@@ -6,7 +6,7 @@ import { adminUsersListQuerySchema } from "@/features/admin-users/schemas/admin-
 import { adminUsersRepository } from "@/features/admin-users/services/admin-users.repository";
 
 /**
- * GET /api/admin/users?q=&role= — chỉ ADMIN (khớp RLS "Admin can update
+ * GET /api/admin/users?q=&role=&limit=&offset= — chỉ ADMIN (khớp RLS "Admin can update
  * any profile"; mục Users chỉ có trong nav Admin, Staff không có).
  */
 export const GET = withErrorHandler(async (req: NextRequest) => {
@@ -16,7 +16,9 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const query = adminUsersListQuerySchema.parse({
     q: req.nextUrl.searchParams.get("q") ?? undefined,
     role: req.nextUrl.searchParams.get("role") ?? undefined,
+    limit: req.nextUrl.searchParams.get("limit") ?? undefined,
+    offset: req.nextUrl.searchParams.get("offset") ?? undefined,
   });
-  const users = await adminUsersRepository.list(query);
-  return successResponse(users);
+  const result = await adminUsersRepository.list(query);
+  return successResponse(result);
 });
