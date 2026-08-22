@@ -8,3 +8,15 @@ export interface AdminManagedUser {
   locked: boolean;
   createdAt: string;
 }
+
+export interface AdminUsersListQuery {
+  q?: string;
+  role?: AuthRole | "all";
+  limit?: number;
+  offset?: number;
+}
+
+export interface AdminManagedUserListResult {
+  items: AdminManagedUser[];
+  total: number;
+}

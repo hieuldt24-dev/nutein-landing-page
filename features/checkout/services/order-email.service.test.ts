@@ -112,6 +112,56 @@ describe("orderEmailService.sendOrderConfirmation", () => {
     expect(html).not.toContain("&amp;quot;");
   });
 
+  // AC11 — dòng mã giảm giá là dòng RIÊNG, không gộp vào dòng "Giảm giá" (tổng).
+  it("có coupon → HTML hiện dòng 'Mã giảm giá' kèm mã và số tiền, giữ nguyên dòng Giảm giá tổng", async () => {
+    mocks.send.mockResolvedValue({ data: { id: "email-1" }, error: null });
+
+    await orderEmailService.sendOrderConfirmation({
+      ...order,
+      summary: {
+        ...order.summary,
+        discountAmount: 30000,
+        couponCode: "SALE10",
+        couponDiscountAmount: 20000,
+      },
+    });
+
+    const { html } = mocks.send.mock.calls[0][0] as { html: string };
+
+    expect(html).toContain("Mã giảm giá");
+    expect(html).toContain("SALE10");
+    // Dòng "Giảm giá" (tổng) vẫn còn — 2 dòng cùng tồn tại.
+    expect(html).toContain(">Giảm giá</td>");
+  });
+
+  it("không có coupon → HTML KHÔNG có dòng 'Mã giảm giá'", async () => {
+    mocks.send.mockResolvedValue({ data: { id: "email-1" }, error: null });
+
+    await orderEmailService.sendOrderConfirmation(order);
+
+    const { html } = mocks.send.mock.calls[0][0] as { html: string };
+
+    expect(html).not.toContain("Mã giảm giá");
+  });
+
+  it("mã giảm giá do khách nhập phải được escape trước khi vào HTML", async () => {
+    mocks.send.mockResolvedValue({ data: { id: "email-1" }, error: null });
+
+    await orderEmailService.sendOrderConfirmation({
+      ...order,
+      summary: {
+        ...order.summary,
+        couponCode: "<img src=x onerror=alert(1)>",
+        couponDiscountAmount: 1000,
+      },
+    });
+
+    const { html } = mocks.send.mock.calls[0][0] as { html: string };
+
+    expect(html).not.toContain("<img src=x");
+    expect(html).toContain("&lt;img src=x onerror=alert(1)&gt;");
+  });
+
   it("resend.emails.send resolve với {error} (vd domain chưa verify) -> không throw, không coi là thành công", async () => {
     mocks.send.mockResolvedValue({
       data: null,

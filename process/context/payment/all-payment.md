@@ -1,16 +1,16 @@
 ---
 name: context:all-payment
 description: "PayOS gateway integration, checkout/order orchestration, webhook and stock-reservation flow -- the payment group entrypoint/router"
-keywords: payment, payos, checkout, order, webhook, gateway, bank transfer, stock reservation, retry, order code, transaction, refund
+keywords: payment, payos, checkout, order, webhook, gateway, bank transfer, stock reservation, retry, order code, transaction, refund, coupon, discount, voucher
 related: [context:all-database, context:all-email]
-date: 19-08-26
+date: 20-08-26
 ---
 
 # Payment Context
 
 This file is the canonical payment context entrypoint for Nutein Landing Page.
 
-Use it after `process/context/all-context.md` when the task needs checkout, order, or payment-gateway changes.
+Use it after `process/context/all-context.md` when the task needs checkout, order, coupon/discount, or payment-gateway changes.
 
 ---
 
@@ -23,6 +23,9 @@ This group covers:
 - Checkout/order orchestration: stock checks, payment resolution, order-code generation
 - PayOS webhook, status, and retry routes
 - Stock reservation on order create
+- Admin-managed coupon redemption at checkout (customer-entered code, server-side re-validation,
+  additive stacking with the automatic voucher-tier discount) — see "Coupon checkout integration"
+  below
 
 It does not cover:
 
@@ -37,6 +40,8 @@ Read this entrypoint when:
 - changing checkout orchestration (`checkout.service.ts`) — stock checks, payment resolution, order-code generation
 - working on stock reservation logic tied to order creation
 - debugging a payment stuck in an unexpected state, or a webhook not updating an order
+- adding or modifying coupon-redemption logic at checkout, or the relationship between coupon
+  discounts and the automatic voucher-tier discount
 
 ## Quick Routing
 
@@ -55,6 +60,18 @@ No deeper docs yet — this entrypoint is the full content for now. Deeper docs 
 - `supabase/migrations/20260722010000_payos_bank_transfer.sql` — PayOS bank-transfer schema
 - `supabase/migrations/20260724000000_reserve_stock_on_order_create.sql` — stock reservation on order create
 - `app/checkout/success/page.tsx` — post-payment success page
+- `features/checkout/services/coupon-validation.service.ts` — single source of truth for coupon
+  discount computation and rejection rules (not found / inactive / expired / usage-exhausted /
+  below `min_order_value`), called from both the preview route and `checkout.service.ts`
+- `app/api/checkout/coupon/validate/route.ts` — UX-only preview endpoint (auth + rate-limited via
+  `couponPreviewLimiter`); its response is never trusted or persisted directly
+- `features/admin-coupons/services/admin-coupons.repository.ts` (`findByCode()`) — read-only
+  coupon lookup, reused from checkout (no admin-coupons methods were modified for this)
+- `components/checkout/CheckoutCouponField.tsx` + `lib/useCheckoutCoupon.ts` — checkout-page
+  coupon input UI + client hook
+- `supabase/migrations/20260718000000_init_schema.sql` lines 209-220 (coupons table), 236-263
+  (orders table + `coupon_id` FK), 603-632 (`validate_and_apply_coupon()` trigger — the race-safe
+  final authority at insert time, `FOR UPDATE` row lock; never modified by the app-layer wiring)
 
 ## Update Triggers
 
@@ -64,6 +81,8 @@ Update this group when:
 - webhook payload shape, signature verification, or retry logic changes
 - stock reservation timing or rules change (e.g. reservation TTL, release-on-cancel logic)
 - required PayOS env vars change
+- coupon-redemption rules, the coupon/voucher-tier stacking relationship, or the preview-endpoint
+  contract change
 
 ## Canonical Notes
 
@@ -94,3 +113,42 @@ Update this group when:
   too, so the diagnostic detail isn't silently dropped from server logs by this change.
 - See `process/general-plans/backlog/infra-followups-19-08-26.md` for the non-blocking Redis
   production-provisioning follow-up tied to rate limiting on checkout-adjacent auth routes.
+
+### Coupon checkout integration (landed 20-08-26)
+
+- **`orders.coupon_id` is now actually set on insert.** Before this change, staff could create
+  coupons in the admin panel but no application code ever wrote `coupon_id` on order creation, so
+  the DB trigger `validate_and_apply_coupon()` (see Source Paths above) was dormant. It is now the
+  race-safe final authority every time a customer redeems a coupon: it locks the coupon row
+  `FOR UPDATE`, re-checks active/expiry/usage, and atomically increments `used_count`. It was
+  **never modified** by this feature — the app layer only pre-validates for UX before ever
+  reaching the insert.
+- **Two-layer validation, by design.** The app layer (`coupon-validation.service.ts`) checks
+  `is_active`, `expires_at`, `usage_limit` vs `used_count`, and `min_order_value` against the
+  **pre-discount** cart subtotal (`cartSummary.subtotal`, not `.total`). The DB trigger does NOT
+  check `min_order_value` — that check is app-layer-only. `checkoutService.createOrder()` always
+  re-resolves and re-validates the coupon fresh from the DB immediately before order creation; the
+  preview endpoint's result is UX-only and is never trusted or persisted as pre-validated input.
+- **Preview endpoint is an enumeration-oracle risk if unthrottled.** `POST
+  /api/checkout/coupon/validate` requires `authenticate(req)` AND a rate limiter
+  (`couponPreviewLimiter`, 20/15min/IP — sized like `emailStatusLimiter`) as the first guard
+  clause, in that order. Do not reuse `globalLimiter` for this endpoint (too loose — 1000/15min).
+- **Additive stacking with the voucher-tier discount, always.** `features/cart/pricing.ts` /
+  `VOUCHER_TIERS` (the automatic bundle discount) is completely untouched and out of scope for
+  coupons. `checkoutService.createOrder()` computes
+  `discount_amount = cartSummary.discountAmount (voucher-tier) + couponDiscountAmount` — the two
+  discounts always sum, never override each other. The coupon discount itself is defensively
+  clamped `Math.min(rawDiscount, subtotal)` for both `FIXED` and `PERCENTAGE` coupon types,
+  independent of whether `admin-coupons.schema.ts`'s `.max(100)` PERCENTAGE cap (a separate,
+  concurrently-landed hardening track) is in place.
+- **No new migration.** The two-discount-line breakdown needed for order-confirmation emails and
+  `/account` order history is stored in the existing `orders.shipping_address` JSONB snapshot
+  column (`couponCode`, `couponDiscountAmount` — additions to the already-existing
+  `OrderShippingAddressSnapshot` shape), not a new column. `orders.discount_amount` remains the
+  single combined total; only the JSONB snapshot carries the coupon-specific breakdown.
+- **One coupon per order.** `createOrderRequestSchema`'s `couponCode` is a single optional string
+  — structurally cannot carry more than one code.
+- Source plan (archived): `process/features/checkout/completed/coupon-checkout-integration_20-08-26/`.
+  Two Agent-Probe UI walkthroughs (checkout-page live flow, `/account` order-history coupon
+  display) were explicitly deferred by user decision at closeout — see
+  `process/features/checkout/backlog/coupon-checkout-agent-probe-followups_20-08-26.md`.

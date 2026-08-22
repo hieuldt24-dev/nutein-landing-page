@@ -29,6 +29,13 @@ function renderOrderConfirmationHtml(order: CreateOrderResult): string {
   const shippingLabel =
     SHIPPING_OPTIONS.find((o) => o.value === order.shippingMethod)?.label ?? order.shippingMethod;
 
+  // Dòng riêng cho mã giảm giá — KHÔNG gộp vào dòng "Giảm giá" (tổng) ở trên.
+  // `couponCode` là chuỗi khách tự nhập nên bắt buộc escapeHtml, giống
+  // buyer.fullName / address.street.
+  const couponRow = order.summary.couponCode
+    ? `<tr><td style="padding: 4px 0; color: #666;">Mã giảm giá</td><td style="padding: 4px 0;">${escapeHtml(order.summary.couponCode)} · −${formatCurrencyVnd(order.summary.couponDiscountAmount ?? 0)}</td></tr>`
+    : "";
+
   return `
     <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #1a1a1a;">
       <h1 style="font-size: 20px;">Cảm ơn bạn đã đặt hàng tại Nutein</h1>
@@ -48,6 +55,7 @@ function renderOrderConfirmationHtml(order: CreateOrderResult): string {
         <tr><td style="padding: 4px 0; color: #666;">Tạm tính</td><td style="padding: 4px 0;">${formatCurrencyVnd(order.summary.subtotal)}</td></tr>
         <tr><td style="padding: 4px 0; color: #666;">Phí ship</td><td style="padding: 4px 0;">${formatCurrencyVnd(order.summary.shippingFee)}</td></tr>
         <tr><td style="padding: 4px 0; color: #666;">Giảm giá</td><td style="padding: 4px 0;">−${formatCurrencyVnd(order.summary.discountAmount)}</td></tr>
+        ${couponRow}
         <tr><td style="padding: 8px 0; font-weight: bold; border-top: 1px solid #eee;">Tổng thanh toán</td><td style="padding: 8px 0; font-weight: bold; border-top: 1px solid #eee;">${formatCurrencyVnd(order.summary.total)}</td></tr>
       </table>
 

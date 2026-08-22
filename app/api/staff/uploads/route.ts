@@ -4,6 +4,7 @@ import { withErrorHandler } from "@/src/middlewares/error-handler.middleware";
 import { authenticate, requireRole } from "@/src/middlewares/authenticate.middlware";
 import { BadRequestError, InternalServerError } from "@/src/errors/app.error";
 import { cloudinary, isCloudinaryConfigured } from "@/lib/cloudinary";
+import { sniffImageType } from "@/lib/sniff-image-type";
 
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
@@ -32,6 +33,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   if (!(file instanceof File)) {
     throw new BadRequestError("Thiếu file ảnh.");
   }
+  // Pre-filter rẻ tiền dựa trên header client gửi lên — KHÔNG phải bằng chứng.
   if (!file.type.startsWith("image/")) {
     throw new BadRequestError("Chỉ chấp nhận file ảnh.");
   }
@@ -40,7 +42,15 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  const base64 = `data:${file.type};base64,${buffer.toString("base64")}`;
+
+  // Kiểm tra thật bằng magic bytes; `file.type` giả mạo được nên không dùng
+  // để dựng data URI gửi Cloudinary — chỉ dùng MIME đã sniff.
+  const mime = await sniffImageType(buffer);
+  if (!mime) {
+    throw new BadRequestError("Chỉ chấp nhận file ảnh (JPEG, PNG, GIF, WebP, AVIF).");
+  }
+
+  const base64 = `data:${mime};base64,${buffer.toString("base64")}`;
 
   try {
     const result = await cloudinary.uploader.upload(base64, {

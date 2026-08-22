@@ -99,6 +99,22 @@ export const emailStatusLimiter = async (req: NextRequest) => {
   });
 };
 
+/**
+ * `POST /api/checkout/coupon/validate` nhận mã tuỳ ý và trả tín hiệu hợp lệ /
+ * không hợp lệ — về bản chất là oracle dò mã giảm giá nếu không giới hạn (cùng
+ * lớp rủi ro với emailStatusLimiter). Không được dùng `globalLimiter`
+ * (1000/15 phút — quá lỏng cho bề mặt này). 20 lần / 15 phút / IP: thoải mái
+ * cho khách thật (gõ vài mã trong 1 lượt checkout) nhưng vô dụng để quét mã.
+ */
+export const couponPreviewLimiter = async (req: NextRequest) => {
+  return rateLimiter(req, {
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    code: "TOO_MANY_COUPON_CHECKS",
+    message: "Bạn đã thử quá nhiều mã giảm giá, vui lòng thử lại sau 15 phút",
+  });
+};
+
 export function withAuthRateLimit(
   handler: (request: NextRequest) => Promise<Response>,
   responseType: "redirect" | "json" = "redirect",

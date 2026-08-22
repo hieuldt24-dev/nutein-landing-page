@@ -48,9 +48,9 @@ async function loadProductSafe(): Promise<AdminProduct | null> {
 export const adminDashboardService = {
   /** KPI + Cần chú ý — một round-trip, chia SWR key chung. */
   async getStaffOps(): Promise<StaffOpsHome> {
-    const [{ items: orders }, unreadContacts, product] = await Promise.all([
+    const [{ items: orders }, { items: unreadContacts }, product] = await Promise.all([
       adminOrdersService.list({}),
-      adminContactService.list("unread"),
+      adminContactService.list({ filter: "unread", limit: 100 }),
       loadProductSafe(),
     ]);
     return {
@@ -71,13 +71,18 @@ export const adminDashboardService = {
   async getAdminHome(): Promise<AdminHomeSummary> {
     const [orders, users, { items: audit }] = await Promise.all([
       adminOrdersService.listSummary(),
-      adminUsersService.list({}),
+      adminUsersService.list({ limit: 100 }),
       adminAuditService.list({ limit: 5 }),
     ]);
 
+    // Lưu ý: `list()` nay đã phân trang (mặc định/tối đa 100). `newLast7Days`
+    // và staff/admin count vì thế chỉ tính trên trang đầu (100 user mới nhất),
+    // trong khi `total` vẫn là tổng thật từ `count: "exact"`. Fix đúng là
+    // aggregate bằng SQL — đã ghi backlog, không thuộc phạm vi batch này.
+    const userItems = users.items;
     const asOf = startOfDay(new Date());
     const weekStart = addDays(asOf, -6);
-    const newLast7Days = users.filter((u) => {
+    const newLast7Days = userItems.filter((u) => {
       const created = startOfDay(new Date(u.createdAt));
       return created >= weekStart && created <= asOf;
     }).length;
@@ -85,10 +90,10 @@ export const adminDashboardService = {
     return {
       revenue: buildRevenueSnapshotFromOrders(orders),
       users: {
-        total: users.length,
+        total: users.total,
         newLast7Days,
-        staffCount: users.filter((u) => u.role === "staff").length,
-        adminCount: users.filter((u) => u.role === "admin").length,
+        staffCount: userItems.filter((u) => u.role === "staff").length,
+        adminCount: userItems.filter((u) => u.role === "admin").length,
       },
       recentAudit: audit.map((row) => ({
         id: row.id,

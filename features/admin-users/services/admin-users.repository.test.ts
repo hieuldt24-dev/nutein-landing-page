@@ -11,11 +11,13 @@ vi.mock("@/features/auth/services/refresh-token.service", () => ({
   refreshTokenService: { revokeAllForUser: mocks.revokeAllForUser },
 }));
 
-function makeBuilder(result: { data?: unknown; error?: unknown }) {
+function makeBuilder(result: { data?: unknown; error?: unknown; count?: number | null }) {
   const builder: Record<string, unknown> = {
     select: vi.fn(() => builder),
     eq: vi.fn(() => builder),
+    or: vi.fn(() => builder),
     order: vi.fn(() => builder),
+    range: vi.fn(() => builder),
     update: vi.fn(() => builder),
     maybeSingle: vi.fn(async () => result),
     then: (resolve: (v: unknown) => unknown) => Promise.resolve(result).then(resolve),
@@ -42,11 +44,12 @@ describe("adminUsersRepository.list", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("map role DB (USER) -> app (user), is_deleted -> locked", async () => {
-    mocks.from.mockReturnValue(makeBuilder({ data: [userRow], error: null }));
+    mocks.from.mockReturnValue(makeBuilder({ data: [userRow], error: null, count: 1 }));
 
     const result = await adminUsersRepository.list();
 
-    expect(result[0]).toEqual({
+    expect(result.total).toBe(1);
+    expect(result.items[0]).toEqual({
       id: "user-1",
       email: "minhanh@example.com",
       fullName: "Nguyễn Minh Anh",
@@ -58,16 +61,16 @@ describe("adminUsersRepository.list", () => {
 
   it("name null -> fallback fullName về email", async () => {
     mocks.from.mockReturnValue(
-      makeBuilder({ data: [{ ...userRow, name: null }], error: null }),
+      makeBuilder({ data: [{ ...userRow, name: null }], error: null, count: 1 }),
     );
 
     const result = await adminUsersRepository.list();
 
-    expect(result[0].fullName).toBe("minhanh@example.com");
+    expect(result.items[0].fullName).toBe("minhanh@example.com");
   });
 
   it("filter role != 'all' -> gọi .eq('role', DB enum)", async () => {
-    const builder = makeBuilder({ data: [], error: null });
+    const builder = makeBuilder({ data: [], error: null, count: 0 });
     mocks.from.mockReturnValue(builder);
 
     await adminUsersRepository.list({ role: "staff" });
@@ -75,18 +78,42 @@ describe("adminUsersRepository.list", () => {
     expect(builder.eq).toHaveBeenCalledWith("role", "STAFF");
   });
 
-  it("filter q -> lọc theo email hoặc tên (in-memory, không phân biệt hoa thường)", async () => {
-    mocks.from.mockReturnValue(
-      makeBuilder({
-        data: [userRow, { ...userRow, id: "user-2", email: "other@example.com", name: "Khác" }],
-        error: null,
-      }),
-    );
+  it("filter q -> lọc phía DB bằng .or(ilike email/name)", async () => {
+    const builder = makeBuilder({ data: [userRow], error: null, count: 1 });
+    mocks.from.mockReturnValue(builder);
 
     const result = await adminUsersRepository.list({ q: "MINH" });
 
-    expect(result).toHaveLength(1);
-    expect(result[0].id).toBe("user-1");
+    expect(builder.or).toHaveBeenCalledWith("email.ilike.%MINH%,name.ilike.%MINH%");
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].id).toBe("user-1");
+  });
+
+  it("q chứa ký tự cú pháp PostgREST -> bị strip trước khi nội suy", async () => {
+    const builder = makeBuilder({ data: [], error: null, count: 0 });
+    mocks.from.mockReturnValue(builder);
+
+    await adminUsersRepository.list({ q: "a,b%c(d)" });
+
+    expect(builder.or).toHaveBeenCalledWith("email.ilike.%abcd%,name.ilike.%abcd%");
+  });
+
+  it("mặc định phân trang 100 bản ghi đầu -> .range(0, 99)", async () => {
+    const builder = makeBuilder({ data: [], error: null, count: 0 });
+    mocks.from.mockReturnValue(builder);
+
+    await adminUsersRepository.list();
+
+    expect(builder.range).toHaveBeenCalledWith(0, 99);
+  });
+
+  it("limit/offset -> .range đúng biên", async () => {
+    const builder = makeBuilder({ data: [], error: null, count: 0 });
+    mocks.from.mockReturnValue(builder);
+
+    await adminUsersRepository.list({ limit: 20, offset: 40 });
+
+    expect(builder.range).toHaveBeenCalledWith(40, 59);
   });
 });
 

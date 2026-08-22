@@ -3,12 +3,12 @@ name: context:all-tests
 description: "Vitest runner, commands, mocking approach, and known test-coverage gaps -- the tests group entrypoint/router"
 keywords: test, tests, testing, vitest, coverage, mock, vi.mock, jsdom, lint, type-check, ci
 related: []
-date: 19-08-26
+date: 20-08-26
 ---
 
 # nutein-landing-page - All Tests
 
-Last updated: 2026-08-19
+Last updated: 2026-08-20
 
 Attach this file first when the task involves testing, verification, or test debugging.
 
@@ -105,6 +105,17 @@ To run a single test file directly: `npx vitest run path/to/file.test.ts` (or `n
 - **No `test.globals`:** every test file must explicitly `import { describe, it, expect, vi } from "vitest"` — a missing import (not a config issue) is the usual cause of "describe is not defined"-style failures.
 - **Optional integrations:** `RESEND_API_KEY` is optional in real dev (checkout does not block on missing email config); `order-email.service.test.ts` mocks Resend rather than requiring a real key, so email tests never need real credentials.
 - **No enforced coverage gate:** `npm run test:coverage` has no configured thresholds — a coverage drop will not fail `npm run check` or any gate; it is informational only.
+- **`beforeEach` concise-arrow teardown footgun:** writing `beforeEach(() => mock.mockReset())` (concise-body arrow, implicit return) makes Vitest treat the returned value as a teardown callback. If `mock` is a rejecting mock, Vitest re-invokes it after the test runs and fails the test with an unhandled rejection that looks unrelated to the reset call. Always use a block-body arrow for `beforeEach`/`afterEach` resets: `beforeEach(() => { mock.mockReset(); })`. Found 20-08-26 while writing the 6 new `admin-*.service.test.ts` files (`process/general-plans/completed/admin-hardening-batch_20-08-26/`).
+- **`file-type` package + jsdom Buffer/Uint8Array realm mismatch:** `file-type@22` (pure ESM, requires Node ≥22) rejects a Node `Buffer` under Vitest's jsdom environment with `TypeError: Expected the input argument to be of type Uint8Array` — the Buffer and Uint8Array realms differ between Node and jsdom. Fix: normalize with `Uint8Array.from(buffer)` (or equivalent plain-Uint8Array copy) before passing to `file-type` APIs. See `lib/sniff-image-type.ts` (`sniffImageType()`) for the working pattern — any future consumer of `file-type` must do the same normalization, not just this file.
+
+## Route-Handler Test Pattern
+
+`app/api/staff/uploads/route.test.ts` is the established recipe for testing a Next.js App Router
+`route.ts` handler directly (mock `authenticate`/`requireRole` and the third-party client via
+`vi.mock`, then call the exported `POST`/`GET` function with a real `NextRequest`). This closes the
+gap that was previously documented as "no route-handler test infra exists" — that claim is now
+stale (corrected 20-08-26 in `admin-hardening-batch_PLAN_20-08-26.md`). Copy this pattern for future
+HTTP-layer route tests instead of assuming one must be invented from scratch.
 
 ## Known Gaps
 

@@ -16,6 +16,7 @@ import { refreshProductCatalogServer } from "@/features/product/services/product
 import { SHIPPING_FEES_VND } from "../constants";
 import type { CreateOrderRequest } from "../schemas/checkout.schema";
 import type { CreateOrderResult, OrderStatus, RetryPaymentResult } from "../types";
+import { couponValidationService } from "./coupon-validation.service";
 import { buildOrderCode, orderRepository } from "./order.repository";
 import { orderEmailService } from "./order-email.service";
 import { payosService } from "./payos.service";
@@ -130,7 +131,23 @@ export const checkoutService = {
       SHIPPING_FEES_VND,
     );
 
-    const merchandiseTotal = cartSummary.total;
+    // Mitigation 3 — LUÔN tra + tính lại coupon từ DB sống tại thời điểm submit.
+    // Kết quả của endpoint preview chỉ để hiển thị; client chỉ gửi lên đúng
+    // chuỗi `couponCode`, số tiền giảm không bao giờ đi qua biên client.
+    // `cartSummary.subtotal` = tạm tính TRƯỚC giảm giá theo mốc voucher — đúng
+    // cơ sở đối chiếu `min_order_value`.
+    const couponResult = input.couponCode
+      ? await couponValidationService.validateAndComputeDiscount({
+          code: input.couponCode,
+          subtotal: cartSummary.subtotal,
+        })
+      : null;
+    const couponDiscountAmount = couponResult?.discountAmount ?? 0;
+
+    // CỘNG DỒN: giảm theo mốc voucher và giảm theo coupon luôn cộng vào nhau,
+    // không cái nào thay thế/ghi đè cái nào.
+    const combinedDiscount = cartSummary.discountAmount + couponDiscountAmount;
+    const merchandiseTotal = cartSummary.total - couponDiscountAmount;
     const total = merchandiseTotal + shippingFee;
     const orderCode = buildOrderCode();
 
@@ -156,7 +173,7 @@ export const checkoutService = {
         {
           unitPrice: primaryUnitPrice,
           subtotal: cartSummary.subtotal,
-          discountAmount: cartSummary.discountAmount,
+          discountAmount: combinedDiscount,
           shippingFee,
           total,
         },
@@ -167,6 +184,13 @@ export const checkoutService = {
           payosOrderCode,
           payosPaymentLinkId,
         },
+        couponResult
+          ? {
+              couponId: couponResult.couponId,
+              couponCode: couponResult.code,
+              couponDiscountAmount,
+            }
+          : undefined,
       );
     } catch (createError) {
       if (payosOrderCode) {
@@ -197,6 +221,9 @@ export const checkoutService = {
         shippingFee,
         shippingNote,
         total,
+        ...(couponResult
+          ? { couponCode: couponResult.code, couponDiscountAmount }
+          : {}),
       },
       buyer: {
         fullName: input.buyer.fullName.trim(),

@@ -21,6 +21,7 @@ import {
 } from "@/features/checkout/scroll-to-error";
 import { resolveCheckoutShippingFee } from "@/features/cart/pricing";
 import { CheckoutContactSection } from "@/components/checkout/CheckoutContactSection";
+import { CheckoutCouponField } from "@/components/checkout/CheckoutCouponField";
 import { CheckoutDeliverySection } from "@/components/checkout/CheckoutDeliverySection";
 import { CheckoutOrderSummary } from "@/components/checkout/CheckoutOrderSummary";
 import { CheckoutPaymentSection } from "@/components/checkout/CheckoutPaymentSection";
@@ -35,6 +36,7 @@ import { useAccountProfile } from "@/lib/useAccountProfile";
 import { useAddresses } from "@/lib/useAddresses";
 import { useAuthStore } from "@/lib/useAuthStore";
 import { useCartStore } from "@/lib/useCartStore";
+import { useCheckoutCoupon } from "@/lib/useCheckoutCoupon";
 import { useCheckoutSubmit } from "@/lib/useCheckoutSubmit";
 
 /**
@@ -52,6 +54,15 @@ export default function CheckoutForm() {
   const [selectedSavedAddressId, setSelectedSavedAddressId] = useState("");
   const { lines, summary, isEmpty, isReady: cartReady, removeFromCart } = useCartStore();
   const { submitOrder, isSubmitting } = useCheckoutSubmit();
+  const { coupon, apply: applyCoupon, remove: removeCoupon } = useCheckoutCoupon();
+
+  /**
+   * Chỉ gửi mã khi đã "applied" — không bao giờ gửi mã vừa bị từ chối. Số tiền
+   * giảm hiển thị bên dưới thuần preview; server luôn tự tính lại lúc tạo đơn.
+   */
+  const appliedCouponCode = coupon.status === "applied" ? coupon.code : undefined;
+  const appliedCouponDiscount =
+    coupon.status === "applied" ? (coupon.discountAmount ?? 0) : 0;
 
   const {
     register,
@@ -192,6 +203,7 @@ export default function CheckoutForm() {
           shippingMethod: values.shippingMethod,
           paymentMethod: values.paymentMethod,
           saveInfo: values.saveInfo,
+          couponCode: appliedCouponCode,
         });
 
         try {
@@ -273,6 +285,8 @@ export default function CheckoutForm() {
             summary={summary}
             shippingFee={shippingPreview.shippingFee}
             shippingNote={shippingPreview.shippingNote}
+            couponCode={appliedCouponCode}
+            couponDiscountAmount={appliedCouponDiscount}
           />
         </div>
 
@@ -314,6 +328,12 @@ export default function CheckoutForm() {
             paymentMethod={paymentMethod ?? "cod"}
             setValue={setValue}
             isSubmitting={isSubmitting}
+          />
+          <CheckoutCouponField
+            coupon={coupon}
+            disabled={isSubmitting}
+            onApply={(code) => void applyCoupon(code, summary.subtotal)}
+            onRemove={removeCoupon}
           />
           <CheckoutSubmitBlock isSubmitting={isSubmitting} />
         </div>

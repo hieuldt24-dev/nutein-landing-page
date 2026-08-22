@@ -48,13 +48,26 @@ export const createOrderRequestSchema = z.object({
   shippingMethod: z.enum(["standard", "express"]),
   paymentMethod: z.enum(["cod", "bank_transfer"]),
 
+  /**
+   * Mã giảm giá khách nhập — 1 chuỗi optional, KHÔNG phải mảng: shape này khoá
+   * "mỗi đơn tối đa 1 coupon" ngay ở tầng schema. Server luôn tự tra + tự tính
+   * lại số tiền giảm từ DB; client không bao giờ gửi số tiền giảm lên.
+   */
+  couponCode: z.string().trim().min(1).max(50).optional(),
+
   /** Chỉ UI — không bắt buộc gửi; server bỏ qua. */
   saveInfo: z.boolean().optional(),
 });
 
 export type CreateOrderRequest = z.infer<typeof createOrderRequestSchema>;
 
-/** Form checkout = request trừ lines (lines lấy từ cart store). */
-export const checkoutFormSchema = createOrderRequestSchema.omit({ lines: true });
+/**
+ * Form checkout = request trừ `lines` (lấy từ cart store) và `couponCode`
+ * (state riêng của CheckoutCouponField, không do RHF quản lý).
+ */
+export const checkoutFormSchema = createOrderRequestSchema.omit({
+  lines: true,
+  couponCode: true,
+});
 
 export type CheckoutFormValues = z.infer<typeof checkoutFormSchema>;
