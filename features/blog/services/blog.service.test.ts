@@ -107,4 +107,38 @@ describe("blogService.getPostBySlug", () => {
 
     expect(result.bodyHtml).toBe("<p>Nội dung</p>");
   });
+
+  // F3 / AC6 — bài đã lưu TRƯỚC khi có sanitize write-time vẫn phải an toàn
+  // khi đọc ra (read-time sanitization, defense in depth).
+  it("sanitize read-time: content chứa <script>/onerror trong DB không lọt ra bodyHtml", async () => {
+    mocks.from.mockReturnValue(
+      makeBuilder({
+        data: {
+          ...publishedRow,
+          content:
+            '<p>Nội dung</p><script>alert(1)</script><img src="x" onerror="alert(1)" alt="a" />',
+        },
+        error: null,
+      }),
+    );
+
+    const result = await blogService.getPostBySlug("an-sach-moi-ngay");
+
+    expect(result.bodyHtml).not.toContain("<script");
+    expect(result.bodyHtml).not.toContain("onerror");
+    expect(result.bodyHtml).not.toContain("alert(1)");
+    expect(result.bodyHtml).toContain("<p>Nội dung</p>");
+  });
+
+  // F3 / AC7 — nội dung hợp lệ không bị biến dạng khi đọc.
+  it("read-time giữ nguyên các tag được phép", async () => {
+    const allowed = "<h2>Tiêu đề</h2><p>Đoạn <b>đậm</b></p><ul><li>a</li></ul>";
+    mocks.from.mockReturnValue(
+      makeBuilder({ data: { ...publishedRow, content: allowed }, error: null }),
+    );
+
+    const result = await blogService.getPostBySlug("an-sach-moi-ngay");
+
+    expect(result.bodyHtml).toBe(allowed);
+  });
 });

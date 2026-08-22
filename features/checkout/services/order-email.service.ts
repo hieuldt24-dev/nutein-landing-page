@@ -8,11 +8,33 @@ import type { CreateOrderResult } from "../types";
 
 const serviceLogger = logger.child({ service: "orderEmailService" });
 
+/**
+ * Escape 5 lớp ký tự nguy hiểm trước khi nội suy chuỗi do khách nhập vào
+ * template HTML của email (chống HTML injection / XSS trong mail client).
+ * Thứ tự quan trọng: `&` phải thay trước, nếu không các entity vừa chèn
+ * (`&lt;`, `&quot;`...) sẽ bị escape lần hai.
+ */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function renderOrderConfirmationHtml(order: CreateOrderResult): string {
   const paymentLabel =
     PAYMENT_OPTIONS.find((o) => o.value === order.paymentMethod)?.label ?? order.paymentMethod;
   const shippingLabel =
     SHIPPING_OPTIONS.find((o) => o.value === order.shippingMethod)?.label ?? order.shippingMethod;
+
+  // Dòng riêng cho mã giảm giá — KHÔNG gộp vào dòng "Giảm giá" (tổng) ở trên.
+  // `couponCode` là chuỗi khách tự nhập nên bắt buộc escapeHtml, giống
+  // buyer.fullName / address.street.
+  const couponRow = order.summary.couponCode
+    ? `<tr><td style="padding: 4px 0; color: #666;">Mã giảm giá</td><td style="padding: 4px 0;">${escapeHtml(order.summary.couponCode)} · −${formatCurrencyVnd(order.summary.couponDiscountAmount ?? 0)}</td></tr>`
+    : "";
 
   return `
     <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #1a1a1a;">
@@ -21,8 +43,8 @@ function renderOrderConfirmationHtml(order: CreateOrderResult): string {
 
       <h2 style="font-size: 15px; margin-top: 24px;">Thông tin giao hàng</h2>
       <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
-        <tr><td style="padding: 4px 0; color: #666;">Người nhận</td><td style="padding: 4px 0;">${order.buyer.fullName} · ${order.buyer.phone}</td></tr>
-        <tr><td style="padding: 4px 0; color: #666;">Địa chỉ</td><td style="padding: 4px 0;">${order.address.street}, ${order.address.ward}, ${order.address.province}</td></tr>
+        <tr><td style="padding: 4px 0; color: #666;">Người nhận</td><td style="padding: 4px 0;">${escapeHtml(order.buyer.fullName)} · ${escapeHtml(order.buyer.phone)}</td></tr>
+        <tr><td style="padding: 4px 0; color: #666;">Địa chỉ</td><td style="padding: 4px 0;">${escapeHtml(order.address.street)}, ${escapeHtml(order.address.ward)}, ${escapeHtml(order.address.province)}</td></tr>
         <tr><td style="padding: 4px 0; color: #666;">Vận chuyển</td><td style="padding: 4px 0;">${shippingLabel} — ${order.estimatedDeliveryLabel}</td></tr>
         <tr><td style="padding: 4px 0; color: #666;">Thanh toán</td><td style="padding: 4px 0;">${paymentLabel}</td></tr>
       </table>
@@ -33,6 +55,7 @@ function renderOrderConfirmationHtml(order: CreateOrderResult): string {
         <tr><td style="padding: 4px 0; color: #666;">Tạm tính</td><td style="padding: 4px 0;">${formatCurrencyVnd(order.summary.subtotal)}</td></tr>
         <tr><td style="padding: 4px 0; color: #666;">Phí ship</td><td style="padding: 4px 0;">${formatCurrencyVnd(order.summary.shippingFee)}</td></tr>
         <tr><td style="padding: 4px 0; color: #666;">Giảm giá</td><td style="padding: 4px 0;">−${formatCurrencyVnd(order.summary.discountAmount)}</td></tr>
+        ${couponRow}
         <tr><td style="padding: 8px 0; font-weight: bold; border-top: 1px solid #eee;">Tổng thanh toán</td><td style="padding: 8px 0; font-weight: bold; border-top: 1px solid #eee;">${formatCurrencyVnd(order.summary.total)}</td></tr>
       </table>
 

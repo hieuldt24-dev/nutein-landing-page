@@ -40,7 +40,7 @@ export function SectionHeading({
       )}
       <Comp
         className={cn(
-          "font-black leading-[1.05]",
+          "font-black leading-tight",
           variant === "outline"
             ? "text-transparent [-webkit-text-stroke:1.5px_var(--color-ink)] [paint-order:stroke_fill]"
             : "text-ink",

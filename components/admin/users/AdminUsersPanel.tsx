@@ -3,7 +3,9 @@
 import { useMemo, useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import { AdminFilterChip } from "@/components/admin/ui/AdminFilterChip";
+import { AdminListPagination } from "@/components/admin/ui/AdminListPagination";
 import { UserAvatar } from "@/components/ui/UserAvatar";
+import { ADMIN_LIST_PAGE_SIZE } from "@/lib/admin-list-query";
 import { ADMIN_USERS_SWR_KEY } from "@/features/admin-users/constants";
 import { adminUsersService } from "@/features/admin-users/services/admin-users.service";
 import type { AuthRole } from "@/features/auth/types";
@@ -30,31 +32,49 @@ export function AdminUsersPanel() {
   const { mutate: globalMutate } = useSWRConfig();
   const [q, setQ] = useState("");
   const [role, setRole] = useState<AuthRole | "all">("all");
-  const key = useMemo(() => `${ADMIN_USERS_SWR_KEY}:${q}:${role}`, [q, role]);
+  const [page, setPage] = useState(0);
+  const key = useMemo(
+    () => `${ADMIN_USERS_SWR_KEY}:${q}:${role}:${page}`,
+    [q, role, page],
+  );
   const { data, error, isLoading } = useSWR(
     key,
-    () => adminUsersService.list({ q, role }),
+    () =>
+      adminUsersService.list({
+        q,
+        role,
+        limit: ADMIN_LIST_PAGE_SIZE,
+        offset: page * ADMIN_LIST_PAGE_SIZE,
+      }),
     { revalidateOnFocus: false, revalidateOnReconnect: false },
   );
 
-  const { data: allUsers } = useSWR(
+  const items = data?.items ?? [];
+  const total = data?.total ?? 0;
+
+  // Chip count chỉ cần `total` — gọi `limit: 1` để không kéo về nguyên bảng.
+  const { data: counts } = useSWR(
     `${ADMIN_USERS_SWR_KEY}:counts`,
-    () => adminUsersService.list({ q: "", role: "all" }),
+    async () => {
+      const [all, staff, admin] = await Promise.all([
+        adminUsersService.list({ role: "all", limit: 1 }),
+        adminUsersService.list({ role: "staff", limit: 1 }),
+        adminUsersService.list({ role: "admin", limit: 1 }),
+      ]);
+      return { all: all.total, staff: staff.total, admin: admin.total };
+    },
     { revalidateOnFocus: false, revalidateOnReconnect: false },
   );
 
-  const roleCounts = useMemo(() => {
-    const counts: Record<AuthRole | "all", number> = {
-      all: allUsers?.length ?? 0,
+  const roleCounts = useMemo(
+    () => ({
+      all: counts?.all ?? 0,
       user: 0,
-      staff: 0,
-      admin: 0,
-    };
-    for (const u of allUsers ?? []) {
-      counts[u.role] += 1;
-    }
-    return counts;
-  }, [allUsers]);
+      staff: counts?.staff ?? 0,
+      admin: counts?.admin ?? 0,
+    }),
+    [counts],
+  );
 
   const changeRole = async (id: string, next: AuthRole) => {
     try {
@@ -90,7 +110,10 @@ export function AdminUsersPanel() {
             <AdminFilterChip
               key={opt.value}
               active={role === opt.value}
-              onClick={() => setRole(opt.value)}
+              onClick={() => {
+                setRole(opt.value);
+                setPage(0);
+              }}
             >
               {opt.label}
               {opt.value === "staff" || opt.value === "admin"
@@ -106,7 +129,10 @@ export function AdminUsersPanel() {
           <input
             className="h-10 w-full rounded-full border border-ink/15 bg-surface px-4 text-[14px] font-medium text-ink placeholder:text-text-faint"
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onChange={(e) => {
+              setQ(e.target.value);
+              setPage(0);
+            }}
             placeholder="Email hoặc tên…"
           />
         </label>
@@ -120,14 +146,14 @@ export function AdminUsersPanel() {
           Không tải được danh sách người dùng.
         </p>
       ) : null}
-      {data && data.length === 0 ? (
+      {data && items.length === 0 ? (
         <p className="rounded-[20px] border border-dashed border-ink/15 px-5 py-8 text-center text-sm text-text-muted">
           Không tìm thấy người dùng.
         </p>
       ) : null}
-      {data && data.length > 0 ? (
+      {data && items.length > 0 ? (
         <ul className="m-0 flex list-none flex-col gap-3 p-0">
-          {data.map((u) => {
+          {items.map((u) => {
             const isSelf =
               Boolean(currentUser?.email) && u.email === currentUser?.email;
             return (
@@ -217,6 +243,17 @@ export function AdminUsersPanel() {
             );
           })}
         </ul>
+      ) : null}
+
+      {data && total > 0 ? (
+        <div className="mt-4">
+          <AdminListPagination
+            page={page}
+            pageSize={ADMIN_LIST_PAGE_SIZE}
+            total={total}
+            onPageChange={setPage}
+          />
+        </div>
       ) : null}
     </div>
   );

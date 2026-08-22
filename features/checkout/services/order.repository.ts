@@ -11,6 +11,7 @@ import type { CreateOrderRequest } from "@/features/checkout/schemas/checkout.sc
 import { normalizeCartLines } from "@/features/cart/pricing";
 import { BadRequestError } from "@/src/errors/app.error";
 import { auditLogRepository } from "@/features/admin-audit/services/audit-log.repository";
+import { COUPON_TRIGGER_MESSAGES } from "../constants";
 
 type DbOrderStatus =
   | "PENDING"
@@ -36,6 +37,15 @@ export interface OrderShippingAddressSnapshot {
   variantLabel: string;
   /** Snapshot multi-line. */
   lines: { variantId: string; variantLabel: string; packQuantity: number }[];
+  /**
+   * Snapshot coupon lúc đặt hàng. `orders` chỉ có 1 cột `discount_amount` (đã
+   * gộp cả giảm theo mốc voucher lẫn coupon) và 1 FK `coupon_id`, không có chỗ
+   * lưu RIÊNG phần giảm của coupon — nên phần tách dòng cho lịch sử đơn nằm ở
+   * đây, trong cột JSONB snapshot sẵn có (giống `variantId`/`lines`), không cần
+   * migration mới.
+   */
+  couponCode?: string;
+  couponDiscountAmount?: number;
 }
 
 interface OrderInsertRow {
@@ -105,6 +115,11 @@ export const orderRepository = {
       payosOrderCode?: number;
       payosPaymentLinkId?: string;
     },
+    coupon?: {
+      couponId?: string;
+      couponCode?: string;
+      couponDiscountAmount?: number;
+    },
   ): Promise<OrderInsertRow> {
     const lines = normalizeCartLines(input.lines);
     const detail = productService.getProductDetail();
@@ -135,6 +150,10 @@ export const orderRepository = {
       variantId: first?.variantId ?? DEFAULT_PRODUCT_VARIANT_ID,
       variantLabel: firstVariant.label,
       lines: lineSnapshots,
+      ...(coupon?.couponCode ? { couponCode: coupon.couponCode } : {}),
+      ...(coupon?.couponDiscountAmount !== undefined
+        ? { couponDiscountAmount: coupon.couponDiscountAmount }
+        : {}),
     };
 
     const client = requireAdminClient();
@@ -152,6 +171,7 @@ export const orderRepository = {
         discount_amount: money.discountAmount,
         final_price: money.total,
         shipping_address: shippingAddress,
+        coupon_id: coupon?.couponId ?? null,
         note: input.note?.trim() || null,
         payos_order_code: meta.payosOrderCode ?? null,
         payos_payment_link_id: meta.payosPaymentLinkId ?? null,
@@ -162,6 +182,18 @@ export const orderRepository = {
       .single();
 
     if (orderError) {
+      // Trigger `validate_and_apply_coupon()` (BEFORE INSERT) khoá row coupon
+      // FOR UPDATE rồi re-check active/hết hạn/hết lượt — nó là trọng tài cuối
+      // cùng khi 2 khách cùng giành lượt cuối. Nếu thua race, Postgres trả về
+      // đúng text tiếng Việt của trigger (RAISE EXCEPTION không đặt SQLSTATE
+      // riêng) — chuyển thẳng thành BadRequestError thay vì bọc lỗi 500 chung,
+      // cùng kiểu xử lý với case 23514 hết hàng bên dưới.
+      const triggerMessage = COUPON_TRIGGER_MESSAGES.find((message) =>
+        orderError.message.includes(message),
+      );
+      if (triggerMessage) {
+        throw new BadRequestError(triggerMessage);
+      }
       throw new Error(`Không tạo được đơn hàng: ${orderError.message}`);
     }
 

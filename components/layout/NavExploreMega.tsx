@@ -57,7 +57,7 @@ export function NavExploreMega({ onNavigate }: NavExploreMegaProps) {
                 <Link
                   href={link.href}
                   onClick={onNavigate}
-                  className="font-display text-[28px] font-bold leading-[1.15] tracking-[-0.03em] text-ink transition-colors hover:text-primary md:text-[32px] lg:text-[36px]"
+                  className="font-display text-[28px] font-bold leading-tight tracking-[-0.03em] text-ink transition-colors hover:text-primary md:text-[32px] lg:text-[36px]"
                 >
                   {link.label}
                 </Link>
@@ -68,7 +68,7 @@ export function NavExploreMega({ onNavigate }: NavExploreMegaProps) {
                 <Link
                   href={adminLinkHref}
                   onClick={onNavigate}
-                  className="font-display text-[28px] font-bold leading-[1.15] tracking-[-0.03em] text-ink transition-colors hover:text-primary md:text-[32px] lg:text-[36px]"
+                  className="font-display text-[28px] font-bold leading-tight tracking-[-0.03em] text-ink transition-colors hover:text-primary md:text-[32px] lg:text-[36px]"
                 >
                   {ADMIN_LINK_LABEL}
                 </Link>

@@ -27,7 +27,7 @@ export function CheckoutSuccessView({
       <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-primary">
         Đặt hàng thành công
       </p>
-      <h1 className="mt-3 font-display text-[clamp(32px,5vw,48px)] font-black uppercase leading-[1.05] tracking-[-0.04em] text-ink">
+      <h1 className="mt-3 font-display text-[clamp(32px,5vw,48px)] font-black uppercase leading-tight tracking-[-0.04em] text-ink">
         Cảm ơn bạn đã chọn Nutein
       </h1>
       <p className="mt-4 text-[14px] font-semibold text-text-body">

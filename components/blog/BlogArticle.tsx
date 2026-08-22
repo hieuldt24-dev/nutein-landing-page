@@ -33,7 +33,7 @@ export function BlogArticle({ post }: { post: BlogPost }) {
         {post.readingMinutes} phút đọc
       </p>
 
-      <h1 className="mt-4 font-display text-[clamp(32px,5vw,52px)] font-black uppercase leading-[1.02] tracking-[-0.04em] text-ink">
+      <h1 className="mt-4 font-display text-[clamp(32px,5vw,52px)] font-black uppercase leading-tight tracking-[-0.04em] text-ink">
         {post.title}
       </h1>
 

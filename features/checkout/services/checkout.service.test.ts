@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   reconcileByPayosOrderCode: vi.fn(),
   cancelPaymentLink: vi.fn(),
   sendOrderConfirmation: vi.fn(),
+  validateAndComputeDiscount: vi.fn(),
   afterCallbacks: [] as Array<() => unknown>,
   refreshProductCatalogServer: vi.fn(),
 }));
@@ -51,6 +52,12 @@ vi.mock("./payos.service", () => ({
   },
 }));
 
+vi.mock("./coupon-validation.service", () => ({
+  couponValidationService: {
+    validateAndComputeDiscount: mocks.validateAndComputeDiscount,
+  },
+}));
+
 vi.mock("./order-email.service", () => ({
   orderEmailService: {
     sendOrderConfirmation: mocks.sendOrderConfirmation,
@@ -77,6 +84,7 @@ vi.mock("@/features/product/services/product.service", async (importOriginal) =>
 });
 
 import { checkoutService } from "./checkout.service";
+import { BadRequestError } from "@/src/errors/app.error";
 
 const baseInput: CreateOrderRequest = {
   lines: [{ variantId: "pack-1", quantity: 1 }],
@@ -181,6 +189,53 @@ describe("checkoutService.createOrder", () => {
     expect(mocks.createOrder).not.toHaveBeenCalled();
   });
 
+  // F1 / AC1 — link đã tạo xong rồi mới ghi DB thất bại → phải huỷ link.
+  it("bank_transfer: create() lỗi SAU khi đã tạo link → cancelPaymentLink(code, \"order_create_failed\") + lỗi gốc vẫn nổi lên", async () => {
+    mocks.createPaymentLink.mockResolvedValue({
+      checkoutUrl: "https://pay.payos.vn/web/abc",
+      payosOrderCode: 1234567890,
+      payosPaymentLinkId: "link-1",
+    });
+    const createError = new Error("DB insert failed");
+    mocks.createOrder.mockRejectedValue(createError);
+    mocks.cancelPaymentLink.mockResolvedValue(undefined);
+
+    await expect(
+      checkoutService.createOrder("user-1", { ...baseInput, paymentMethod: "bank_transfer" }),
+    ).rejects.toBe(createError);
+
+    expect(mocks.cancelPaymentLink).toHaveBeenCalledWith(1234567890, "order_create_failed");
+  });
+
+  // F1 / AC1 — huỷ link cũng lỗi thì KHÔNG được che lỗi gốc.
+  it("bank_transfer: cancelPaymentLink cũng lỗi → lỗi gốc của create() mới là lỗi nổi lên", async () => {
+    mocks.createPaymentLink.mockResolvedValue({
+      checkoutUrl: "https://pay.payos.vn/web/abc",
+      payosOrderCode: 1234567890,
+      payosPaymentLinkId: "link-1",
+    });
+    const createError = new Error("DB insert failed");
+    mocks.createOrder.mockRejectedValue(createError);
+    mocks.cancelPaymentLink.mockRejectedValueOnce(new Error("payOS cancel down"));
+
+    await expect(
+      checkoutService.createOrder("user-1", { ...baseInput, paymentMethod: "bank_transfer" }),
+    ).rejects.toBe(createError);
+
+    expect(mocks.cancelPaymentLink).toHaveBeenCalledTimes(1);
+  });
+
+  // F1 / AC2 — đường COD không có payosOrderCode → không được gọi cancel.
+  it("cod: create() lỗi → KHÔNG gọi cancelPaymentLink (không có link nào để huỷ)", async () => {
+    const createError = new Error("DB insert failed");
+    mocks.createOrder.mockRejectedValue(createError);
+
+    await expect(checkoutService.createOrder("user-1", baseInput)).rejects.toBe(createError);
+
+    expect(mocks.cancelPaymentLink).not.toHaveBeenCalled();
+    expect(mocks.createPaymentLink).not.toHaveBeenCalled();
+  });
+
   it("vượt tồn kho → BadRequestError, không gọi payOS lẫn orderRepository.create", async () => {
     mocks.getAvailableStock.mockResolvedValue(0); // 1 gói pack-1 = 1 hũ > 0 còn lại
 
@@ -211,6 +266,32 @@ describe("checkoutService.createOrder", () => {
     expect(result.status).toBe("pending");
   });
 
+  // Item 1 — stock NaN (cột `stock` DB null/non-numeric → Number(null) = NaN)
+  // KHÔNG được coi là hợp lệ: object truthy nhưng giá trị vô nghĩa, phải rơi
+  // vào fallback getAvailableStock() y như trường hợp stockResult null.
+  it("refreshCatalogCache trả stock NaN → fallback getAvailableStock(), vượt tồn kho vẫn bị chặn", async () => {
+    mocks.refreshProductCatalogServer.mockResolvedValue({ stock: Number.NaN });
+    mocks.getAvailableStock.mockResolvedValue(0);
+
+    await expect(
+      checkoutService.createOrder("user-1", { ...baseInput, paymentMethod: "bank_transfer" }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+
+    expect(mocks.getAvailableStock).toHaveBeenCalled();
+    expect(mocks.createPaymentLink).not.toHaveBeenCalled();
+    expect(mocks.createOrder).not.toHaveBeenCalled();
+  });
+
+  it("refreshCatalogCache trả stock NaN + getAvailableStock lỗi DB → lỗi nổi lên (không âm thầm bỏ qua check)", async () => {
+    mocks.refreshProductCatalogServer.mockResolvedValue({ stock: Number.NaN });
+    const dbError = new Error("stock query failed");
+    mocks.getAvailableStock.mockRejectedValue(dbError);
+
+    await expect(checkoutService.createOrder("user-1", baseInput)).rejects.toBe(dbError);
+
+    expect(mocks.createOrder).not.toHaveBeenCalled();
+  });
+
   it("refreshCatalogCache trả stock không đủ → BadRequestError, không cần gọi getAvailableStock riêng", async () => {
     mocks.refreshProductCatalogServer.mockResolvedValue({ stock: 0 });
 
@@ -220,6 +301,175 @@ describe("checkoutService.createOrder", () => {
 
     expect(mocks.getAvailableStock).not.toHaveBeenCalled();
     expect(mocks.createOrder).not.toHaveBeenCalled();
+  });
+});
+
+describe("checkoutService.createOrder — mã giảm giá", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.refreshProductCatalogServer.mockResolvedValue(null);
+    mocks.getAvailableStock.mockResolvedValue(9999);
+    mocks.sendOrderConfirmation.mockResolvedValue(undefined);
+    mocks.createOrder.mockResolvedValue(orderRow);
+  });
+
+  /** Nhiều gói để chắc chắn có giảm giá theo mốc voucher (discountAmount > 0). */
+  const bundledInput: CreateOrderRequest = {
+    ...baseInput,
+    lines: [{ variantId: "pack-3", quantity: 2 }],
+  };
+
+  function moneyArg() {
+    return mocks.createOrder.mock.calls[0][2] as {
+      subtotal: number;
+      discountAmount: number;
+      shippingFee: number;
+      total: number;
+    };
+  }
+
+  it("không gửi couponCode → không gọi service coupon, coupon param undefined", async () => {
+    await checkoutService.createOrder("user-1", baseInput);
+
+    expect(mocks.validateAndComputeDiscount).not.toHaveBeenCalled();
+    expect(mocks.createOrder.mock.calls[0][4]).toBeUndefined();
+  });
+
+  // AC2 / Mitigation 3 — luôn tra lại từ DB, không nhận số tiền giảm từ client.
+  it("gửi couponCode → LUÔN tra lại từ DB với tạm tính TRƯỚC giảm giá voucher", async () => {
+    mocks.validateAndComputeDiscount.mockResolvedValue({
+      couponId: "coupon-1",
+      code: "SALE10",
+      discountAmount: 20_000,
+    });
+
+    await checkoutService.createOrder("user-1", {
+      ...bundledInput,
+      couponCode: "SALE10",
+    });
+
+    const call = mocks.validateAndComputeDiscount.mock.calls[0][0];
+    expect(call.code).toBe("SALE10");
+    // subtotal truyền vào phải khớp `subtotal` (tạm tính gốc), KHÔNG phải
+    // `total` (đã trừ giảm giá theo mốc voucher).
+    expect(call.subtotal).toBe(moneyArg().subtotal);
+    expect(call.subtotal).toBeGreaterThan(moneyArg().subtotal - moneyArg().discountAmount);
+  });
+
+  // AC1 + AC8 — cộng dồn, không cái nào ghi đè cái nào.
+  it("cộng dồn giảm giá voucher + coupon, tổng đơn giảm đúng phần coupon", async () => {
+    const noCoupon = await checkoutService.createOrder("user-1", bundledInput);
+    const baselineMoney = moneyArg();
+    vi.clearAllMocks();
+    mocks.refreshProductCatalogServer.mockResolvedValue(null);
+    mocks.getAvailableStock.mockResolvedValue(9999);
+    mocks.sendOrderConfirmation.mockResolvedValue(undefined);
+    mocks.createOrder.mockResolvedValue(orderRow);
+    mocks.validateAndComputeDiscount.mockResolvedValue({
+      couponId: "coupon-1",
+      code: "SALE10",
+      discountAmount: 20_000,
+    });
+
+    const withCoupon = await checkoutService.createOrder("user-1", {
+      ...bundledInput,
+      couponCode: "SALE10",
+    });
+    const couponMoney = moneyArg();
+
+    // discount_amount ghi DB = giảm voucher + giảm coupon (cộng dồn).
+    expect(couponMoney.discountAmount).toBe(baselineMoney.discountAmount + 20_000);
+    expect(baselineMoney.discountAmount).toBeGreaterThan(0);
+    // Tổng phải trả giảm đúng 20.000 so với khi không có coupon.
+    expect(couponMoney.total).toBe(baselineMoney.total - 20_000);
+    // Tạm tính không đổi.
+    expect(couponMoney.subtotal).toBe(baselineMoney.subtotal);
+    // final_price khớp công thức CHECK: subtotal − discount + ship.
+    expect(couponMoney.total).toBe(
+      couponMoney.subtotal - couponMoney.discountAmount + couponMoney.shippingFee,
+    );
+
+    // summary tách 2 dòng: giảm theo voucher giữ nguyên, coupon là dòng riêng.
+    expect(withCoupon.summary.discountAmount).toBe(noCoupon.summary.discountAmount);
+    expect(withCoupon.summary.couponCode).toBe("SALE10");
+    expect(withCoupon.summary.couponDiscountAmount).toBe(20_000);
+    expect(noCoupon.summary.couponCode).toBeUndefined();
+  });
+
+  it("truyền couponId + snapshot xuống orderRepository.create", async () => {
+    mocks.validateAndComputeDiscount.mockResolvedValue({
+      couponId: "coupon-1",
+      code: "SALE10",
+      discountAmount: 20_000,
+    });
+
+    await checkoutService.createOrder("user-1", {
+      ...bundledInput,
+      couponCode: "SALE10",
+    });
+
+    expect(mocks.createOrder.mock.calls[0][4]).toEqual({
+      couponId: "coupon-1",
+      couponCode: "SALE10",
+      couponDiscountAmount: 20_000,
+    });
+  });
+
+  // AC2 / AC3 — coupon hợp lệ lúc preview nhưng đã hỏng lúc submit.
+  it("coupon không còn hợp lệ lúc submit → throw, KHÔNG tạo đơn", async () => {
+    mocks.validateAndComputeDiscount.mockRejectedValue(
+      new BadRequestError("Mã giảm giá không hợp lệ hoặc đã bị vô hiệu hóa"),
+    );
+
+    await expect(
+      checkoutService.createOrder("user-1", { ...bundledInput, couponCode: "SALE10" }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+
+    expect(mocks.createOrder).not.toHaveBeenCalled();
+  });
+
+  it("mã không tồn tại → throw, KHÔNG tạo đơn và KHÔNG gọi payOS", async () => {
+    mocks.validateAndComputeDiscount.mockRejectedValue(
+      new BadRequestError("Mã giảm giá không tồn tại"),
+    );
+
+    await expect(
+      checkoutService.createOrder("user-1", {
+        ...bundledInput,
+        paymentMethod: "bank_transfer",
+        couponCode: "KHONGCO",
+      }),
+    ).rejects.toMatchObject({ statusCode: 400 });
+
+    expect(mocks.createOrder).not.toHaveBeenCalled();
+    expect(mocks.createPaymentLink).not.toHaveBeenCalled();
+  });
+
+  // AC10 — thua race ở trigger: dùng LẠI đúng catch block huỷ link payOS sẵn có.
+  it("trigger từ chối lúc insert (thua race) → huỷ link payOS qua đúng nhánh catch sẵn có", async () => {
+    mocks.validateAndComputeDiscount.mockResolvedValue({
+      couponId: "coupon-1",
+      code: "SALE10",
+      discountAmount: 20_000,
+    });
+    mocks.createPaymentLink.mockResolvedValue({
+      checkoutUrl: "https://pay.payos.vn/web/abc",
+      payosOrderCode: 1234567890,
+      payosPaymentLinkId: "link-1",
+    });
+    const triggerError = new BadRequestError("Mã giảm giá đã hết lượt sử dụng");
+    mocks.createOrder.mockRejectedValue(triggerError);
+    mocks.cancelPaymentLink.mockResolvedValue(undefined);
+
+    await expect(
+      checkoutService.createOrder("user-1", {
+        ...bundledInput,
+        paymentMethod: "bank_transfer",
+        couponCode: "SALE10",
+      }),
+    ).rejects.toBe(triggerError);
+
+    expect(mocks.cancelPaymentLink).toHaveBeenCalledWith(1234567890, "order_create_failed");
   });
 });
 

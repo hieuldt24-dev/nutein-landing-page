@@ -55,7 +55,7 @@ function ProcessCard({
       )}
       style={{ "--r": `${panel.rotate}deg` } as CSSProperties}
     >
-      <h3 className="font-display max-w-[94%] text-[clamp(34px,3.8vw,50px)] font-black uppercase leading-[0.92] tracking-[-0.04em]">
+      <h3 className="font-display max-w-[94%] text-[clamp(34px,3.8vw,50px)] font-black uppercase leading-tight tracking-[-0.04em]">
         {panel.headline}
       </h3>
       <p className={cn("mt-auto text-lg font-bold md:text-xl", tone.muted)}>{panel.name}</p>
@@ -78,7 +78,7 @@ function ProcessHeading() {
         height={48}
         className="mb-5 h-12 w-12 md:mb-6 md:h-14 md:w-14"
       />
-      <h2 className="font-display w-full text-[clamp(56px,10.5vw,120px)] font-black uppercase leading-[0.88] tracking-[-0.05em] text-ink">
+      <h2 className="font-display w-full text-[clamp(56px,10.5vw,120px)] font-black uppercase leading-tight tracking-[-0.05em] text-ink">
         <BounceChars staggerMs={22}>
           {ABOUT_PROCESS.titleLine1}
           <br />

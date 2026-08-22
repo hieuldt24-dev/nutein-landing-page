@@ -12,7 +12,10 @@ import { orderRepository } from "./order.repository";
 
 function requirePayosClient() {
   if (!payos) {
+    // Thông điệp gửi client là generic; chi tiết chẩn đoán đi vào `details`
+    // (chỉ log phía server) — tránh lộ tên biến môi trường ra ngoài.
     throw new InternalServerError(
+      "Không thể khởi tạo thanh toán — vui lòng thử lại sau.",
       "Thiếu PAYOS_CLIENT_ID/PAYOS_API_KEY/PAYOS_CHECKSUM_KEY — kiểm tra lại file .env",
     );
   }

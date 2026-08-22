@@ -6,13 +6,14 @@ const mocks = vi.hoisted(() => ({
   from: vi.fn(),
 }));
 
-function makeBuilder(result: { data?: unknown; error?: unknown }) {
+function makeBuilder(result: { data?: unknown; error?: unknown; count?: number | null }) {
   const builder: Record<string, unknown> = {
     select: vi.fn(() => builder),
     eq: vi.fn(() => builder),
     is: vi.fn(() => builder),
     not: vi.fn(() => builder),
     order: vi.fn(() => builder),
+    range: vi.fn(() => builder),
     update: vi.fn(() => builder),
     single: vi.fn(async () => result),
     maybeSingle: vi.fn(async () => result),
@@ -43,29 +44,52 @@ describe("adminContactRepository.list", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("map isHandled từ handled_by (null -> false)", async () => {
-    mocks.from.mockReturnValue(makeBuilder({ data: [messageRow], error: null }));
+    mocks.from.mockReturnValue(makeBuilder({ data: [messageRow], error: null, count: 1 }));
 
     const result = await adminContactRepository.list();
 
-    expect(result[0]).toMatchObject({ isHandled: false, isRead: false, phone: "0912345678" });
+    expect(result.total).toBe(1);
+    expect(result.items[0]).toMatchObject({
+      isHandled: false,
+      isRead: false,
+      phone: "0912345678",
+    });
   });
 
   it("filter='open' -> gọi .is('handled_by', null)", async () => {
-    const builder = makeBuilder({ data: [], error: null });
+    const builder = makeBuilder({ data: [], error: null, count: 0 });
     mocks.from.mockReturnValue(builder);
 
-    await adminContactRepository.list("open");
+    await adminContactRepository.list({ filter: "open" });
 
     expect(builder.is).toHaveBeenCalledWith("handled_by", null);
   });
 
   it("filter='handled' -> gọi .not('handled_by', 'is', null)", async () => {
-    const builder = makeBuilder({ data: [], error: null });
+    const builder = makeBuilder({ data: [], error: null, count: 0 });
     mocks.from.mockReturnValue(builder);
 
-    await adminContactRepository.list("handled");
+    await adminContactRepository.list({ filter: "handled" });
 
     expect(builder.not).toHaveBeenCalledWith("handled_by", "is", null);
+  });
+
+  it("mặc định phân trang 100 bản ghi đầu -> .range(0, 99)", async () => {
+    const builder = makeBuilder({ data: [], error: null, count: 0 });
+    mocks.from.mockReturnValue(builder);
+
+    await adminContactRepository.list();
+
+    expect(builder.range).toHaveBeenCalledWith(0, 99);
+  });
+
+  it("limit/offset -> .range đúng biên", async () => {
+    const builder = makeBuilder({ data: [], error: null, count: 0 });
+    mocks.from.mockReturnValue(builder);
+
+    await adminContactRepository.list({ limit: 20, offset: 20 });
+
+    expect(builder.range).toHaveBeenCalledWith(20, 39);
   });
 });
 

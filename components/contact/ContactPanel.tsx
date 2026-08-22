@@ -55,7 +55,7 @@ export function ContactPanel() {
         </div>
 
         <div>
-          <h2 className="max-w-[16ch] font-display text-[clamp(32px,4vw,48px)] font-black uppercase leading-[0.95] tracking-[-0.04em] text-ink">
+          <h2 className="max-w-[16ch] font-display text-[clamp(32px,4vw,48px)] font-black uppercase leading-tight tracking-[-0.04em] text-ink">
             <BounceChars staggerMs={22}>
               Chúng tôi luôn sẵn sàng lắng nghe.
             </BounceChars>

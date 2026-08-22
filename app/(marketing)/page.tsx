@@ -7,7 +7,11 @@ import TestimonialsSection from "@/components/shared/TestimonialsSection";
 import { MarqueeTicker } from "@/components/ui/MarqueeTicker";
 
 const USP_TICKER = [
-  "100% Protein Thực Vật",
+  "11g Protein trong mỗi gói 30g",
+  "Bổ sung xơ hòa tan Inulin & FOS",
+  "Đầy đủ vitamin B, E & khoáng chất",
+  "Nguồn dinh dưỡng lành tính mỗi ngày",
+  "Đạm thực vật từ hạt & đậu tự nhiên",
   "Non-GMO",
   "Organic",
   "Không Chất Bảo Quản",

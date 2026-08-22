@@ -25,7 +25,7 @@ export default function AboutCommitment() {
           <FadeInOnView className="mb-3 text-xs font-extrabold uppercase tracking-[0.18em] text-primary">
             {ABOUT_COMMITMENT.eyebrow}
           </FadeInOnView>
-          <h2 className="font-display text-[clamp(36px,5.5vw,64px)] font-black uppercase leading-[1.02] tracking-[-0.04em] text-ink">
+          <h2 className="font-display text-[clamp(36px,5.5vw,64px)] font-black uppercase leading-tight tracking-[-0.04em] text-ink">
             <BounceChars>{ABOUT_COMMITMENT.title}</BounceChars>
           </h2>
           <p className="mt-4 max-w-[480px] text-base leading-relaxed text-text-muted">

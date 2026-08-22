@@ -172,6 +172,88 @@ describe("orderRepository.create", () => {
 
     expect(orderBuilder.delete).toHaveBeenCalled();
   });
+
+  it("không có coupon → coupon_id null, snapshot không kèm field coupon", async () => {
+    const orderBuilder = makeBuilder({ data: orderRow, error: null });
+    const itemsBuilder = makeBuilder({ data: null, error: null });
+    mocks.from.mockImplementation((table: string) =>
+      table === "orders" ? orderBuilder : itemsBuilder,
+    );
+
+    await orderRepository.create(
+      "user-1",
+      baseInput,
+      { unitPrice: 199000, subtotal: 199000, discountAmount: 0, shippingFee: 25000, total: 224000 },
+      { orderCode: "NT-20260722-AB12", status: "PENDING", paymentStatus: "UNPAID" },
+    );
+
+    const payload = (orderBuilder.insert as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(payload.coupon_id).toBeNull();
+    expect(payload.shipping_address).not.toHaveProperty("couponCode");
+    expect(payload.shipping_address).not.toHaveProperty("couponDiscountAmount");
+  });
+
+  it("có coupon → set coupon_id và lưu snapshot couponCode/couponDiscountAmount vào shipping_address", async () => {
+    const orderBuilder = makeBuilder({ data: orderRow, error: null });
+    const itemsBuilder = makeBuilder({ data: null, error: null });
+    mocks.from.mockImplementation((table: string) =>
+      table === "orders" ? orderBuilder : itemsBuilder,
+    );
+
+    await orderRepository.create(
+      "user-1",
+      baseInput,
+      { unitPrice: 199000, subtotal: 199000, discountAmount: 30000, shippingFee: 25000, total: 194000 },
+      { orderCode: "NT-20260722-AB12", status: "PENDING", paymentStatus: "UNPAID" },
+      { couponId: "coupon-1", couponCode: "SALE10", couponDiscountAmount: 20000 },
+    );
+
+    const payload = (orderBuilder.insert as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(payload.coupon_id).toBe("coupon-1");
+    expect(payload.discount_amount).toBe(30000);
+    expect(payload.shipping_address).toMatchObject({
+      couponCode: "SALE10",
+      couponDiscountAmount: 20000,
+    });
+  });
+
+  // AC10 — thua race lượt cuối: trigger BEFORE INSERT raise đúng text tiếng Việt.
+  it.each([
+    "Mã giảm giá không hợp lệ hoặc đã bị vô hiệu hóa",
+    "Mã giảm giá đã hết hạn",
+    "Mã giảm giá đã hết lượt sử dụng",
+  ])("trigger coupon từ chối (%s) → BadRequestError giữ nguyên text của trigger", async (message) => {
+    const orderBuilder = makeBuilder({
+      data: null,
+      error: { message: `${message}` },
+    });
+    mocks.from.mockReturnValue(orderBuilder);
+
+    await expect(
+      orderRepository.create(
+        "user-1",
+        baseInput,
+        { unitPrice: 199000, subtotal: 199000, discountAmount: 0, shippingFee: 25000, total: 224000 },
+        { orderCode: "NT-20260722-AB12", status: "PENDING", paymentStatus: "UNPAID" },
+        { couponId: "coupon-1", couponCode: "SALE10", couponDiscountAmount: 20000 },
+      ),
+    ).rejects.toMatchObject({ statusCode: 400, message });
+  });
+
+  it("lỗi insert order KHÔNG phải trigger coupon → vẫn bọc lỗi chung như cũ", async () => {
+    mocks.from.mockReturnValue(
+      makeBuilder({ data: null, error: { message: "connection reset" } }),
+    );
+
+    await expect(
+      orderRepository.create(
+        "user-1",
+        baseInput,
+        { unitPrice: 199000, subtotal: 199000, discountAmount: 0, shippingFee: 25000, total: 224000 },
+        { orderCode: "NT-20260722-AB12", status: "PENDING", paymentStatus: "UNPAID" },
+      ),
+    ).rejects.toThrow("Không tạo được đơn hàng");
+  });
 });
 
 describe("orderRepository.getAvailableStock", () => {

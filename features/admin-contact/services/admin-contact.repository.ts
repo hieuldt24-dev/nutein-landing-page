@@ -2,7 +2,11 @@ import "server-only";
 
 import { supabaseAdmin } from "@/lib/supabase";
 import { NotFoundError } from "@/src/errors/app.error";
-import type { AdminContactFilter, AdminContactMessage } from "../types";
+import type {
+  AdminContactListQuery,
+  AdminContactListResult,
+  AdminContactMessage,
+} from "../types";
 
 interface ContactMessageRow {
   id: string;
@@ -41,20 +45,30 @@ function toAdminContactMessage(row: ContactMessageRow): AdminContactMessage {
   };
 }
 
-async function list(filter: AdminContactFilter = "all"): Promise<AdminContactMessage[]> {
+async function list(query: AdminContactListQuery = {}): Promise<AdminContactListResult> {
   const client = requireAdminClient();
-  let builder = client.from("contact_messages").select(MESSAGE_SELECT);
+  const filter = query.filter ?? "all";
+  let builder = client
+    .from("contact_messages")
+    .select(MESSAGE_SELECT, { count: "exact" });
 
   if (filter === "unread") builder = builder.eq("is_read", false);
   if (filter === "open") builder = builder.is("handled_by", null);
   if (filter === "handled") builder = builder.not("handled_by", "is", null);
 
-  const { data, error } = await builder.order("created_at", { ascending: false });
+  const pageSize = query.limit ?? 100;
+  const offset = query.offset ?? 0;
+
+  const { data, error, count } = await builder
+    .order("created_at", { ascending: false })
+    .range(offset, offset + pageSize - 1);
 
   if (error) {
     throw new Error(`Không tải được danh sách tin nhắn: ${error.message}`);
   }
-  return ((data as ContactMessageRow[]) ?? []).map(toAdminContactMessage);
+
+  const items = ((data as ContactMessageRow[]) ?? []).map(toAdminContactMessage);
+  return { items, total: count ?? items.length };
 }
 
 async function getById(id: string): Promise<AdminContactMessage | null> {

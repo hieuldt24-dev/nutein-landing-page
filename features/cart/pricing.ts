@@ -4,7 +4,6 @@ import {
   MAX_CART_QUANTITY,
   MIN_CART_QUANTITY,
   SHIPPING_FEE_NOTE,
-  VOUCHER_TIERS,
 } from "./constants";
 import type {
   CartLine,
@@ -22,7 +21,7 @@ export function clampCartQuantity(value: number): number {
   return Math.min(MAX_CART_QUANTITY, Math.max(MIN_CART_QUANTITY, value));
 }
 
-const VARIANT_SORT_ORDER = ["pack-1", "pack-3", "pack-6"] as const;
+const VARIANT_SORT_ORDER = ["pack-1", "pack-2", "pack-3", "pack-5", "pack-6"] as const;
 
 function variantSortKey(variantId: string): number {
   const idx = VARIANT_SORT_ORDER.indexOf(
@@ -146,7 +145,7 @@ function calculateProgressPercent(subtotal: number, tiers: VoucherTier[]): numbe
 
 export function getVoucherProgress(
   subtotal: number,
-  tiers: VoucherTier[] = VOUCHER_TIERS,
+  tiers: VoucherTier[],
 ): VoucherProgress {
   const tierProgress = buildTierProgress(tiers, subtotal);
   const nextTier = tierProgress.find((tier) => !tier.achieved) ?? null;
@@ -160,12 +159,24 @@ export function getVoucherProgress(
   };
 }
 
-function resolveDiscountPercent(voucherProgress: VoucherProgress): number {
-  const achievedDiscounts = voucherProgress.tiers
-    .filter((tier) => tier.achieved && tier.kind === "discount" && tier.discountPercent)
-    .map((tier) => tier.discountPercent ?? 0);
-
-  return achievedDiscounts.length > 0 ? Math.max(...achievedDiscounts) : 0;
+/**
+ * Mốc voucher từ variant sản phẩm — LUÔN sort tăng dần theo `thresholdVnd`.
+ * Thứ tự variant do staff nhập không đảm bảo, nhưng progress bar
+ * (`buildTierProgress`, `calculateProgressPercent`, `CartVoucherProgress`)
+ * giả định thứ tự tăng dần → enforce ngay tại đây.
+ */
+function buildProductVoucherTiers(): VoucherTier[] {
+  const detail = productService.getProductDetail();
+  return detail.variants.map((variant) => {
+    const offer = variant.offer;
+    return {
+      id: variant.id,
+      thresholdVnd: productService.packPrice(detail, variant),
+      label: variant.label,
+      kind: offer?.freeShipping ? "free_shipping" : "discount",
+      benefit: offer?.giftDescription ?? (offer?.freeShipping ? "Miễn phí vận chuyển" : undefined),
+    } satisfies VoucherTier;
+  }).sort((a, b) => a.thresholdVnd - b.thresholdVnd);
 }
 
 export function hasFreeShipping(voucherProgress: VoucherProgress): boolean {
@@ -176,9 +187,30 @@ function resolveShippingNote(voucherProgress: VoucherProgress): string {
   return hasFreeShipping(voucherProgress) ? "Miễn phí vận chuyển" : SHIPPING_FEE_NOTE;
 }
 
-function buildLineSummaries(lines: CartLine[]): CartLineSummary[] {
+function allocateBundleTotals(
+  rawLineTotals: number[],
+  bundleTotal: number,
+): number[] {
+  const rawTotal = rawLineTotals.reduce((sum, value) => sum + value, 0);
+  if (rawTotal <= 0 || rawLineTotals.length === 0) return rawLineTotals.map(() => 0);
+
+  let allocated = 0;
+  return rawLineTotals.map((raw, index) => {
+    if (index === rawLineTotals.length - 1) return bundleTotal - allocated;
+    // Floor each intermediate share so the final remainder is always
+    // non-negative while the allocated sum remains exactly bundleTotal.
+    const share = Math.floor((raw / rawTotal) * bundleTotal);
+    allocated += share;
+    return share;
+  });
+}
+
+function buildLineSummaries(
+  lines: CartLine[],
+  lineSubtotals: number[],
+): CartLineSummary[] {
   const detail = productService.getProductDetail();
-  return lines.map((line) => {
+  return lines.map((line, index) => {
     const variant = productService.resolveVariant(detail, line.variantId);
     const unitPrice = productService.packPrice(detail, variant);
     return {
@@ -186,7 +218,7 @@ function buildLineSummaries(lines: CartLine[]): CartLineSummary[] {
       label: variant.label,
       quantity: line.quantity,
       unitPrice,
-      lineSubtotal: line.quantity * unitPrice,
+      lineSubtotal: lineSubtotals[index] ?? 0,
     };
   });
 }
@@ -194,18 +226,34 @@ function buildLineSummaries(lines: CartLine[]): CartLineSummary[] {
 /** Snapshot tiền hàng + voucher từ nhiều dòng gói (chưa gồm phí ship checkout). */
 export function buildCartSummary(
   stateOrLines: CartState | CartLine[],
-  tiers: VoucherTier[] = VOUCHER_TIERS,
+  tiers?: VoucherTier[],
 ): CartSummary {
   const lines = normalizeCartLines(
     Array.isArray(stateOrLines) ? stateOrLines : stateOrLines.lines,
   );
-  const lineSummaries = buildLineSummaries(lines);
-  const subtotal = lineSummaries.reduce((sum, line) => sum + line.lineSubtotal, 0);
+  const detail = productService.getProductDetail();
+  const rawLineTotals = lines.map((line) => {
+    const variant = productService.resolveVariant(detail, line.variantId);
+    return line.quantity * detail.unitPrice * variant.units;
+  });
+  const subtotal = rawLineTotals.reduce((sum, lineTotal) => sum + lineTotal, 0);
+  const totalUnits = lines.reduce((sum, line) => {
+    const variant = productService.resolveVariant(detail, line.variantId);
+    return sum + line.quantity * variant.units;
+  }, 0);
+  const bundleTotal = productService.bundlePrice(detail, totalUnits);
+  const lineSummaries = buildLineSummaries(
+    lines,
+    allocateBundleTotals(rawLineTotals, bundleTotal),
+  );
   const quantity = totalPackQuantity(lines);
-  const voucherProgress = getVoucherProgress(subtotal, tiers);
-  const discountPercent = resolveDiscountPercent(voucherProgress);
-  const discountAmount = Math.round((subtotal * discountPercent) / 100);
-  const total = Math.max(0, subtotal - discountAmount);
+  const resolvedTiers = tiers ?? buildProductVoucherTiers();
+  const voucherProgress = getVoucherProgress(bundleTotal, resolvedTiers);
+  const discountAmount = Math.max(0, subtotal - bundleTotal);
+  const discountPercent = subtotal > 0
+    ? Math.round((discountAmount / subtotal) * 100)
+    : 0;
+  const total = bundleTotal;
 
   return {
     lines: lineSummaries,

@@ -22,7 +22,7 @@ import { cn, formatCurrencyVnd } from "@/lib/utils";
 function CartEmptyState({ onContinueShopping }: { onContinueShopping: () => void }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-10 px-8 text-center">
-      <p className="font-display text-[clamp(40px,4.5vw,56px)] font-bold leading-[0.95] tracking-[-0.04em] text-ink">
+      <p className="font-display text-[clamp(40px,4.5vw,56px)] font-bold leading-tight tracking-[-0.04em] text-ink">
         {CART_EMPTY_HEADING}
       </p>
       <FillButton
@@ -196,6 +196,7 @@ export default function CartDrawer() {
                 key={line.variantId}
                 product={productService.toCartProduct(detail, line.variantId)}
                 quantity={line.quantity}
+                lineSubtotal={line.lineSubtotal}
                 onIncrement={() => {
                   void increment(line.variantId);
                 }}
