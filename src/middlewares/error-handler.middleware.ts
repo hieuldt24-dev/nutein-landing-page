@@ -47,7 +47,10 @@ export function withErrorHandler<T extends Record<string, string> = Record<strin
 
       // Lỗi nghiệp vụ đã được định nghĩa (AppError)
       if (error instanceof AppError) {
-        logger.warn({ path: req.nextUrl.pathname, code: error.code }, error.message);
+        logger.warn(
+          { path: req.nextUrl.pathname, code: error.code, details: error.details },
+          error.message
+        );
         return errorResponse(error.message, error.code, error.statusCode);
       }
 

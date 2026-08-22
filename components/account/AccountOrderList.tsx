@@ -156,6 +156,14 @@ export function AccountOrderList() {
                   <p className="mt-1 text-[13px] text-text-body">
                     Nutein · {order.variantLabel} · {order.quantity} hũ
                   </p>
+                  {order.couponCode ? (
+                    <p className="mt-1 text-[12px] font-semibold text-forest">
+                      Mã giảm giá: {order.couponCode}
+                      {typeof order.couponDiscountAmount === "number"
+                        ? ` · −${formatCurrencyVnd(order.couponDiscountAmount)}`
+                        : ""}
+                    </p>
+                  ) : null}
                   {order.estimatedDeliveryLabel ? (
                     <p className="mt-1 text-[12px] text-text-muted">
                       {order.estimatedDeliveryLabel}

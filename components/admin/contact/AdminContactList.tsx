@@ -5,9 +5,11 @@ import { useMemo, useState } from "react";
 import useSWR from "swr";
 import { ChevronRight } from "lucide-react";
 import { AdminFilterChip } from "@/components/admin/ui/AdminFilterChip";
+import { AdminListPagination } from "@/components/admin/ui/AdminListPagination";
 import { ADMIN_CONTACT_SWR_KEY } from "@/features/admin-contact/constants";
 import { adminContactService } from "@/features/admin-contact/services/admin-contact.service";
 import type { AdminContactFilter } from "@/features/admin-contact/types";
+import { ADMIN_LIST_PAGE_SIZE } from "@/lib/admin-list-query";
 import { cn, formatDate } from "@/lib/utils";
 
 const FILTERS: { value: AdminContactFilter; label: string }[] = [
@@ -32,35 +34,45 @@ function statusPill(m: {
 
 export function AdminContactList() {
   const [filter, setFilter] = useState<AdminContactFilter>("all");
+  const [page, setPage] = useState(0);
 
-  const { data: allMessages } = useSWR(
-    `${ADMIN_CONTACT_SWR_KEY}:all`,
-    () => adminContactService.list("all"),
+  // Chip count chỉ cần `total` — `limit: 1` để không kéo về nguyên bảng.
+  const { data: counts } = useSWR(
+    `${ADMIN_CONTACT_SWR_KEY}:counts`,
+    async () => {
+      const [all, unread, open] = await Promise.all([
+        adminContactService.list({ filter: "all", limit: 1 }),
+        adminContactService.list({ filter: "unread", limit: 1 }),
+        adminContactService.list({ filter: "open", limit: 1 }),
+      ]);
+      return { all: all.total, unread: unread.total, open: open.total };
+    },
     { revalidateOnFocus: false, revalidateOnReconnect: false },
   );
 
-  const key = useMemo(() => `${ADMIN_CONTACT_SWR_KEY}:${filter}`, [filter]);
+  const key = useMemo(
+    () => `${ADMIN_CONTACT_SWR_KEY}:${filter}:${page}`,
+    [filter, page],
+  );
   const { data, error, isLoading } = useSWR(
     key,
-    () => adminContactService.list(filter),
+    () =>
+      adminContactService.list({
+        filter,
+        limit: ADMIN_LIST_PAGE_SIZE,
+        offset: page * ADMIN_LIST_PAGE_SIZE,
+      }),
     { revalidateOnFocus: false, revalidateOnReconnect: false },
   );
 
-  const unreadCount = useMemo(
-    () => allMessages?.filter((m) => !m.isRead).length ?? 0,
-    [allMessages],
-  );
-  const openCount = useMemo(
-    () => allMessages?.filter((m) => !m.isHandled).length ?? 0,
-    [allMessages],
-  );
-  const totalCount = allMessages?.length ?? 0;
+  const items = data?.items ?? [];
+  const total = data?.total ?? 0;
 
   const chipCount = (value: AdminContactFilter): number | null => {
-    if (!allMessages) return null;
-    if (value === "all") return totalCount;
-    if (value === "unread") return unreadCount;
-    if (value === "open") return openCount;
+    if (!counts) return null;
+    if (value === "all") return counts.all;
+    if (value === "unread") return counts.unread;
+    if (value === "open") return counts.open;
     return null;
   };
 
@@ -77,7 +89,10 @@ export function AdminContactList() {
             <AdminFilterChip
               key={opt.value}
               active={filter === opt.value}
-              onClick={() => setFilter(opt.value)}
+              onClick={() => {
+                setFilter(opt.value);
+                setPage(0);
+              }}
               className="h-9 text-[12.5px]"
             >
               {opt.label}
@@ -104,15 +119,15 @@ export function AdminContactList() {
         </p>
       ) : null}
 
-      {!isLoading && !error && data && data.length === 0 ? (
+      {!isLoading && !error && data && items.length === 0 ? (
         <p className="rounded-[20px] border border-dashed border-ink/15 px-5 py-8 text-center text-sm text-text-muted">
           Chưa có liên hệ nào.
         </p>
       ) : null}
 
-      {data && data.length > 0 ? (
+      {data && items.length > 0 ? (
         <ul className="m-0 flex list-none flex-col gap-3 p-0">
-          {data.map((m) => {
+          {items.map((m) => {
             const pill = statusPill(m);
             return (
               <li key={m.id}>
@@ -187,6 +202,15 @@ export function AdminContactList() {
             );
           })}
         </ul>
+      ) : null}
+
+      {data && total > 0 ? (
+        <AdminListPagination
+          page={page}
+          pageSize={ADMIN_LIST_PAGE_SIZE}
+          total={total}
+          onPageChange={setPage}
+        />
       ) : null}
     </div>
   );

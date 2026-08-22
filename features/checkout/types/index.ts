@@ -14,6 +14,10 @@ export interface OrderMoneySummary {
   shippingNote: string;
   /** Tổng phải trả = (subtotal − discount) + shippingFee. */
   total: number;
+  /** Mã giảm giá đã áp dụng (nếu có) — hiển thị thành dòng riêng, KHÔNG gộp vào `discountAmount` hiển thị của mốc voucher. */
+  couponCode?: string;
+  /** Phần giảm do coupon, tách riêng khỏi phần giảm theo mốc voucher. */
+  couponDiscountAmount?: number;
 }
 
 /** Response create order — UI success + snapshot. */

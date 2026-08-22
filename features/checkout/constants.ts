@@ -1,5 +1,37 @@
+import { formatCurrencyVnd } from "@/lib/utils";
 import type { CheckoutFormValues } from "./schemas/checkout.schema";
 import type { PaymentMethod, ShippingMethod } from "./types";
+
+/**
+ * Copy từ chối mã giảm giá — DÙNG CHUNG cho preview endpoint và
+ * `checkoutService.createOrder()`. 3 chuỗi đầu là text NGUYÊN VĂN của trigger DB
+ * `validate_and_apply_coupon()` (migration 20260718000000, Fix #8) — copy đúng
+ * từng ký tự để text lúc preview và text lúc insert bị trigger chặn không lệch
+ * nhau. 2 chuỗi cuối là case trigger KHÔNG kiểm (không tồn tại mã,
+ * `min_order_value`) — chỉ app layer check, viết theo cùng văn phong.
+ */
+export const COUPON_MESSAGES = {
+  /** App-layer only — trigger không phân biệt "không tồn tại" với "vô hiệu hoá". */
+  notFound: "Mã giảm giá không tồn tại",
+  /** Nguyên văn trigger. */
+  inactive: "Mã giảm giá không hợp lệ hoặc đã bị vô hiệu hóa",
+  /** Nguyên văn trigger. */
+  expired: "Mã giảm giá đã hết hạn",
+  /** Nguyên văn trigger. */
+  usageExhausted: "Mã giảm giá đã hết lượt sử dụng",
+} as const;
+
+/** App-layer only — trigger DB không kiểm `min_order_value`. */
+export function couponBelowMinOrderMessage(minOrderValue: number): string {
+  return `Đơn hàng cần tối thiểu ${formatCurrencyVnd(minOrderValue)} để dùng mã này`;
+}
+
+/** 3 text trigger DB có thể raise lúc INSERT — dùng để map lỗi Postgres về BadRequestError. */
+export const COUPON_TRIGGER_MESSAGES: readonly string[] = [
+  COUPON_MESSAGES.inactive,
+  COUPON_MESSAGES.expired,
+  COUPON_MESSAGES.usageExhausted,
+];
 
 /** Default values form checkout (RHF). */
 export const CHECKOUT_FORM_DEFAULT_VALUES: CheckoutFormValues = {

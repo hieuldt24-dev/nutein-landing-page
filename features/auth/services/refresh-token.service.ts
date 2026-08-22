@@ -56,6 +56,22 @@ export const refreshTokenService = {
     }
   },
 
+  /**
+   * Thu hồi TOÀN BỘ refresh token còn hiệu lực của 1 user (không chỉ token
+   * đang được trình ra) — dùng khi admin khóa tài khoản (is_deleted = true)
+   * để mọi phiên đang mở của user đó mất hiệu lực ngay lập tức.
+   */
+  async revokeAllForUser(userId: string): Promise<void> {
+    const { error } = await requireAdminClient()
+      .from("refresh_tokens")
+      .update({ revoked_at: new Date().toISOString() })
+      .eq("user_id", userId)
+      .is("revoked_at", null);
+    if (error) {
+      throw new Error(`Không thể thu hồi toàn bộ refresh token của user: ${error.message}`);
+    }
+  },
+
   /** Thu hồi token cũ + lưu token mới trong 1 bước — dùng khi rotate lúc refresh. */
   async rotate(userId: string, oldToken: string, newToken: string, expiresAt: Date): Promise<void> {
     await this.revoke(oldToken);

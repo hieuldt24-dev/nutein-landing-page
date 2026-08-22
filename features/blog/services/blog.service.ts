@@ -2,6 +2,7 @@ import "server-only";
 
 import { getSupabaseClient } from "@/lib/supabase";
 import { NotFoundError } from "@/src/errors/app.error";
+import { sanitizeBlogHtml } from "@/lib/sanitize-blog-html";
 import type {
   BlogCategoryId,
   BlogListQuery,
@@ -54,7 +55,9 @@ function toBlogPost(row: BlogPostRow): BlogPost {
     favorite: row.favorite,
     recipeFilters: (row.recipe_filters ?? undefined) as RecipeFilterId[] | undefined,
     tags: row.tags ?? undefined,
-    bodyHtml: row.content,
+    // F3 — sanitize read-time (defense in depth cho các bài đã lưu TRƯỚC khi
+    // có sanitize write-time). Cùng allowlist với admin-blog.repository.
+    bodyHtml: sanitizeBlogHtml(row.content),
   };
 }
 
