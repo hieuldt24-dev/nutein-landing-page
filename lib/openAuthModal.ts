@@ -4,12 +4,10 @@ import {
   AUTH_MODAL_OPTIONS_SWR_KEY,
   AUTH_MODAL_SWR_KEY,
   type AuthModalOptions,
-  type AuthModalTab,
 } from "@/features/auth/constants";
 import { sanitizeAuthReturnTo } from "@/features/auth/sanitize-return-to";
 
 export type OpenAuthModalInput = {
-  tab?: AuthModalTab;
   returnTo?: string | null;
   email?: string | null;
 };
@@ -24,7 +22,6 @@ export function openAuthModal(
   input: OpenAuthModalInput = {},
 ): void {
   const options: AuthModalOptions = {
-    tab: input.tab ?? AUTH_MODAL_OPTIONS_DEFAULT.tab,
     returnTo: sanitizeAuthReturnTo(input.returnTo ?? null),
     email: input.email?.trim() || null,
   };

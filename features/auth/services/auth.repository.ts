@@ -13,16 +13,7 @@ export type MintApiSessionResult = {
 
 /** Map lỗi Supabase Auth (tiếng Anh) sang thông báo tiếng Việt cho UI. */
 function mapAuthError(error: AuthError): string {
-  switch (error.message) {
-    case "Invalid login credentials":
-      return "Email hoặc mật khẩu không đúng.";
-    case "Email not confirmed":
-      return "Vui lòng xác nhận email trước khi đăng nhập (kiểm tra hộp thư đến).";
-    case "User already registered":
-      return "Email này đã được đăng ký.";
-    default:
-      return error.message || "Đã có lỗi xảy ra, vui lòng thử lại.";
-  }
+  return error.message || "Đã có lỗi xảy ra, vui lòng thử lại.";
 }
 
 let mintSessionInFlight: Promise<MintApiSessionResult> | null = null;
@@ -56,39 +47,6 @@ export function toAuthUser(
  * Role admin/staff lấy từ server khi mint JWT, không dùng allowlist mock.
  */
 export const authRepository = {
-  async signInWithPassword(email: string, password: string): Promise<User> {
-    const { data, error } = await supabaseBrowser.auth.signInWithPassword({ email, password });
-    if (error || !data.user) {
-      throw new Error(error ? mapAuthError(error) : "Đăng nhập thất bại");
-    }
-    return data.user;
-  },
-
-  async signUpWithPassword(
-    email: string,
-    password: string,
-    fullName: string,
-    options?: { emailRedirectTo?: string },
-  ): Promise<{ user: User; needsEmailConfirmation: boolean }> {
-    const { data, error } = await supabaseBrowser.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName },
-        ...(options?.emailRedirectTo
-          ? { emailRedirectTo: options.emailRedirectTo }
-          : {}),
-      },
-    });
-    if (error) {
-      throw new Error(mapAuthError(error));
-    }
-    if (!data.user) {
-      throw new Error("Đăng ký thất bại");
-    }
-    return { user: data.user, needsEmailConfirmation: !data.session };
-  },
-
   /** Redirect toàn trang sang Google — session thật lấy về qua app/auth/callback/route.ts. */
   async signInWithGoogle(redirectTo: string): Promise<void> {
     const { error } = await supabaseBrowser.auth.signInWithOAuth({

@@ -178,7 +178,7 @@ export default function CheckoutForm() {
   }, [defaultAddress, setValue, getValues]);
 
   const openCheckoutAuth = () =>
-    openAuthModal(mutate, { tab: "login", returnTo: "/checkout" });
+    openAuthModal(mutate, { returnTo: "/checkout" });
 
   const handleLogout = async () => {
     if (isSubmitting) return;

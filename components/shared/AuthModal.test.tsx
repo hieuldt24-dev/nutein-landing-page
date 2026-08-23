@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SWRConfig, useSWRConfig } from "swr";
 import type { AuthUser } from "@/features/auth/types";
@@ -18,7 +18,6 @@ const mocks = vi.hoisted(() => ({
   notifyError: vi.fn(),
   notifyInfo: vi.fn(),
   routerPush: vi.fn(),
-  apiRequest: vi.fn(),
 }));
 
 vi.mock("@/lib/useAuthStore", () => ({
@@ -38,24 +37,20 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/",
 }));
 
-vi.mock("@/lib/api-client", () => ({
-  apiRequest: mocks.apiRequest,
-}));
-
 import AuthModal from "./AuthModal";
 
-function authStoreState(overrides: Partial<{
-  user: AuthUser | null;
-  isLoggedIn: boolean;
-  signIn: ReturnType<typeof vi.fn>;
-  signUp: ReturnType<typeof vi.fn>;
-  signOut: ReturnType<typeof vi.fn>;
-}> = {}) {
+function authStoreState(
+  overrides: Partial<{
+    user: AuthUser | null;
+    isLoggedIn: boolean;
+    signInWithGoogle: ReturnType<typeof vi.fn>;
+    signOut: ReturnType<typeof vi.fn>;
+  }> = {}
+) {
   return {
     user: null,
     isLoggedIn: false,
-    signIn: vi.fn(),
-    signUp: vi.fn(),
+    signInWithGoogle: vi.fn(),
     signOut: vi.fn(),
     ...overrides,
   };
@@ -78,189 +73,63 @@ function renderAuthModal() {
   );
 }
 
-/** Nút submit trùng text "Đăng nhập" với nút tab — phân biệt bằng type="submit". */
-function getSubmitButton() {
-  const button = screen
-    .getAllByRole("button", { name: "Đăng nhập" })
-    .find((btn) => btn.getAttribute("type") === "submit");
-  if (!button) throw new Error("Không tìm thấy nút submit đăng nhập");
-  return button;
+function getGoogleButton() {
+  return screen.getByRole("button", { name: /Tiếp tục với Google/ });
 }
 
-describe("AuthModal — đăng nhập", () => {
+describe("AuthModal — chỉ đăng nhập bằng Google", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.useAuthStore.mockReturnValue(authStoreState());
-    mocks.apiRequest.mockResolvedValue({ exists: true });
   });
 
-  it("mở ở tab Đăng nhập theo mặc định với email + mật khẩu", async () => {
+  it("render dialog với CTA Google và không còn ô email/mật khẩu", async () => {
     renderAuthModal();
 
     await screen.findByRole("dialog");
     expect(screen.getByText("Chào mừng trở lại")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("tenban@example.com")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("••••••••")).toBeInTheDocument();
+    expect(getGoogleButton()).toBeInTheDocument();
+
+    expect(document.querySelector('input[type="email"]')).toBeNull();
+    expect(document.querySelector('input[type="password"]')).toBeNull();
+    expect(screen.queryByPlaceholderText("tenban@example.com")).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("••••••••")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Đăng ký" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Quên mật khẩu?" })).not.toBeInTheDocument();
   });
 
-  it("hiển thị lỗi validate khi submit form trống", async () => {
-    const user = userEvent.setup();
-    renderAuthModal();
-    await screen.findByRole("dialog");
-
-    await user.click(getSubmitButton());
-
-    expect(await screen.findByText("Vui lòng nhập email")).toBeInTheDocument();
-    expect(mocks.useAuthStore().signIn).not.toHaveBeenCalled();
-  });
-
-  it("hiển thị lỗi validate khi email sai định dạng", async () => {
-    const user = userEvent.setup();
-    renderAuthModal();
-    await screen.findByRole("dialog");
-
-    const emailInput = screen.getByPlaceholderText("tenban@example.com");
-    await user.type(emailInput, "not-an-email");
-    await user.type(screen.getByPlaceholderText("••••••••"), "matkhau123");
-    // fireEvent.submit thay vì click nút submit — input type="email" khiến
-    // jsdom tự chặn submit ở tầng constraint validation gốc trước khi
-    // react-hook-form/Zod kịp chạy, nên bấm nút sẽ không bao giờ thấy message.
-    fireEvent.submit(emailInput.closest("form")!);
-
-    expect(await screen.findByText("Email không đúng định dạng")).toBeInTheDocument();
-  });
-
-  it("submit hợp lệ: gọi signIn với đúng email/password/rememberMe, toast success, đóng modal", async () => {
-    const signIn = vi.fn().mockResolvedValue(undefined);
-    mocks.useAuthStore.mockReturnValue(authStoreState({ signIn }));
+  it("bấm CTA gọi signInWithGoogle với redirect URL /auth/callback?next=", async () => {
+    const signInWithGoogle = vi.fn().mockResolvedValue(undefined);
+    mocks.useAuthStore.mockReturnValue(authStoreState({ signInWithGoogle }));
 
     const user = userEvent.setup();
     renderAuthModal();
     await screen.findByRole("dialog");
 
-    await user.type(screen.getByPlaceholderText("tenban@example.com"), "user@example.com");
-    await user.type(screen.getByPlaceholderText("••••••••"), "matkhau123");
-    await user.click(getSubmitButton());
+    await user.click(getGoogleButton());
 
-    await waitFor(() =>
-      expect(signIn).toHaveBeenCalledWith("user@example.com", "matkhau123", false)
-    );
-    await waitFor(() =>
-      expect(mocks.notifySuccess).toHaveBeenCalledWith(
-        "Đăng nhập thành công! Chào mừng bạn quay trở lại."
-      )
-    );
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-  });
-
-  it("tick 'Ghi nhớ đăng nhập': gọi signIn với rememberMe = true", async () => {
-    const signIn = vi.fn().mockResolvedValue(undefined);
-    mocks.useAuthStore.mockReturnValue(authStoreState({ signIn }));
-
-    const user = userEvent.setup();
-    renderAuthModal();
-    await screen.findByRole("dialog");
-
-    await user.type(screen.getByPlaceholderText("tenban@example.com"), "user@example.com");
-    await user.type(screen.getByPlaceholderText("••••••••"), "matkhau123");
-    await user.click(screen.getByLabelText("Ghi nhớ đăng nhập"));
-    await user.click(getSubmitButton());
-
-    await waitFor(() =>
-      expect(signIn).toHaveBeenCalledWith("user@example.com", "matkhau123", true)
+    await waitFor(() => expect(signInWithGoogle).toHaveBeenCalledTimes(1));
+    expect(signInWithGoogle).toHaveBeenCalledWith(
+      `${window.location.origin}/auth/callback?next=${encodeURIComponent("/")}`
     );
   });
 
-  it("email chưa tồn tại: toast + chuyển tab Đăng ký, không gọi signIn", async () => {
-    mocks.apiRequest.mockResolvedValue({ exists: false });
-    const signIn = vi.fn();
-    mocks.useAuthStore.mockReturnValue(authStoreState({ signIn }));
+  it("signInWithGoogle lỗi: toast error và bật lại nút", async () => {
+    const signInWithGoogle = vi.fn().mockRejectedValue(new Error("Google lỗi"));
+    mocks.useAuthStore.mockReturnValue(authStoreState({ signInWithGoogle }));
 
     const user = userEvent.setup();
     renderAuthModal();
     await screen.findByRole("dialog");
 
-    await user.type(screen.getByPlaceholderText("tenban@example.com"), "new@example.com");
-    await user.type(screen.getByPlaceholderText("••••••••"), "matkhau123");
-    await user.click(getSubmitButton());
+    await user.click(getGoogleButton());
 
-    await waitFor(() =>
-      expect(mocks.notifyError).toHaveBeenCalledWith(
-        "Tài khoản chưa tồn tại, mời bạn đăng ký.",
-      ),
-    );
-    expect(signIn).not.toHaveBeenCalled();
-    expect(await screen.findByText("Tạo tài khoản mới")).toBeInTheDocument();
-  });
-
-  it("submit sai mật khẩu: hiển thị toast lỗi từ Supabase, modal vẫn mở", async () => {
-    const signIn = vi.fn().mockRejectedValue(new Error("Email hoặc mật khẩu không đúng."));
-    mocks.useAuthStore.mockReturnValue(authStoreState({ signIn }));
-
-    const user = userEvent.setup();
-    renderAuthModal();
-    await screen.findByRole("dialog");
-
-    await user.type(screen.getByPlaceholderText("tenban@example.com"), "user@example.com");
-    await user.type(screen.getByPlaceholderText("••••••••"), "sai-mat-khau");
-    await user.click(getSubmitButton());
-
-    await waitFor(() =>
-      expect(mocks.notifyError).toHaveBeenCalledWith("Email hoặc mật khẩu không đúng.")
-    );
+    await waitFor(() => expect(mocks.notifyError).toHaveBeenCalledWith("Google lỗi"));
+    await waitFor(() => expect(getGoogleButton()).not.toBeDisabled());
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
-  it("vô hiệu hoá nút submit + hiện 'Đang xử lý...' trong lúc chờ signIn", async () => {
-    let resolveSignIn!: () => void;
-    const pending = new Promise<void>((resolve) => {
-      resolveSignIn = resolve;
-    });
-    const signIn = vi.fn().mockReturnValue(pending);
-    mocks.useAuthStore.mockReturnValue(authStoreState({ signIn }));
-
-    const user = userEvent.setup();
-    renderAuthModal();
-    await screen.findByRole("dialog");
-
-    await user.type(screen.getByPlaceholderText("tenban@example.com"), "user@example.com");
-    await user.type(screen.getByPlaceholderText("••••••••"), "matkhau123");
-    // Lấy reference TRƯỚC khi click — label nút đổi thành "Đang xử lý..."
-    // ngay khi submit nên getSubmitButton() (tìm theo tên "Đăng nhập") sẽ
-    // không còn match được nút này nữa sau đó.
-    const submitButton = getSubmitButton();
-    await user.click(submitButton);
-
-    expect(await screen.findByText("Đang xử lý...")).toBeInTheDocument();
-    expect(submitButton).toBeDisabled();
-    expect(screen.getByPlaceholderText("tenban@example.com")).toBeDisabled();
-
-    resolveSignIn();
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-  });
-
-  it("toggle hiện/ẩn mật khẩu đổi type input và aria-label nút", async () => {
-    const user = userEvent.setup();
-    renderAuthModal();
-    await screen.findByRole("dialog");
-
-    const passwordInput = screen.getByPlaceholderText("••••••••");
-    expect(passwordInput).toHaveAttribute("type", "password");
-
-    await user.click(screen.getByRole("button", { name: "Hiện mật khẩu" }));
-
-    expect(passwordInput).toHaveAttribute("type", "text");
-    expect(screen.getByRole("button", { name: "Ẩn mật khẩu" })).toBeInTheDocument();
-  });
-
-  it("nút 'Quên mật khẩu?' đang bị vô hiệu hoá (chưa triển khai)", async () => {
-    renderAuthModal();
-    await screen.findByRole("dialog");
-
-    expect(screen.getByRole("button", { name: "Quên mật khẩu?" })).toBeDisabled();
-  });
-
-  it("đã đăng nhập + mở modal: tự đóng (không còn panel Xin chào / Đăng xuất)", async () => {
+  it("đã đăng nhập + mở modal: tự đóng", async () => {
     mocks.useAuthStore.mockReturnValue(
       authStoreState({
         user: { email: "user@example.com", fullName: "Nguyễn Văn A", role: "user" },
@@ -273,5 +142,25 @@ describe("AuthModal — đăng nhập", () => {
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
+  });
+
+  it("nhấn Escape đóng modal", async () => {
+    const user = userEvent.setup();
+    renderAuthModal();
+    await screen.findByRole("dialog");
+
+    await user.keyboard("{Escape}");
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("bấm backdrop đóng modal", async () => {
+    const user = userEvent.setup();
+    renderAuthModal();
+    await screen.findByRole("dialog");
+
+    await user.click(document.getElementById("auth-modal-backdrop")!);
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 });

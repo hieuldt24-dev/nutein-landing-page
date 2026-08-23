@@ -45,40 +45,6 @@ export function useAuthStore() {
     [rawUser, serverRole],
   );
 
-  const signIn = useCallback(
-    async (email: string, password: string, rememberMe: boolean = true) => {
-      const signedInUser = await authRepository.signInWithPassword(email, password);
-      await mutate(AUTH_USER_SWR_KEY, signedInUser, { revalidate: false });
-      const { role } = await authRepository.mintApiSession(rememberMe);
-      return toAuthUser(signedInUser, role);
-    },
-    [mutate]
-  );
-
-  const signUp = useCallback(
-    async (
-      email: string,
-      password: string,
-      fullName: string,
-      options?: { emailRedirectTo?: string },
-    ) => {
-      const { user: signedUpUser, needsEmailConfirmation } =
-        await authRepository.signUpWithPassword(
-          email,
-          password,
-          fullName,
-          options,
-        );
-      if (!needsEmailConfirmation) {
-        await mutate(AUTH_USER_SWR_KEY, signedUpUser, { revalidate: false });
-        const { role } = await authRepository.mintApiSession();
-        return { user: toAuthUser(signedUpUser, role), needsEmailConfirmation };
-      }
-      return { user: toAuthUser(signedUpUser, "user"), needsEmailConfirmation };
-    },
-    [mutate]
-  );
-
   /** Trình duyệt redirect sang Google ngay khi gọi thành công — không cần mutate SWR ở đây. */
   const signInWithGoogle = useCallback(async (redirectTo: string) => {
     await authRepository.signInWithGoogle(redirectTo);
@@ -99,8 +65,6 @@ export function useAuthStore() {
     isLoggedIn: Boolean(user?.email),
     isReady: Boolean(isReady),
     isStaffOrAdmin,
-    signIn,
-    signUp,
     signInWithGoogle,
     signOut,
   };

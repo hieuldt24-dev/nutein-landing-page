@@ -5,22 +5,18 @@ export const AUTH_USER_SWR_KEY = "auth-user";
 export const AUTH_MODAL_SWR_KEY = "auth-modal";
 
 /**
- * SWR-as-store — options khi mở AuthModal (tab, returnTo, email prefill).
+ * SWR-as-store — options khi mở AuthModal (returnTo, email prefill).
  * Đọc khi `auth-modal` chuyển sang `true`; clear khi đóng.
  */
 export const AUTH_MODAL_OPTIONS_SWR_KEY = "auth-modal-options";
 
-export type AuthModalTab = "login" | "register";
-
 export type AuthModalOptions = {
-  tab: AuthModalTab;
-  /** Path nội bộ sau auth thành công / sau verify email (VD `/checkout`). */
+  /** Path nội bộ sau auth thành công (VD `/checkout`). */
   returnTo: string | null;
   email: string | null;
 };
 
 export const AUTH_MODAL_OPTIONS_DEFAULT: AuthModalOptions = {
-  tab: "login",
   returnTo: null,
   email: null,
 };
