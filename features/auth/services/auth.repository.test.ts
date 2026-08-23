@@ -4,8 +4,7 @@ import type { AuthError, User } from "@supabase/supabase-js";
 vi.mock("@/lib/supabase-browser", () => ({
   supabaseBrowser: {
     auth: {
-      signInWithPassword: vi.fn(),
-      signUp: vi.fn(),
+      signInWithOAuth: vi.fn(),
       signOut: vi.fn(),
     },
   },
@@ -31,124 +30,36 @@ function makeUser(overrides: Partial<User> = {}): User {
   } as User;
 }
 
-describe("authRepository.signInWithPassword", () => {
+describe("authRepository.signInWithGoogle", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("trả về user khi Supabase đăng nhập thành công", async () => {
-    const user = makeUser();
-    vi.mocked(supabaseBrowser.auth.signInWithPassword).mockResolvedValue({
-      data: { user, session: {} as never },
+  it("gọi Supabase signInWithOAuth với provider google + redirectTo", async () => {
+    vi.mocked(supabaseBrowser.auth.signInWithOAuth).mockResolvedValue({
+      data: { provider: "google", url: "https://accounts.google.com" },
       error: null,
     } as never);
 
-    const result = await authRepository.signInWithPassword("user@example.com", "matkhau123");
+    await expect(
+      authRepository.signInWithGoogle("http://localhost/auth/callback?next=%2F")
+    ).resolves.toBeUndefined();
 
-    expect(result).toEqual(user);
-    expect(supabaseBrowser.auth.signInWithPassword).toHaveBeenCalledWith({
-      email: "user@example.com",
-      password: "matkhau123",
+    expect(supabaseBrowser.auth.signInWithOAuth).toHaveBeenCalledWith({
+      provider: "google",
+      options: { redirectTo: "http://localhost/auth/callback?next=%2F" },
     });
   });
 
-  it("map lỗi 'Invalid login credentials' sang message tiếng Việt", async () => {
-    vi.mocked(supabaseBrowser.auth.signInWithPassword).mockResolvedValue({
-      data: { user: null, session: null },
-      error: makeAuthError("Invalid login credentials"),
+  it("throw message đã map khi Supabase trả lỗi", async () => {
+    vi.mocked(supabaseBrowser.auth.signInWithOAuth).mockResolvedValue({
+      data: { provider: "google", url: null },
+      error: makeAuthError("OAuth provider disabled"),
     } as never);
 
     await expect(
-      authRepository.signInWithPassword("user@example.com", "wrong-password")
-    ).rejects.toThrow("Email hoặc mật khẩu không đúng.");
-  });
-
-  it("map lỗi 'Email not confirmed' sang message tiếng Việt", async () => {
-    vi.mocked(supabaseBrowser.auth.signInWithPassword).mockResolvedValue({
-      data: { user: null, session: null },
-      error: makeAuthError("Email not confirmed"),
-    } as never);
-
-    await expect(
-      authRepository.signInWithPassword("user@example.com", "matkhau123")
-    ).rejects.toThrow("Vui lòng xác nhận email trước khi đăng nhập (kiểm tra hộp thư đến).");
-  });
-
-  it("giữ nguyên message gốc khi lỗi không nằm trong danh sách map", async () => {
-    vi.mocked(supabaseBrowser.auth.signInWithPassword).mockResolvedValue({
-      data: { user: null, session: null },
-      error: makeAuthError("Some unexpected Supabase error"),
-    } as never);
-
-    await expect(
-      authRepository.signInWithPassword("user@example.com", "matkhau123")
-    ).rejects.toThrow("Some unexpected Supabase error");
-  });
-
-  it("throw lỗi mặc định khi không có error nhưng cũng không có user", async () => {
-    vi.mocked(supabaseBrowser.auth.signInWithPassword).mockResolvedValue({
-      data: { user: null, session: null },
-      error: null,
-    } as never);
-
-    await expect(
-      authRepository.signInWithPassword("user@example.com", "matkhau123")
-    ).rejects.toThrow("Đăng nhập thất bại");
-  });
-});
-
-describe("authRepository.signUpWithPassword", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("needsEmailConfirmation = false khi Supabase trả session ngay (auto-confirm)", async () => {
-    const user = makeUser();
-    vi.mocked(supabaseBrowser.auth.signUp).mockResolvedValue({
-      data: { user, session: {} as never },
-      error: null,
-    } as never);
-
-    const result = await authRepository.signUpWithPassword(
-      "user@example.com",
-      "matkhau123",
-      "Nguyễn Văn A"
-    );
-
-    expect(result.user).toEqual(user);
-    expect(result.needsEmailConfirmation).toBe(false);
-    expect(supabaseBrowser.auth.signUp).toHaveBeenCalledWith({
-      email: "user@example.com",
-      password: "matkhau123",
-      options: { data: { full_name: "Nguyễn Văn A" } },
-    });
-  });
-
-  it("needsEmailConfirmation = true khi Supabase yêu cầu xác nhận email (không trả session)", async () => {
-    const user = makeUser();
-    vi.mocked(supabaseBrowser.auth.signUp).mockResolvedValue({
-      data: { user, session: null },
-      error: null,
-    } as never);
-
-    const result = await authRepository.signUpWithPassword(
-      "user@example.com",
-      "matkhau123",
-      "Nguyễn Văn A"
-    );
-
-    expect(result.needsEmailConfirmation).toBe(true);
-  });
-
-  it("map lỗi 'User already registered' sang message tiếng Việt", async () => {
-    vi.mocked(supabaseBrowser.auth.signUp).mockResolvedValue({
-      data: { user: null, session: null },
-      error: makeAuthError("User already registered"),
-    } as never);
-
-    await expect(
-      authRepository.signUpWithPassword("user@example.com", "matkhau123", "Nguyễn Văn A")
-    ).rejects.toThrow("Email này đã được đăng ký.");
+      authRepository.signInWithGoogle("http://localhost/auth/callback")
+    ).rejects.toThrow("OAuth provider disabled");
   });
 });
 

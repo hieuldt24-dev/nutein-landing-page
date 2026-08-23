@@ -1,21 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type InputHTMLAttributes, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import useSWR, { useSWRConfig } from "swr";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { notify } from "@/lib/toast";
-import { Eye, EyeOff, Loader2, X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { FillButton } from "@/components/ui/FillButton";
 import { useAuthStore } from "@/lib/useAuthStore";
-import {
-  loginSchema,
-  registerSchema,
-  type LoginFormValues,
-  type RegisterFormValues,
-} from "@/features/auth/schemas/auth.schema";
 import {
   AUTH_MODAL_OPTIONS_DEFAULT,
   AUTH_MODAL_OPTIONS_SWR_KEY,
@@ -24,52 +16,11 @@ import {
 } from "@/features/auth/constants";
 import { OPEN_AUTH_MODAL_STORAGE_KEY } from "@/features/account/constants";
 import { closeAuthModal } from "@/lib/openAuthModal";
-import { apiRequest } from "@/lib/api-client";
-import { cn } from "@/lib/utils";
-
-function Field({
-  label,
-  error,
-  children,
-}: {
-  label: string;
-  error?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-[13px] font-bold text-ink">{label}</label>
-      {children}
-      {error ? <span className="text-[12px] font-semibold text-red-600">{error}</span> : null}
-    </div>
-  );
-}
-
-function TextInput({
-  error,
-  className,
-  ...props
-}: InputHTMLAttributes<HTMLInputElement> & { error?: boolean }) {
-  return (
-    <input
-      className={cn(
-        "w-full rounded-[var(--radius-md)] border bg-surface px-4 py-3 text-sm text-ink outline-none transition-colors",
-        "placeholder:text-text-faint",
-        "focus:border-primary",
-        error ? "border-red-500" : "border-ink/20",
-        "disabled:cursor-not-allowed disabled:opacity-50",
-        className
-      )}
-      {...props}
-    />
-  );
-}
 
 export default function AuthModal() {
-  const router = useRouter();
   const pathname = usePathname();
   const { mutate } = useSWRConfig();
-  const { isLoggedIn, signIn, signUp, signInWithGoogle } = useAuthStore();
+  const { isLoggedIn, signInWithGoogle } = useAuthStore();
   // revalidateOnMount/OnFocus/OnReconnect: false — key này chỉ là cờ mở/đóng
   // UI (SWR-as-store), không phải server data. Không tắt sẽ có nguy cơ race
   // giống useAuthStore: fetcher no-op tự chạy lại (VD mỗi lần tab focus lại)
@@ -103,40 +54,9 @@ export default function AuthModal() {
     [mutate],
   );
 
-  const [activeTab, setActiveTab] = useState<"login" | "register">("login");
-  const [showPassword, setShowPassword] = useState(false);
-  const [isSubmittingForm, setIsSubmittingForm] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const returnToRef = useRef<string | null>(null);
   const appliedOpenRef = useRef(false);
-
-  const {
-    register: registerLogin,
-    handleSubmit: handleLoginSubmit,
-    formState: { errors: loginErrors },
-    reset: resetLoginForm,
-    setValue: setLoginValue,
-  } = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", password: "", rememberMe: false },
-  });
-
-  const {
-    register: registerSignUp,
-    handleSubmit: handleSignUpSubmit,
-    formState: { errors: signUpErrors },
-    reset: resetSignUpForm,
-    setValue: setSignUpValue,
-  } = useForm<RegisterFormValues>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: {
-      fullName: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-      agreeTerms: false,
-    },
-  });
 
   useEffect(() => {
     document.body.style.overflow = isOpen ? "hidden" : "";
@@ -154,7 +74,7 @@ export default function AuthModal() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, setIsOpen]);
 
-  // Modal chỉ dành login/register — đã login thì đóng (tránh panel "Xin chào"
+  // Modal chỉ dành cho đăng nhập — đã login thì đóng (tránh panel "Xin chào"
   // + email trùng + Đăng xuất; tài khoản quản lý qua /account).
   useEffect(() => {
     if (isOpen && isLoggedIn) setIsOpen(false);
@@ -171,7 +91,7 @@ export default function AuthModal() {
     }
   }, [setIsOpen]);
 
-  // Áp options mỗi lần mở modal (tab / email / returnTo).
+  // Áp options mỗi lần mở modal (returnTo).
   useEffect(() => {
     if (!isOpen) {
       appliedOpenRef.current = false;
@@ -182,12 +102,7 @@ export default function AuthModal() {
 
     const opts = modalOptions ?? AUTH_MODAL_OPTIONS_DEFAULT;
     returnToRef.current = opts.returnTo;
-    setActiveTab(opts.tab);
-    if (opts.email) {
-      setLoginValue("email", opts.email, { shouldDirty: false });
-      setSignUpValue("email", opts.email, { shouldDirty: false });
-    }
-  }, [isOpen, modalOptions, setLoginValue, setSignUpValue]);
+  }, [isOpen, modalOptions]);
 
   if (!isOpen) return null;
 
@@ -198,14 +113,8 @@ export default function AuthModal() {
     return null;
   };
 
-  const switchToRegisterWithEmail = (email: string) => {
-    setActiveTab("register");
-    setSignUpValue("email", email, { shouldDirty: true, shouldValidate: false });
-    setLoginValue("email", email, { shouldDirty: false });
-  };
-
   // Redirect toàn trang sang Google — session thật lấy về qua app/auth/callback/route.ts
-  // (cùng route xử lý cả email-confirm lẫn OAuth, xem sanitizeAuthReturnTo).
+  // (xem sanitizeAuthReturnTo).
   const onGoogleLogin = async () => {
     setIsGoogleLoading(true);
     try {
@@ -216,70 +125,6 @@ export default function AuthModal() {
     } catch (err) {
       notify.error(err instanceof Error ? err.message : "Không thể đăng nhập bằng Google.");
       setIsGoogleLoading(false);
-    }
-  };
-
-  const onLogin = async (data: LoginFormValues) => {
-    setIsSubmittingForm(true);
-    try {
-      const status = await apiRequest<{ exists: boolean }>("/api/auth/email-status", {
-        method: "POST",
-        body: JSON.stringify({ email: data.email }),
-      });
-      if (!status.exists) {
-        notify.error("Tài khoản chưa tồn tại, mời bạn đăng ký.");
-        switchToRegisterWithEmail(data.email);
-        return;
-      }
-
-      await signIn(data.email, data.password, data.rememberMe);
-      resetLoginForm();
-      const next = resolveAfterAuthPath();
-      setIsOpen(false);
-      notify.success("Đăng nhập thành công! Chào mừng bạn quay trở lại.");
-      if (next && pathname !== next) {
-        router.push(next);
-      }
-    } catch (err) {
-      notify.error(err instanceof Error ? err.message : "Đăng nhập thất bại");
-    } finally {
-      setIsSubmittingForm(false);
-    }
-  };
-
-  const onRegister = async (data: RegisterFormValues) => {
-    setIsSubmittingForm(true);
-    try {
-      const next = resolveAfterAuthPath() ?? "/";
-      const emailRedirectTo =
-        typeof window !== "undefined"
-          ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
-          : undefined;
-
-      const { needsEmailConfirmation } = await signUp(
-        data.email,
-        data.password,
-        data.fullName,
-        emailRedirectTo ? { emailRedirectTo } : undefined,
-      );
-      resetSignUpForm();
-      setIsOpen(false);
-      notify.success(
-        needsEmailConfirmation
-          ? "Đăng ký thành công! Vui lòng kiểm tra email để xác nhận tài khoản."
-          : "Đăng ký thành công! Bạn đã được đăng nhập.",
-      );
-      if (!needsEmailConfirmation) {
-        if (next === "/checkout" || pathname?.startsWith("/checkout")) {
-          if (pathname !== "/checkout") router.push("/checkout");
-        } else {
-          router.push("/account");
-        }
-      }
-    } catch (err) {
-      notify.error(err instanceof Error ? err.message : "Đăng ký thất bại");
-    } finally {
-      setIsSubmittingForm(false);
     }
   };
 
@@ -331,225 +176,31 @@ export default function AuthModal() {
               id="auth-modal-title"
               className="font-display text-[22px] font-bold leading-tight tracking-[-0.03em] text-ink"
             >
-              {activeTab === "login" ? "Chào mừng trở lại" : "Tạo tài khoản mới"}
+              Chào mừng trở lại
             </h2>
             <p className="mt-1 text-sm text-text-muted">
-              {activeTab === "login"
-                ? "Đăng nhập để theo dõi đơn hàng và ưu đãi."
-                : "Gia nhập cộng đồng sống lành cùng protein thực vật."}
+              Đăng nhập để theo dõi đơn hàng và ưu đãi.
             </p>
           </div>
         </div>
 
-        <div className="flex gap-6 border-b border-ink/15 px-6">
-          {(
-            [
-              { id: "login", label: "Đăng nhập" },
-              { id: "register", label: "Đăng ký" },
-            ] as const
-          ).map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              disabled={isSubmittingForm}
-              onClick={() => setActiveTab(tab.id)}
-              className={cn(
-                "cursor-pointer border-b-2 py-3 text-[14px] font-bold uppercase tracking-[-0.01em] transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-                activeTab === tab.id
-                  ? "border-ink text-ink"
-                  : "border-transparent text-text-muted hover:text-ink"
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
         <div className="overflow-y-auto px-6 py-6">
-          {activeTab === "login" ? (
-            <form onSubmit={handleLoginSubmit(onLogin)} className="flex flex-col gap-4">
-              <Field label="Email" error={loginErrors.email?.message}>
-                <TextInput
-                  type="email"
-                  placeholder="tenban@example.com"
-                  disabled={isSubmittingForm}
-                  error={Boolean(loginErrors.email)}
-                  {...registerLogin("email")}
-                />
-              </Field>
-
-              <Field label="Mật khẩu" error={loginErrors.password?.message}>
-                <div className="relative">
-                  <TextInput
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    disabled={isSubmittingForm}
-                    error={Boolean(loginErrors.password)}
-                    className="pr-12"
-                    {...registerLogin("password")}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer text-text-muted hover:text-ink"
-                    aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-                  >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-              </Field>
-
-              <div className="flex items-center justify-between gap-3 text-[13px]">
-                <label className="flex cursor-pointer items-center gap-2 text-text-body">
-                  <input
-                    type="checkbox"
-                    disabled={isSubmittingForm}
-                    className="size-4 accent-[var(--color-primary)]"
-                    {...registerLogin("rememberMe")}
-                  />
-                  Ghi nhớ đăng nhập
-                </label>
-                <button
-                  type="button"
-                  disabled
-                  className="cursor-not-allowed font-bold text-text-muted"
-                >
-                  Quên mật khẩu?
-                </button>
-              </div>
-
-              <FillButton
-                type="submit"
-                variant="ink-solid"
-                disabled={isSubmittingForm}
-                className="mt-1 h-[52px] w-full justify-center text-[15px] font-bold uppercase tracking-[-0.01em]"
-              >
-                {isSubmittingForm ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    Đang xử lý...
-                  </>
-                ) : (
-                  "Đăng nhập"
-                )}
-              </FillButton>
-
-              <div className="mt-2 flex items-center gap-3">
-                <div className="h-px flex-1 bg-ink/15" />
-                <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-text-faint">
-                  Hoặc tiếp tục với
-                </span>
-                <div className="h-px flex-1 bg-ink/15" />
-              </div>
-
-              <FillButton
-                type="button"
-                variant="ink"
-                disabled={isGoogleLoading || isSubmittingForm}
-                onClick={() => {
-                  void onGoogleLogin();
-                }}
-                className="h-11 w-full justify-center px-4 text-[13px] font-bold"
-              >
-                {isGoogleLoading ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <GoogleIcon />
-                )}
-                Google
-              </FillButton>
-            </form>
-          ) : (
-            <form onSubmit={handleSignUpSubmit(onRegister)} className="flex flex-col gap-4">
-              <Field label="Họ và tên" error={signUpErrors.fullName?.message}>
-                <TextInput
-                  type="text"
-                  placeholder="Nguyễn Văn A"
-                  disabled={isSubmittingForm}
-                  error={Boolean(signUpErrors.fullName)}
-                  {...registerSignUp("fullName")}
-                />
-              </Field>
-
-              <Field label="Email" error={signUpErrors.email?.message}>
-                <TextInput
-                  type="email"
-                  placeholder="tenban@example.com"
-                  disabled={isSubmittingForm}
-                  error={Boolean(signUpErrors.email)}
-                  {...registerSignUp("email")}
-                />
-              </Field>
-
-              <Field label="Mật khẩu" error={signUpErrors.password?.message}>
-                <div className="relative">
-                  <TextInput
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    disabled={isSubmittingForm}
-                    error={Boolean(signUpErrors.password)}
-                    className="pr-12"
-                    {...registerSignUp("password")}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer text-text-muted hover:text-ink"
-                    aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-                  >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-              </Field>
-
-              <Field label="Xác nhận mật khẩu" error={signUpErrors.confirmPassword?.message}>
-                <TextInput
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  disabled={isSubmittingForm}
-                  error={Boolean(signUpErrors.confirmPassword)}
-                  {...registerSignUp("confirmPassword")}
-                />
-              </Field>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="flex cursor-pointer items-start gap-2.5 text-[13px] leading-snug text-text-body">
-                  <input
-                    type="checkbox"
-                    disabled={isSubmittingForm}
-                    className="mt-0.5 size-4 shrink-0 accent-[var(--color-primary)]"
-                    {...registerSignUp("agreeTerms")}
-                  />
-                  <span>
-                    Tôi đồng ý với{" "}
-                    <span className="font-bold text-ink">Điều khoản dịch vụ</span> &{" "}
-                    <span className="font-bold text-ink">Chính sách bảo mật</span>
-                  </span>
-                </label>
-                {signUpErrors.agreeTerms ? (
-                  <span className="text-[12px] font-semibold text-red-600">
-                    {signUpErrors.agreeTerms.message}
-                  </span>
-                ) : null}
-              </div>
-
-              <FillButton
-                type="submit"
-                variant="ink-solid"
-                disabled={isSubmittingForm}
-                className="mt-1 h-[52px] w-full justify-center text-[15px] font-bold uppercase tracking-[-0.01em]"
-              >
-                {isSubmittingForm ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    Đang xử lý...
-                  </>
-                ) : (
-                  "Đăng ký tài khoản"
-                )}
-              </FillButton>
-            </form>
-          )}
+          <FillButton
+            type="button"
+            variant="ink-solid"
+            disabled={isGoogleLoading}
+            onClick={() => {
+              void onGoogleLogin();
+            }}
+            className="h-[52px] w-full justify-center text-[15px] font-bold uppercase tracking-[-0.01em]"
+          >
+            {isGoogleLoading ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <GoogleIcon />
+            )}
+            Tiếp tục với Google
+          </FillButton>
         </div>
       </div>
     </div>

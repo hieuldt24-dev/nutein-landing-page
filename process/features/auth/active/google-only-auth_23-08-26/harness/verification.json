@@ -1,0 +1,18 @@
+{
+  "evl_run": "2026-08-23",
+  "agent": "vc-tester",
+  "plan": "process/features/auth/active/google-only-auth_23-08-26/google-only-auth_PLAN_23-08-26.md",
+  "gates": [
+    { "cmd": "npm test", "status": "PASS_WITH_PREEXISTING_FAIL", "observed": "59 files passed / 1 failed suite (lib/useAddresses.test.tsx); 408 tests passed", "regression": false },
+    { "cmd": "npm run type-check", "status": "PASS", "observed": "exit 0, clean after rm -rf .next", "regression": false },
+    { "cmd": "npm run lint", "status": "PREEXISTING_RED", "observed": "535 problems (335 err/200 warn); baseline 537 (337/200) verified via git stash", "regression": false },
+    { "cmd": "npm run format:check", "status": "PREEXISTING_RED", "observed": "1283 files; baseline 1288 verified via git stash", "regression": false }
+  ],
+  "acceptance_checks": {
+    "grep_removed_symbols_zero_hits": true,
+    "authmodal_no_password_inputs": true,
+    "google_oauth_call_unchanged": true,
+    "shared_auth_infra_untouched": true
+  },
+  "verdict": "DONE"
+}
