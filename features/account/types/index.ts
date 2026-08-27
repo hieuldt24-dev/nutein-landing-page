@@ -50,8 +50,6 @@ export interface AccountOrder {
   estimatedDeliveryLabel?: string;
   /** Trạng thái thanh toán thật (khác `status` — vòng đời xử lý đơn). */
   paymentStatus: "UNPAID" | "PAID";
-  /** true khi đơn dùng payOS và còn UNPAID — hiện nút "Thanh toán ngay". */
-  canRetryPayment: boolean;
   /**
    * Mã giảm giá đã dùng — đọc từ snapshot `orders.shipping_address` lúc đặt
    * hàng, KHÔNG tra bảng `coupons` sống (coupon có thể đã bị sửa/xoá sau đó).

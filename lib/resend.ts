@@ -4,7 +4,7 @@ import { Resend } from "resend";
 const apiKey = process.env.RESEND_API_KEY || "";
 
 /**
- * Client Resend — chỉ dùng server-side. Mirror lib/payos.ts: `null` khi
+ * Client Resend — chỉ dùng server-side. Mirror lib/supabase.ts: `null` khi
  * chưa cấu hình RESEND_API_KEY trong .env, để tránh crash khi khởi tạo.
  */
 export const resend = apiKey ? new Resend(apiKey) : null;

@@ -233,11 +233,6 @@ export default function CheckoutForm() {
         placingOrderRef.current = true;
         await removeFromCart();
 
-        if (result.paymentUrl) {
-          window.location.replace(result.paymentUrl);
-          return;
-        }
-
         notify.success("Đặt hàng thành công!");
         router.push(
           `/checkout/success?orderCode=${encodeURIComponent(result.orderCode)}`,

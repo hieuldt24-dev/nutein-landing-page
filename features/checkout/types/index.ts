@@ -32,13 +32,11 @@ export interface CreateOrderResult {
   note?: string;
   shippingMethod: ShippingMethod;
   paymentMethod: PaymentMethod;
-  /** URL redirect payOS (checkoutUrl) — chỉ có khi paymentMethod = bank_transfer. */
-  paymentUrl?: string;
+  /**
+   * URL ảnh QR VietQR (chuyển khoản thủ công) — chỉ có khi
+   * paymentMethod = bank_transfer VÀ đã cấu hình đủ env VIETQR_*.
+   */
+  qrImageUrl?: string;
 }
-
-/** Kết quả thanh toán lại đơn payOS bị bỏ dở — xem checkoutService.retryPayment. */
-export type RetryPaymentResult =
-  | { status: "already_paid" }
-  | { status: "created"; paymentUrl: string };
 
 export type { CreateOrderRequest };

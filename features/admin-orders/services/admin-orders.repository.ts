@@ -135,6 +135,7 @@ function toAdminOrder(order: OrderRow, logs: OrderStatusLogRow[]): AdminOrder {
       : "—",
     note: order.note ?? undefined,
     paymentMethodLabel: PAYMENT_METHOD_LABEL[order.payment_method] ?? order.payment_method,
+    paymentMethod: order.payment_method,
     paymentStatus: order.payment_status === "PAID" ? "paid" : "unpaid",
     shippingFee: Number(order.shipping_fee),
     discountAmount: Number(order.discount_amount),
@@ -350,6 +351,70 @@ async function updateStatus(
 }
 
 /**
+ * Xác nhận đã nhận tiền chuyển khoản (VietQR) — hành động THỦ CÔNG của Staff,
+ * là con đường DUY NHẤT đưa đơn BANK_TRANSFER từ UNPAID sang PAID (không có
+ * webhook/gateway nào). Chỉ đụng `payment_status`, không đụng `status` —
+ * hai state machine tách biệt.
+ */
+async function confirmPayment(id: string, staffUserId: string): Promise<AdminOrder> {
+  const client = requireAdminClient();
+
+  const { data: current, error: currentError } = await client
+    .from("orders")
+    .select("status, payment_method, payment_status")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (currentError) {
+    throw new Error(`Không tra được đơn hàng: ${currentError.message}`);
+  }
+  if (!current) {
+    throw new NotFoundError("Đơn hàng");
+  }
+  if (current.payment_method !== "BANK_TRANSFER") {
+    throw new BadRequestError("Chỉ xác nhận được đơn chuyển khoản ngân hàng.");
+  }
+  if (current.payment_status === "PAID") {
+    throw new BadRequestError("Đơn hàng đã được xác nhận thanh toán.");
+  }
+
+  // `.eq("payment_status", "UNPAID")` là điều kiện atomic chống double-confirm:
+  // 2 nhân viên bấm cùng lúc đều qua được pre-check ở trên, nhưng chỉ 1 UPDATE
+  // khớp row — request thua race nhận lỗi rõ ràng thay vì âm thầm ghi đè.
+  const { data: updatedOrder, error: updateError } = await client
+    .from("orders")
+    .update({ payment_status: "PAID" })
+    .eq("id", id)
+    .eq("payment_status", "UNPAID")
+    .select(ORDER_SELECT)
+    .maybeSingle();
+
+  if (updateError) {
+    throw new Error(
+      `Không cập nhật được trạng thái thanh toán: ${updateError.message}`,
+    );
+  }
+  if (!updatedOrder) {
+    throw new BadRequestError("Đơn hàng đã được xác nhận thanh toán.");
+  }
+
+  // Best-effort audit trail — dùng lại `audit_logs` sẵn có, không thêm cột mới.
+  after(async () => {
+    await auditLogRepository.record({
+      userId: staffUserId,
+      action: "UPDATE",
+      tableName: "orders",
+      recordId: id,
+      oldData: { payment_status: "UNPAID" },
+      newData: { payment_status: "PAID" },
+    });
+  });
+
+  const logs = await fetchStatusLogs(id);
+  return toAdminOrder(updatedOrder as OrderRow, logs);
+}
+
+/**
  * Admin orders domain (S3) — repo thật, thay `data/orders.mock.ts`.
  * Chỉ dùng trong Route Handler (`app/api/staff/orders/**` — full chi tiết,
  * chỉ STAFF; `app/api/admin/orders-summary` — tổng hợp không PII, cả
@@ -361,4 +426,5 @@ export const adminOrdersRepository = {
   listSummary,
   getById,
   updateStatus,
+  confirmPayment,
 };

@@ -101,6 +101,27 @@ export function AdminOrderDetail({ orderId }: AdminOrderDetailProps) {
     }
   };
 
+  // Chuyển khoản VietQR không có webhook — nhân viên đối chiếu sao kê ngân
+  // hàng rồi tự xác nhận. Đây là state machine RIÊNG, tách khỏi trạng thái đơn.
+  const canConfirmPayment =
+    order.paymentMethod === "BANK_TRANSFER" && order.paymentStatus === "unpaid";
+
+  const handleConfirmPayment = async () => {
+    setIsSubmitting(true);
+    try {
+      const updated = await adminOrdersService.confirmPayment(order.id);
+      await mutate(updated, { revalidate: false });
+      await revalidateAfterOrderMutation(globalMutate);
+      notify.success("Đã xác nhận nhận được thanh toán.");
+    } catch (err) {
+      notify.error(
+        err instanceof Error ? err.message : "Xác nhận thanh toán thất bại.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="mx-auto flex max-w-[1100px] flex-col gap-5">
       <AdminBackLink href="/staff/orders">Đơn hàng</AdminBackLink>
@@ -161,6 +182,32 @@ export function AdminOrderDetail({ orderId }: AdminOrderDetailProps) {
               ) : null}
             </dl>
           </section>
+
+          {canConfirmPayment ? (
+            <section className="rounded-[20px] border-[1.5px] border-lime/60 bg-lime/10 px-5 py-[22px] shadow-sm md:px-6">
+              <h3 className="font-display text-base font-bold tracking-[-0.02em] text-ink">
+                Thanh toán chuyển khoản
+              </h3>
+              <p className="mt-1.5 text-[13px] font-medium text-text-muted">
+                Đơn chuyển khoản chưa được xác nhận. Kiểm tra sao kê ngân hàng với
+                nội dung <span className="font-bold text-ink">{order.orderCode}</span>{" "}
+                rồi xác nhận. Thao tác này chỉ đổi trạng thái thanh toán, không đổi
+                trạng thái đơn.
+              </p>
+              <FillButton
+                type="button"
+                variant="ink-solid"
+                disabled={isSubmitting}
+                onClick={() => {
+                  void handleConfirmPayment();
+                }}
+                className="mt-3.5 h-11 justify-center px-[22px] text-[13px] font-bold"
+              >
+                {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : null}
+                Xác nhận đã nhận thanh toán
+              </FillButton>
+            </section>
+          ) : null}
 
           <section className="rounded-[20px] border border-ink/10 bg-surface px-5 py-[22px] shadow-sm md:px-6">
             <h3 className="font-display text-base font-bold tracking-[-0.02em] text-ink">

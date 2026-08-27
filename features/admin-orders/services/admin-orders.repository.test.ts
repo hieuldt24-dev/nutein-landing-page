@@ -108,6 +108,7 @@ describe("adminOrdersRepository.list", () => {
         customerPhone: "0912345678",
         shippingAddressLabel: "123 Đường ABC, Phúc Xá, Hà Nội",
         note: undefined,
+        paymentMethod: "COD",
         paymentMethodLabel: "COD — Thanh toán khi nhận hàng",
         paymentStatus: "unpaid",
         shippingFee: 25000,
@@ -363,7 +364,9 @@ describe("adminOrdersRepository.updateStatus", () => {
     });
   });
 
-  it("payOS/bank_transfer + delivered -> KHÔNG đụng payment_status (webhook/reconcile payOS lo việc này)", async () => {
+  // Đơn PAYOS lịch sử (đặt trước khi bỏ payOS) — vẫn không được auto-PAID khi
+  // giao hàng; chỉ COD mới có nhánh auto-PAID đó.
+  it("đơn PAYOS lịch sử + delivered -> KHÔNG đụng payment_status", async () => {
     const currentBuilder = makeBuilder({
       data: { status: "SHIPPED", payment_method: "PAYOS", payment_status: "UNPAID" },
       error: null,
@@ -389,5 +392,200 @@ describe("adminOrdersRepository.updateStatus", () => {
       status: "DELIVERED",
       handled_by: "staff-1",
     });
+  });
+});
+
+const bankTransferRow = {
+  ...orderRow,
+  id: "order-bt",
+  payment_method: "BANK_TRANSFER",
+  payment_status: "UNPAID",
+};
+
+describe("adminOrdersRepository.confirmPayment", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  /** Builder chain cho happy path: current -> update(select) -> audit -> logs. */
+  function wireConfirmChain(
+    currentData: unknown,
+    updateData: unknown,
+  ): { currentBuilder: Record<string, unknown>; updateBuilder: Record<string, unknown> } {
+    const currentBuilder = makeBuilder({ data: currentData, error: null });
+    const updateBuilder = makeBuilder({ data: updateData, error: null });
+    const logsBuilder = makeBuilder({ data: [logRow], error: null });
+
+    let ordersCall = 0;
+    mocks.from.mockImplementation((table: string) => {
+      if (table === "orders") {
+        ordersCall += 1;
+        return ordersCall === 1 ? currentBuilder : updateBuilder;
+      }
+      return logsBuilder;
+    });
+    return { currentBuilder, updateBuilder };
+  }
+
+  it("đơn BANK_TRANSFER UNPAID -> set payment_status=PAID, KHÔNG đụng status", async () => {
+    const { updateBuilder } = wireConfirmChain(
+      { status: "PENDING", payment_method: "BANK_TRANSFER", payment_status: "UNPAID" },
+      { ...bankTransferRow, payment_status: "PAID" },
+    );
+
+    const result = await adminOrdersRepository.confirmPayment("order-bt", "staff-1");
+
+    expect(updateBuilder.update).toHaveBeenCalledWith({ payment_status: "PAID" });
+    expect(result.paymentStatus).toBe("paid");
+    // status giữ nguyên — 2 state machine tách biệt (SPEC AC4).
+    expect(result.status).toBe("pending");
+  });
+
+  it("UPDATE có điều kiện payment_status='UNPAID' — chống double-confirm race", async () => {
+    const { updateBuilder } = wireConfirmChain(
+      { status: "PENDING", payment_method: "BANK_TRANSFER", payment_status: "UNPAID" },
+      { ...bankTransferRow, payment_status: "PAID" },
+    );
+
+    await adminOrdersRepository.confirmPayment("order-bt", "staff-1");
+
+    expect(updateBuilder.eq).toHaveBeenCalledWith("id", "order-bt");
+    expect(updateBuilder.eq).toHaveBeenCalledWith("payment_status", "UNPAID");
+  });
+
+  it("thua race (0 dòng khớp sau UPDATE) -> 400, không âm thầm coi là thành công", async () => {
+    wireConfirmChain(
+      { status: "PENDING", payment_method: "BANK_TRANSFER", payment_status: "UNPAID" },
+      null,
+    );
+
+    await expect(
+      adminOrdersRepository.confirmPayment("order-bt", "staff-1"),
+    ).rejects.toMatchObject({ statusCode: 400 });
+  });
+
+  it("đơn COD -> 400, không gọi update", async () => {
+    const { currentBuilder } = wireConfirmChain(
+      { status: "PENDING", payment_method: "COD", payment_status: "UNPAID" },
+      null,
+    );
+
+    await expect(
+      adminOrdersRepository.confirmPayment("order-1", "staff-1"),
+    ).rejects.toMatchObject({ statusCode: 400 });
+
+    expect(currentBuilder.update).not.toHaveBeenCalled();
+  });
+
+  it("đơn đã PAID -> 400, không gọi update", async () => {
+    const { currentBuilder } = wireConfirmChain(
+      { status: "PENDING", payment_method: "BANK_TRANSFER", payment_status: "PAID" },
+      null,
+    );
+
+    await expect(
+      adminOrdersRepository.confirmPayment("order-bt", "staff-1"),
+    ).rejects.toMatchObject({ statusCode: 400 });
+
+    expect(currentBuilder.update).not.toHaveBeenCalled();
+  });
+
+  it("đơn không tồn tại -> 404", async () => {
+    mocks.from.mockReturnValue(makeBuilder({ data: null, error: null }));
+
+    await expect(
+      adminOrdersRepository.confirmPayment("missing", "staff-1"),
+    ).rejects.toMatchObject({ statusCode: 404 });
+  });
+});
+
+describe("AC4 — chuyển trạng thái đơn BANK_TRANSFER không bao giờ tự set PAID", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it.each(["processing", "shipped"] as const)(
+    "updateStatus -> %s không set payment_status",
+    async (nextStatus) => {
+      const currentBuilder = makeBuilder({
+        data: {
+          status: nextStatus === "processing" ? "PENDING" : "PROCESSING",
+          payment_method: "BANK_TRANSFER",
+          payment_status: "UNPAID",
+        },
+        error: null,
+      });
+      const updateBuilder = makeBuilder({ data: bankTransferRow, error: null });
+      const logsBuilder = makeBuilder({ data: [logRow], error: null });
+
+      let ordersCall = 0;
+      mocks.from.mockImplementation((table: string) => {
+        if (table === "orders") {
+          ordersCall += 1;
+          return ordersCall === 1 ? currentBuilder : updateBuilder;
+        }
+        return logsBuilder;
+      });
+
+      await adminOrdersRepository.updateStatus("order-bt", nextStatus, "staff-1");
+
+      const payload = (updateBuilder.update as ReturnType<typeof vi.fn>).mock
+        .calls[0][0] as Record<string, unknown>;
+      expect(payload).not.toHaveProperty("payment_status");
+    },
+  );
+
+  it("updateStatus -> delivered KHÔNG set PAID cho BANK_TRANSFER (chỉ COD mới auto-PAID)", async () => {
+    const currentBuilder = makeBuilder({
+      data: {
+        status: "SHIPPED",
+        payment_method: "BANK_TRANSFER",
+        payment_status: "UNPAID",
+      },
+      error: null,
+    });
+    const updateBuilder = makeBuilder({ data: bankTransferRow, error: null });
+    const logsBuilder = makeBuilder({ data: [logRow], error: null });
+
+    let ordersCall = 0;
+    mocks.from.mockImplementation((table: string) => {
+      if (table === "orders") {
+        ordersCall += 1;
+        return ordersCall === 1 ? currentBuilder : updateBuilder;
+      }
+      return logsBuilder;
+    });
+
+    await adminOrdersRepository.updateStatus("order-bt", "delivered", "staff-1");
+
+    expect(updateBuilder.update).toHaveBeenCalledWith({
+      status: "DELIVERED",
+      handled_by: "staff-1",
+    });
+  });
+});
+
+describe("AC5 — list()/getById() lộ paymentMethod + paymentStatus cho đơn BANK_TRANSFER", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("list() trả paymentMethod thô + paymentStatus", async () => {
+    mocks.from.mockReturnValue(
+      makeBuilder({ data: [bankTransferRow], error: null, count: 1 }),
+    );
+
+    const result = await adminOrdersRepository.list({});
+
+    expect(result.items[0].paymentMethod).toBe("BANK_TRANSFER");
+    expect(result.items[0].paymentStatus).toBe("unpaid");
+    expect(result.items[0].paymentMethodLabel).toBe("Chuyển khoản ngân hàng");
+  });
+
+  it("getById() trả paymentMethod thô + paymentStatus", async () => {
+    const orderBuilder = makeBuilder({ data: bankTransferRow, error: null });
+    const logsBuilder = makeBuilder({ data: [logRow], error: null });
+    mocks.from.mockImplementation((table: string) =>
+      table === "orders" ? orderBuilder : logsBuilder,
+    );
+
+    const result = await adminOrdersRepository.getById("order-bt");
+
+    expect(result?.paymentMethod).toBe("BANK_TRANSFER");
+    expect(result?.paymentStatus).toBe("unpaid");
   });
 });

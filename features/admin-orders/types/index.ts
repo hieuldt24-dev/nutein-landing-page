@@ -39,6 +39,8 @@ export interface AdminOrder {
   shippingAddressLabel: string;
   note?: string;
   paymentMethodLabel: string;
+  /** Giá trị enum thô trong DB (VD "BANK_TRANSFER", "COD") — UI dùng để gate action. */
+  paymentMethod: string;
   paymentStatus: "paid" | "unpaid";
   shippingFee: number;
   discountAmount: number;

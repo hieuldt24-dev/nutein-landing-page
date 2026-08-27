@@ -7,16 +7,12 @@ import { formatCurrencyVnd } from "@/lib/utils";
 
 interface CheckoutSuccessViewProps {
   order: CreateOrderResult;
-  /** Trạng thái thanh toán payOS đối soát trực tiếp — chỉ có ý nghĩa khi paymentMethod = bank_transfer. */
-  livePaymentStatus?: "UNPAID" | "PAID" | null;
 }
 
-export function CheckoutSuccessView({
-  order,
-  livePaymentStatus,
-}: CheckoutSuccessViewProps) {
-  const isPayos = order.paymentMethod === "bank_transfer";
-  const isPayosPaid = isPayos && livePaymentStatus === "PAID";
+export function CheckoutSuccessView({ order }: CheckoutSuccessViewProps) {
+  // Chuyển khoản = VietQR tự host: KHÔNG có webhook/poll trạng thái nào, màn
+  // này là xác nhận tĩnh — nhân viên xác nhận thủ công sau khi nhận tiền.
+  const isBankTransfer = order.paymentMethod === "bank_transfer";
   const shippingLabel =
     SHIPPING_OPTIONS.find((o) => o.value === order.shippingMethod)?.label ?? order.shippingMethod;
   const paymentLabel =
@@ -75,21 +71,34 @@ export function CheckoutSuccessView({
           </div>
         </dl>
 
-        {isPayos ? (
-          <div
-            className={
-              isPayosPaid
-                ? "mt-5 rounded-[var(--radius-md)] border border-primary/25 bg-primary/10 px-4 py-3"
-                : "mt-5 rounded-[var(--radius-md)] border border-ink/10 bg-bg px-4 py-3"
-            }
-          >
+        {isBankTransfer ? (
+          <div className="mt-5 rounded-[var(--radius-md)] border border-ink/10 bg-bg px-4 py-3">
             <p className="text-[13px] font-extrabold text-ink">
-              {isPayosPaid ? "Đã thanh toán qua payOS" : "Đang chờ xác nhận thanh toán"}
+              Đang chờ xác nhận thanh toán
             </p>
-            <p className="mt-1 text-[12px] font-medium text-text-body">
-              {isPayosPaid
-                ? "Chúng tôi đã nhận được thanh toán của bạn qua payOS."
-                : "Nếu bạn đã thanh toán, hệ thống sẽ tự động xác nhận trong ít phút."}
+            {order.qrImageUrl ? (
+              <>
+                <p className="mt-1 text-[12px] font-medium text-text-body">
+                  Quét mã QR bên dưới bằng app ngân hàng để chuyển khoản. Số tiền và
+                  nội dung chuyển khoản ({order.orderCode}) đã được điền sẵn.
+                </p>
+                {/* Ảnh QR do VietQR sinh (host ngoài) — dùng <img> thường thay vì
+                    next/image để không phải khai báo remotePatterns cho 1 ảnh tĩnh. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={order.qrImageUrl}
+                  alt={`Mã QR chuyển khoản VietQR cho đơn ${order.orderCode}`}
+                  className="mt-3 w-full max-w-[320px] rounded-[var(--radius-md)] border border-ink/10 bg-white"
+                />
+              </>
+            ) : (
+              <p className="mt-1 text-[12px] font-medium text-text-body">
+                Chưa tạo được mã QR chuyển khoản — vui lòng liên hệ với chúng tôi để
+                được hỗ trợ thanh toán cho đơn {order.orderCode}.
+              </p>
+            )}
+            <p className="mt-3 text-[12px] font-medium text-text-body">
+              Đơn hàng sẽ được xác nhận thủ công sau khi chúng tôi nhận được tiền.
             </p>
           </div>
         ) : null}
@@ -112,7 +121,7 @@ export function CheckoutSuccessView({
         </FillButton>
       </div>
 
-      {!isPayos ? (
+      {!isBankTransfer ? (
         <p className="mt-8 text-[11px] font-semibold uppercase tracking-[0.06em] text-text-muted">
           Đơn demo — chưa trừ tiền / chưa đồng bộ kho thật
         </p>

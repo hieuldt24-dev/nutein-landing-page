@@ -18,6 +18,11 @@ interface OrderListRow {
   shipping_method: "STANDARD" | "EXPRESS";
   final_price: number | string;
   created_at: string;
+  /**
+   * Bất đối xứng có chủ đích: `PAYOS` chỉ còn ở đường ĐỌC này để đơn lịch sử
+   * (đặt trước khi bỏ payOS) không làm vỡ mapper. Đường GHI trong
+   * `features/checkout/services/order.repository.ts` không bao giờ ghi `PAYOS` nữa.
+   */
   payment_method: "COD" | "BANK_TRANSFER" | "MOMO" | "VNPAY" | "PAYOS";
   payment_status: "UNPAID" | "PAID" | "FAILED" | "REFUNDED";
   shipping_address: {
@@ -94,7 +99,6 @@ function toAccountOrder(row: OrderListRow): AccountOrder {
     total: Number(row.final_price),
     estimatedDeliveryLabel: estimatedDeliveryLabel(row.shipping_method, status),
     paymentStatus,
-    canRetryPayment: row.payment_method === "PAYOS" && paymentStatus === "UNPAID",
     // Snapshot lúc đặt hàng — `shipping_address` JSONB đã nằm sẵn trong SELECT,
     // không cần thêm cột nào.
     ...(row.shipping_address?.couponCode

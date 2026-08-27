@@ -90,8 +90,9 @@ export const PAYMENT_OPTIONS: {
   },
   {
     value: "bank_transfer",
-    label: "Chuyển khoản ngân hàng (payOS)",
-    description: "Quét mã QR hoặc chuyển khoản qua payOS — xác nhận tự động.",
+    label: "Chuyển khoản ngân hàng",
+    description:
+      "Quét mã QR và chuyển khoản — nhân viên sẽ xác nhận thủ công sau khi nhận được tiền.",
   },
 ];
 

@@ -5,12 +5,8 @@ import type { CreateOrderRequest } from "@/features/checkout/schemas/checkout.sc
 
 const mocks = vi.hoisted(() => ({
   createOrder: vi.fn(),
-  findByOrderCodeForUser: vi.fn(),
-  updatePayosLink: vi.fn(),
   getAvailableStock: vi.fn(),
-  createPaymentLink: vi.fn(),
-  reconcileByPayosOrderCode: vi.fn(),
-  cancelPaymentLink: vi.fn(),
+  buildVietQrImageUrl: vi.fn(),
   sendOrderConfirmation: vi.fn(),
   validateAndComputeDiscount: vi.fn(),
   afterCallbacks: [] as Array<() => unknown>,
@@ -38,18 +34,12 @@ vi.mock("./order.repository", () => ({
   buildOrderCode: () => "NT-20260722-AB12",
   orderRepository: {
     create: mocks.createOrder,
-    findByOrderCodeForUser: mocks.findByOrderCodeForUser,
-    updatePayosLink: mocks.updatePayosLink,
     getAvailableStock: mocks.getAvailableStock,
   },
 }));
 
-vi.mock("./payos.service", () => ({
-  payosService: {
-    createPaymentLink: mocks.createPaymentLink,
-    reconcileByPayosOrderCode: mocks.reconcileByPayosOrderCode,
-    cancelPaymentLink: mocks.cancelPaymentLink,
-  },
+vi.mock("@/lib/vietqr", () => ({
+  buildVietQrImageUrl: mocks.buildVietQrImageUrl,
 }));
 
 vi.mock("./coupon-validation.service", () => ({
@@ -114,8 +104,6 @@ const orderRow = {
   shipping_address: {},
   note: null,
   created_at: "2026-07-22T00:00:00.000Z",
-  payos_order_code: null,
-  payos_payment_link_id: null,
 };
 
 describe("checkoutService.createOrder", () => {
@@ -127,41 +115,32 @@ describe("checkoutService.createOrder", () => {
     mocks.refreshProductCatalogServer.mockResolvedValue(null);
     mocks.getAvailableStock.mockResolvedValue(9999);
     mocks.sendOrderConfirmation.mockResolvedValue(undefined);
+    mocks.buildVietQrImageUrl.mockReturnValue(
+      "https://img.vietqr.io/image/970407-19001234567890-compact2.png?amount=224000&addInfo=NT-20260722-AB12",
+    );
   });
 
-  it("cod: không gọi payosService, tạo đơn bình thường, gửi email xác nhận", async () => {
+  it("cod: không dựng QR VietQR, tạo đơn bình thường, gửi email xác nhận", async () => {
     mocks.createOrder.mockResolvedValue(orderRow);
 
     const result = await checkoutService.createOrder("user-1", baseInput);
     await flushAfterCallbacks(); // sendOrderConfirmation giờ chạy trong after()
 
-    expect(mocks.createPaymentLink).not.toHaveBeenCalled();
+    expect(mocks.buildVietQrImageUrl).not.toHaveBeenCalled();
     expect(mocks.sendOrderConfirmation).toHaveBeenCalledWith(
       expect.objectContaining({ orderCode: "NT-20260722-AB12" }),
     );
     expect(mocks.createOrder).toHaveBeenCalled();
-    expect(result.paymentUrl).toBeUndefined();
+    expect(result.qrImageUrl).toBeUndefined();
     expect(result.status).toBe("pending");
   });
 
-  it("bank_transfer: gọi payosService.createPaymentLink TRƯỚC orderRepository.create, trả paymentUrl", async () => {
-    const callOrder: string[] = [];
-    mocks.createPaymentLink.mockImplementation(async () => {
-      callOrder.push("payos");
-      return {
-        checkoutUrl: "https://pay.payos.vn/web/abc",
-        payosOrderCode: 1753142400000,
-        payosPaymentLinkId: "link-1",
-      };
-    });
-    mocks.createOrder.mockImplementation(async () => {
-      callOrder.push("db");
-      return {
-        ...orderRow,
-        payment_method: "PAYOS",
-        payos_order_code: 1753142400000,
-        payos_payment_link_id: "link-1",
-      };
+  // AC1/AC9 — nhánh bank_transfer thuần local: dựng URL QR từ tổng tiền + mã
+  // đơn, KHÔNG gọi gateway nào (module payOS đã bị xoá khỏi repo).
+  it("bank_transfer: trả uiStatus awaiting_payment + qrImageUrl dựng từ tổng tiền và mã đơn", async () => {
+    mocks.createOrder.mockResolvedValue({
+      ...orderRow,
+      payment_method: "BANK_TRANSFER",
     });
 
     const result = await checkoutService.createOrder("user-1", {
@@ -169,81 +148,56 @@ describe("checkoutService.createOrder", () => {
       paymentMethod: "bank_transfer",
     });
 
-    expect(callOrder).toEqual(["payos", "db"]);
-    expect(result.paymentUrl).toBe("https://pay.payos.vn/web/abc");
+    // Số tiền trong QR phải là ĐÚNG tổng phải trả của đơn, mã đơn là nội dung CK.
+    expect(mocks.buildVietQrImageUrl).toHaveBeenCalledWith({
+      amount: result.summary.total,
+      addInfo: "NT-20260722-AB12",
+    });
+    expect(result.status).toBe("awaiting_payment");
+    expect(result.qrImageUrl).toContain("img.vietqr.io");
 
+    // meta truyền xuống repository không còn field payOS nào.
     const createOrderMetaArg = mocks.createOrder.mock.calls[0][3];
-    expect(createOrderMetaArg).toMatchObject({
-      payosOrderCode: 1753142400000,
-      payosPaymentLinkId: "link-1",
+    expect(createOrderMetaArg).toEqual({
+      orderCode: "NT-20260722-AB12",
+      status: "PENDING",
+      paymentStatus: "UNPAID",
     });
   });
 
-  it("bank_transfer: payOS lỗi → orderRepository.create KHÔNG được gọi (không tạo đơn orphan)", async () => {
-    mocks.createPaymentLink.mockRejectedValue(new Error("payOS down"));
+  it("bank_transfer: chưa cấu hình env VietQR (null) → vẫn tạo đơn, qrImageUrl undefined", async () => {
+    mocks.buildVietQrImageUrl.mockReturnValue(null);
+    mocks.createOrder.mockResolvedValue({
+      ...orderRow,
+      payment_method: "BANK_TRANSFER",
+    });
 
-    await expect(
-      checkoutService.createOrder("user-1", { ...baseInput, paymentMethod: "bank_transfer" }),
-    ).rejects.toThrow();
+    const result = await checkoutService.createOrder("user-1", {
+      ...baseInput,
+      paymentMethod: "bank_transfer",
+    });
 
-    expect(mocks.createOrder).not.toHaveBeenCalled();
+    expect(mocks.createOrder).toHaveBeenCalled();
+    expect(result.status).toBe("awaiting_payment");
+    expect(result.qrImageUrl).toBeUndefined();
   });
 
-  // F1 / AC1 — link đã tạo xong rồi mới ghi DB thất bại → phải huỷ link.
-  it("bank_transfer: create() lỗi SAU khi đã tạo link → cancelPaymentLink(code, \"order_create_failed\") + lỗi gốc vẫn nổi lên", async () => {
-    mocks.createPaymentLink.mockResolvedValue({
-      checkoutUrl: "https://pay.payos.vn/web/abc",
-      payosOrderCode: 1234567890,
-      payosPaymentLinkId: "link-1",
-    });
+  it("bank_transfer: create() lỗi → lỗi gốc nổi lên nguyên vẹn (không còn scaffold huỷ link)", async () => {
     const createError = new Error("DB insert failed");
     mocks.createOrder.mockRejectedValue(createError);
-    mocks.cancelPaymentLink.mockResolvedValue(undefined);
-
-    await expect(
-      checkoutService.createOrder("user-1", { ...baseInput, paymentMethod: "bank_transfer" }),
-    ).rejects.toBe(createError);
-
-    expect(mocks.cancelPaymentLink).toHaveBeenCalledWith(1234567890, "order_create_failed");
-  });
-
-  // F1 / AC1 — huỷ link cũng lỗi thì KHÔNG được che lỗi gốc.
-  it("bank_transfer: cancelPaymentLink cũng lỗi → lỗi gốc của create() mới là lỗi nổi lên", async () => {
-    mocks.createPaymentLink.mockResolvedValue({
-      checkoutUrl: "https://pay.payos.vn/web/abc",
-      payosOrderCode: 1234567890,
-      payosPaymentLinkId: "link-1",
-    });
-    const createError = new Error("DB insert failed");
-    mocks.createOrder.mockRejectedValue(createError);
-    mocks.cancelPaymentLink.mockRejectedValueOnce(new Error("payOS cancel down"));
 
     await expect(
       checkoutService.createOrder("user-1", { ...baseInput, paymentMethod: "bank_transfer" }),
     ).rejects.toBe(createError);
-
-    expect(mocks.cancelPaymentLink).toHaveBeenCalledTimes(1);
   });
 
-  // F1 / AC2 — đường COD không có payosOrderCode → không được gọi cancel.
-  it("cod: create() lỗi → KHÔNG gọi cancelPaymentLink (không có link nào để huỷ)", async () => {
-    const createError = new Error("DB insert failed");
-    mocks.createOrder.mockRejectedValue(createError);
-
-    await expect(checkoutService.createOrder("user-1", baseInput)).rejects.toBe(createError);
-
-    expect(mocks.cancelPaymentLink).not.toHaveBeenCalled();
-    expect(mocks.createPaymentLink).not.toHaveBeenCalled();
-  });
-
-  it("vượt tồn kho → BadRequestError, không gọi payOS lẫn orderRepository.create", async () => {
+  it("vượt tồn kho → BadRequestError, không dựng QR lẫn gọi orderRepository.create", async () => {
     mocks.getAvailableStock.mockResolvedValue(0); // 1 gói pack-1 = 1 hũ > 0 còn lại
 
     await expect(
       checkoutService.createOrder("user-1", { ...baseInput, paymentMethod: "bank_transfer" }),
     ).rejects.toMatchObject({ statusCode: 400 });
 
-    expect(mocks.createPaymentLink).not.toHaveBeenCalled();
     expect(mocks.createOrder).not.toHaveBeenCalled();
   });
 
@@ -278,7 +232,6 @@ describe("checkoutService.createOrder", () => {
     ).rejects.toMatchObject({ statusCode: 400 });
 
     expect(mocks.getAvailableStock).toHaveBeenCalled();
-    expect(mocks.createPaymentLink).not.toHaveBeenCalled();
     expect(mocks.createOrder).not.toHaveBeenCalled();
   });
 
@@ -428,7 +381,7 @@ describe("checkoutService.createOrder — mã giảm giá", () => {
     expect(mocks.createOrder).not.toHaveBeenCalled();
   });
 
-  it("mã không tồn tại → throw, KHÔNG tạo đơn và KHÔNG gọi payOS", async () => {
+  it("mã không tồn tại → throw, KHÔNG tạo đơn", async () => {
     mocks.validateAndComputeDiscount.mockRejectedValue(
       new BadRequestError("Mã giảm giá không tồn tại"),
     );
@@ -442,24 +395,17 @@ describe("checkoutService.createOrder — mã giảm giá", () => {
     ).rejects.toMatchObject({ statusCode: 400 });
 
     expect(mocks.createOrder).not.toHaveBeenCalled();
-    expect(mocks.createPaymentLink).not.toHaveBeenCalled();
   });
 
-  // AC10 — thua race ở trigger: dùng LẠI đúng catch block huỷ link payOS sẵn có.
-  it("trigger từ chối lúc insert (thua race) → huỷ link payOS qua đúng nhánh catch sẵn có", async () => {
+  // AC10 — thua race ở trigger coupon: lỗi trigger phải nổi lên nguyên vẹn.
+  it("trigger từ chối lúc insert (thua race) → lỗi trigger nổi lên nguyên vẹn", async () => {
     mocks.validateAndComputeDiscount.mockResolvedValue({
       couponId: "coupon-1",
       code: "SALE10",
       discountAmount: 20_000,
     });
-    mocks.createPaymentLink.mockResolvedValue({
-      checkoutUrl: "https://pay.payos.vn/web/abc",
-      payosOrderCode: 1234567890,
-      payosPaymentLinkId: "link-1",
-    });
     const triggerError = new BadRequestError("Mã giảm giá đã hết lượt sử dụng");
     mocks.createOrder.mockRejectedValue(triggerError);
-    mocks.cancelPaymentLink.mockResolvedValue(undefined);
 
     await expect(
       checkoutService.createOrder("user-1", {
@@ -468,207 +414,5 @@ describe("checkoutService.createOrder — mã giảm giá", () => {
         couponCode: "SALE10",
       }),
     ).rejects.toBe(triggerError);
-
-    expect(mocks.cancelPaymentLink).toHaveBeenCalledWith(1234567890, "order_create_failed");
-  });
-});
-
-describe("checkoutService.getPaymentStatusForUser", () => {
-  beforeEach(() => vi.clearAllMocks());
-
-  it("throw NotFoundError khi không tìm thấy đơn", async () => {
-    mocks.findByOrderCodeForUser.mockResolvedValue(null);
-    await expect(
-      checkoutService.getPaymentStatusForUser("user-1", "NT-x"),
-    ).rejects.toMatchObject({ statusCode: 404 });
-  });
-
-  it("trả trực tiếp payment_status khi đã PAID, không gọi reconcile", async () => {
-    mocks.findByOrderCodeForUser.mockResolvedValue({
-      id: "order-1",
-      payment_status: "PAID",
-      payment_method: "PAYOS",
-      payos_order_code: 123,
-    });
-
-    const result = await checkoutService.getPaymentStatusForUser("user-1", "NT-x");
-
-    expect(result).toEqual({ paymentStatus: "PAID" });
-    expect(mocks.reconcileByPayosOrderCode).not.toHaveBeenCalled();
-  });
-
-  it("gọi reconcile khi PAYOS còn UNPAID", async () => {
-    mocks.findByOrderCodeForUser.mockResolvedValue({
-      id: "order-1",
-      payment_status: "UNPAID",
-      payment_method: "PAYOS",
-      payos_order_code: 123,
-    });
-    mocks.reconcileByPayosOrderCode.mockResolvedValue({ paymentStatus: "PAID" });
-
-    const result = await checkoutService.getPaymentStatusForUser("user-1", "NT-x");
-
-    expect(mocks.reconcileByPayosOrderCode).toHaveBeenCalledWith(123);
-    expect(result).toEqual({ paymentStatus: "PAID" });
-  });
-
-  it("cod UNPAID: không gọi reconcile (không phải PAYOS)", async () => {
-    mocks.findByOrderCodeForUser.mockResolvedValue({
-      id: "order-1",
-      payment_status: "UNPAID",
-      payment_method: "COD",
-      payos_order_code: null,
-    });
-
-    const result = await checkoutService.getPaymentStatusForUser("user-1", "NT-x");
-
-    expect(mocks.reconcileByPayosOrderCode).not.toHaveBeenCalled();
-    expect(result).toEqual({ paymentStatus: "UNPAID" });
-  });
-});
-
-const shippingAddress = {
-  fullName: "Nguyễn Văn A",
-  phone: "0912345678",
-  email: "a@example.com",
-};
-
-describe("checkoutService.retryPayment", () => {
-  beforeEach(() => vi.clearAllMocks());
-
-  it("throw NotFoundError khi không tìm thấy đơn", async () => {
-    mocks.findByOrderCodeForUser.mockResolvedValue(null);
-    await expect(
-      checkoutService.retryPayment("user-1", "NT-x"),
-    ).rejects.toMatchObject({ statusCode: 404 });
-  });
-
-  it("đã PAID → already_paid ngay, không gọi payOS", async () => {
-    mocks.findByOrderCodeForUser.mockResolvedValue({
-      id: "order-1",
-      payment_status: "PAID",
-      payment_method: "PAYOS",
-      payos_order_code: 123,
-      payos_payment_link_id: "link-1",
-      final_price: "224000",
-      shipping_address: shippingAddress,
-    });
-
-    const result = await checkoutService.retryPayment("user-1", "NT-x");
-
-    expect(result).toEqual({ status: "already_paid" });
-    expect(mocks.createPaymentLink).not.toHaveBeenCalled();
-  });
-
-  it("payment_method khác PAYOS → BadRequestError", async () => {
-    mocks.findByOrderCodeForUser.mockResolvedValue({
-      id: "order-1",
-      payment_status: "UNPAID",
-      payment_method: "COD",
-      payos_order_code: null,
-      payos_payment_link_id: null,
-      final_price: "224000",
-      shipping_address: shippingAddress,
-    });
-
-    await expect(
-      checkoutService.retryPayment("user-1", "NT-x"),
-    ).rejects.toMatchObject({ statusCode: 400 });
-  });
-
-  it("reconcile phát hiện đã trả (webhook chưa kịp tới) → already_paid, không tạo link mới", async () => {
-    mocks.findByOrderCodeForUser.mockResolvedValue({
-      id: "order-1",
-      payment_status: "UNPAID",
-      payment_method: "PAYOS",
-      payos_order_code: 111,
-      payos_payment_link_id: "link-old",
-      final_price: "224000",
-      shipping_address: shippingAddress,
-    });
-    mocks.reconcileByPayosOrderCode.mockResolvedValue({ paymentStatus: "PAID" });
-
-    const result = await checkoutService.retryPayment("user-1", "NT-x");
-
-    expect(result).toEqual({ status: "already_paid" });
-    expect(mocks.createPaymentLink).not.toHaveBeenCalled();
-    expect(mocks.cancelPaymentLink).not.toHaveBeenCalled();
-  });
-
-  it("happy path: huỷ link cũ, tạo link mới, updatePayosLink nhận đúng code cũ/mới", async () => {
-    mocks.findByOrderCodeForUser.mockResolvedValue({
-      id: "order-1",
-      payment_status: "UNPAID",
-      payment_method: "PAYOS",
-      payos_order_code: 111,
-      payos_payment_link_id: "link-old",
-      final_price: "224000",
-      shipping_address: shippingAddress,
-    });
-    mocks.reconcileByPayosOrderCode.mockResolvedValue({ paymentStatus: "UNPAID" });
-    mocks.createPaymentLink.mockResolvedValue({
-      checkoutUrl: "https://pay.payos.vn/web/new",
-      payosOrderCode: 222,
-      payosPaymentLinkId: "link-new",
-    });
-    mocks.updatePayosLink.mockResolvedValue(true);
-
-    const result = await checkoutService.retryPayment("user-1", "NT-x");
-
-    expect(mocks.cancelPaymentLink).toHaveBeenCalledWith(111, "customer_retry");
-    expect(mocks.createPaymentLink).toHaveBeenCalledWith(
-      expect.objectContaining({ orderCode: "NT-x", amount: 224000 }),
-    );
-    expect(mocks.updatePayosLink).toHaveBeenCalledWith("order-1", 111, 222, "link-new");
-    expect(result).toEqual({ status: "created", paymentUrl: "https://pay.payos.vn/web/new" });
-  });
-
-  it("chưa có payos_order_code cũ (null) → không gọi reconcile/cancel", async () => {
-    mocks.findByOrderCodeForUser.mockResolvedValue({
-      id: "order-1",
-      payment_status: "UNPAID",
-      payment_method: "PAYOS",
-      payos_order_code: null,
-      payos_payment_link_id: null,
-      final_price: 224000,
-      shipping_address: shippingAddress,
-    });
-    mocks.createPaymentLink.mockResolvedValue({
-      checkoutUrl: "https://pay.payos.vn/web/new",
-      payosOrderCode: 222,
-      payosPaymentLinkId: "link-new",
-    });
-    mocks.updatePayosLink.mockResolvedValue(true);
-
-    await checkoutService.retryPayment("user-1", "NT-x");
-
-    expect(mocks.reconcileByPayosOrderCode).not.toHaveBeenCalled();
-    expect(mocks.cancelPaymentLink).not.toHaveBeenCalled();
-    expect(mocks.updatePayosLink).toHaveBeenCalledWith("order-1", null, 222, "link-new");
-  });
-
-  it("thua race (updatePayosLink trả false) → huỷ link vừa tạo + throw 409", async () => {
-    mocks.findByOrderCodeForUser.mockResolvedValue({
-      id: "order-1",
-      payment_status: "UNPAID",
-      payment_method: "PAYOS",
-      payos_order_code: 111,
-      payos_payment_link_id: "link-old",
-      final_price: "224000",
-      shipping_address: shippingAddress,
-    });
-    mocks.reconcileByPayosOrderCode.mockResolvedValue({ paymentStatus: "UNPAID" });
-    mocks.createPaymentLink.mockResolvedValue({
-      checkoutUrl: "https://pay.payos.vn/web/new",
-      payosOrderCode: 222,
-      payosPaymentLinkId: "link-new",
-    });
-    mocks.updatePayosLink.mockResolvedValue(false);
-
-    await expect(
-      checkoutService.retryPayment("user-1", "NT-x"),
-    ).rejects.toMatchObject({ statusCode: 409 });
-
-    expect(mocks.cancelPaymentLink).toHaveBeenCalledWith(222, "retry_race_lost");
   });
 });

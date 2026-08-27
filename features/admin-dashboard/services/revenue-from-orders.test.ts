@@ -12,6 +12,7 @@ function order(
     customerEmail: "t@example.com",
     customerPhone: "0900000000",
     shippingAddressLabel: "HN",
+    paymentMethod: "COD",
     paymentMethodLabel: "COD",
     paymentStatus: "unpaid",
     shippingFee: 0,

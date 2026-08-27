@@ -6,50 +6,6 @@ import { Suspense } from "react";
 import { CheckoutSuccessView } from "@/components/checkout/CheckoutSuccessView";
 import { CHECKOUT_ORDER_SNAPSHOT_KEY } from "@/features/checkout/constants";
 import type { CreateOrderResult } from "@/features/checkout/types";
-import { apiRequest } from "@/lib/api-client";
-
-type LivePaymentStatus = "UNPAID" | "PAID" | null;
-
-/**
- * Poll ngắn (tối đa 5 lần × 3s) — bù cho webhook payOS cần public HTTPS URL
- * (không bắn được ở local dev nếu chưa tunnel). Route status tự đối soát
- * qua payOS nếu DB còn UNPAID.
- */
-function usePayosLiveStatus(order: CreateOrderResult | null): LivePaymentStatus {
-  const [liveStatus, setLiveStatus] = useState<LivePaymentStatus>(null);
-
-  useEffect(() => {
-    if (!order || order.paymentMethod !== "bank_transfer") return;
-
-    let cancelled = false;
-    let attempts = 0;
-    let timer: ReturnType<typeof setTimeout>;
-
-    const poll = async () => {
-      try {
-        const res = await apiRequest<{ paymentStatus: LivePaymentStatus }>(
-          `/api/checkout/payos/status?orderCode=${encodeURIComponent(order.orderCode)}`,
-        );
-        if (cancelled) return;
-        setLiveStatus(res.paymentStatus);
-        attempts += 1;
-        if (res.paymentStatus !== "PAID" && attempts < 5) {
-          timer = setTimeout(poll, 3000);
-        }
-      } catch {
-        /* success page vẫn hiển thị được từ snapshot */
-      }
-    };
-
-    void poll();
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [order]);
-
-  return liveStatus;
-}
 
 function CheckoutSuccessContent() {
   const router = useRouter();
@@ -57,7 +13,6 @@ function CheckoutSuccessContent() {
   const orderCode = searchParams.get("orderCode");
   const [order, setOrder] = useState<CreateOrderResult | null>(null);
   const [ready, setReady] = useState(false);
-  const livePaymentStatus = usePayosLiveStatus(order);
 
   useEffect(() => {
     let snapshot: CreateOrderResult | null = null;
@@ -88,7 +43,7 @@ function CheckoutSuccessContent() {
     );
   }
 
-  return <CheckoutSuccessView order={order} livePaymentStatus={livePaymentStatus} />;
+  return <CheckoutSuccessView order={order} />;
 }
 
 export default function CheckoutSuccessPage() {

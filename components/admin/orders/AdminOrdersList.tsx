@@ -212,8 +212,16 @@ export function AdminOrdersList() {
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                      <p className="text-[15px] font-bold text-ink">
+                      <p className="flex items-center gap-2 text-[15px] font-bold text-ink">
                         {order.orderCode}
+                        {/* Đơn chuyển khoản chưa xác nhận — nhân viên cần đối
+                            chiếu sao kê rồi bấm xác nhận trong trang chi tiết. */}
+                        {order.paymentMethod === "BANK_TRANSFER" &&
+                        order.paymentStatus === "unpaid" ? (
+                          <span className="inline-flex items-center rounded-full bg-ink/10 px-2.5 py-[3px] text-[10px] font-extrabold uppercase tracking-[0.02em] text-text-muted">
+                            Chờ xác nhận CK
+                          </span>
+                        ) : null}
                       </p>
                       <p className="text-[14px] font-bold text-ink sm:hidden">
                         {formatCurrencyVnd(order.total)}

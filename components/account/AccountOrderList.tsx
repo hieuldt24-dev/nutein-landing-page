@@ -1,22 +1,18 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import useSWR, { useSWRConfig } from "swr";
+import { useMemo, useState } from "react";
+import useSWR from "swr";
 import {
   ACCOUNT_ORDERS_API_PATH,
   ACCOUNT_ORDER_STATUS_FILTERS,
 } from "@/features/account/constants";
 import { fetcher } from "@/lib/swr-fetcher";
-import { apiRequest } from "@/lib/api-client";
-import { notify } from "@/lib/toast";
 import { cn, formatCurrencyVnd } from "@/lib/utils";
 import type {
   AccountOrder,
   AccountOrderStatusFilter,
 } from "@/features/account/types";
-import type { RetryPaymentResult } from "@/features/checkout/types";
 import { AccountOrderStatusBadge } from "@/components/account/AccountOrderStatusBadge";
-import { FillButton } from "@/components/ui/FillButton";
 import { useAuthStore } from "@/lib/useAuthStore";
 
 function formatOrderDate(iso: string): string {
@@ -38,46 +34,12 @@ export function AccountOrderList() {
     useState<AccountOrderStatusFilter>("all");
 
   const { data, error, isLoading } = useSWR<AccountOrder[]>(key, fetcher);
-  const { mutate: globalMutate } = useSWRConfig();
-  /** Guard đồng bộ chống double-click — useState/disabled chỉ áp dụng ở lần
-   *  render sau nên không chặn kịp click thứ 2 bắn ra trước khi re-render. */
-  const retryingRef = useRef<Set<string>>(new Set());
 
   const filteredOrders = useMemo(() => {
     if (!data) return [];
     if (statusFilter === "all") return data;
     return data.filter((order) => order.status === statusFilter);
   }, [data, statusFilter]);
-
-  const handleRetryPayment = async (orderCode: string) => {
-    if (retryingRef.current.has(orderCode)) return;
-    retryingRef.current.add(orderCode);
-    try {
-      const result = await apiRequest<RetryPaymentResult>(
-        "/api/checkout/payos/retry",
-        {
-          method: "POST",
-          body: JSON.stringify({ orderCode }),
-        },
-      );
-
-      if (result.status === "created") {
-        window.location.replace(result.paymentUrl);
-        return;
-      }
-
-      notify.success("Đơn hàng đã được thanh toán.");
-      await globalMutate(ACCOUNT_ORDERS_API_PATH);
-    } catch (err) {
-      notify.error(
-        err instanceof Error
-          ? err.message
-          : "Không tạo được link thanh toán — vui lòng thử lại.",
-      );
-    } finally {
-      retryingRef.current.delete(orderCode);
-    }
-  };
 
   if (isLoading) {
     return (
@@ -172,19 +134,21 @@ export function AccountOrderList() {
                 </div>
                 <div className="flex flex-col items-end gap-2">
                   <AccountOrderStatusBadge status={order.status} />
+                  <span
+                    className={cn(
+                      "inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-extrabold tracking-[0.02em] uppercase",
+                      order.paymentStatus === "PAID"
+                        ? "bg-lime/50 text-forest"
+                        : "bg-ink/10 text-text-muted",
+                    )}
+                  >
+                    {order.paymentStatus === "PAID"
+                      ? "Đã thanh toán"
+                      : "Chưa thanh toán"}
+                  </span>
                   <p className="font-display text-lg font-bold text-ink">
                     {formatCurrencyVnd(order.total)}
                   </p>
-                  {order.canRetryPayment ? (
-                    <FillButton
-                      type="button"
-                      variant="ink-solid"
-                      className="h-[34px] px-4 text-[11px] font-extrabold uppercase"
-                      onClick={() => void handleRetryPayment(order.orderCode)}
-                    >
-                      Thanh toán ngay
-                    </FillButton>
-                  ) : null}
                 </div>
               </div>
             </li>

@@ -6,7 +6,7 @@ const apiKey = process.env.CLOUDINARY_API_KEY || "";
 const apiSecret = process.env.CLOUDINARY_API_SECRET || "";
 
 /**
- * Cấu hình client Cloudinary — chỉ dùng server-side. Mirror lib/payos.ts:
+ * Cấu hình client Cloudinary — chỉ dùng server-side. Mirror lib/supabase.ts:
  * chỉ config khi đủ 3 biến CLOUDINARY_*, tránh crash khi chưa cấu hình .env.
  */
 export const isCloudinaryConfigured = Boolean(cloudName && apiKey && apiSecret);

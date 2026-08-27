@@ -54,6 +54,16 @@ export const adminOrdersService = {
   },
 
   /**
+   * Xác nhận đã nhận tiền chuyển khoản — hành động thủ công của Staff, chỉ
+   * áp dụng cho đơn BANK_TRANSFER đang UNPAID.
+   */
+  async confirmPayment(id: string): Promise<AdminOrder> {
+    return apiRequest<AdminOrder>(`${BASE_PATH}/${id}/confirm-payment`, {
+      method: "POST",
+    });
+  },
+
+  /**
    * Tổng hợp không PII (status/total/createdAt) cho dashboard — gọi được
    * bởi cả STAFF lẫn ADMIN, khác `list()` (chi tiết đầy đủ, chỉ STAFF).
    */
