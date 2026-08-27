@@ -1,16 +1,16 @@
 ---
 name: context:all-payment
-description: "PayOS gateway integration, checkout/order orchestration, webhook and stock-reservation flow -- the payment group entrypoint/router"
-keywords: payment, payos, checkout, order, webhook, gateway, bank transfer, stock reservation, retry, order code, transaction, refund, coupon, discount, voucher
+description: "Self-hosted VietQR bank-transfer payment (no gateway), staff manual payment confirmation, checkout/order orchestration and stock-reservation flow -- the payment group entrypoint/router"
+keywords: payment, vietqr, bank transfer, checkout, order, gateway, confirm payment, stock reservation, order code, transaction, refund, coupon, discount, voucher, payos, legacy
 related: [context:all-database, context:all-email]
-date: 20-08-26
+date: 27-08-26
 ---
 
 # Payment Context
 
 This file is the canonical payment context entrypoint for Nutein Landing Page.
 
-Use it after `process/context/all-context.md` when the task needs checkout, order, coupon/discount, or payment-gateway changes.
+Use it after `process/context/all-context.md` when the task needs checkout, order, coupon/discount, or payment-method changes.
 
 ---
 
@@ -18,14 +18,22 @@ Use it after `process/context/all-context.md` when the task needs checkout, orde
 
 This group covers:
 
-- PayOS (`@payos/node`) as the payment provider — a Vietnamese payment gateway
-- Payment client setup and env-guarded null-safety pattern
+- **Current (since 27-08-26): self-hosted VietQR bank-transfer payment.** No payment gateway, no
+  webhook, no SDK. The checkout generates a static VietQR Quick Link QR-code image URL
+  (`img.vietqr.io`) server-side from the merchant's own bank details + order amount + order
+  reference; the customer transfers manually in their own banking app; a staff member marks the
+  order paid by hand via a new "confirm payment received" action.
+- Payment client setup and env-guarded null-safety pattern (`lib/vietqr.ts`)
 - Checkout/order orchestration: stock checks, payment resolution, order-code generation
-- PayOS webhook, status, and retry routes
+- Staff manual payment-confirmation endpoint (`POST /api/staff/orders/[id]/confirm-payment`)
 - Stock reservation on order create
 - Admin-managed coupon redemption at checkout (customer-entered code, server-side re-validation,
   additive stacking with the automatic voucher-tier discount) — see "Coupon checkout integration"
   below
+- **Legacy (removed 27-08-26): PayOS.** PayOS could not settle to the merchant's Techcombank
+  business account, so it was removed entirely — no gateway was substituted (SePay and Casso were
+  both evaluated and rejected as not supporting a Techcombank business account). See "VietQR
+  self-hosted payment migration" below for what changed and what intentionally stayed dormant.
 
 It does not cover:
 
@@ -36,12 +44,14 @@ It does not cover:
 
 Read this entrypoint when:
 
-- adding or modifying PayOS webhook, status, or retry handling
+- adding or modifying VietQR QR generation or the staff confirm-payment flow
 - changing checkout orchestration (`checkout.service.ts`) — stock checks, payment resolution, order-code generation
 - working on stock reservation logic tied to order creation
-- debugging a payment stuck in an unexpected state, or a webhook not updating an order
+- debugging a bank-transfer order stuck UNPAID, or the confirm-payment action not updating an order
 - adding or modifying coupon-redemption logic at checkout, or the relationship between coupon
   discounts and the automatic voucher-tier discount
+- encountering a `PAYOS` string somewhere and needing to know whether it's live or legacy-dormant
+  (see "VietQR self-hosted payment migration" below)
 
 ## Quick Routing
 
@@ -49,17 +59,17 @@ No deeper docs yet — this entrypoint is the full content for now. Deeper docs 
 
 ## Source Paths
 
-- `lib/payos.ts` — server-only client init; exports a nullable `payos` client (null if `PAYOS_CLIENT_ID` / `PAYOS_API_KEY` / `PAYOS_CHECKSUM_KEY` unset) plus `appBaseUrl` for return/cancel URLs
-- `features/checkout/services/payos.service.ts` (+ test) — domain service wrapping the PayOS client
-- `features/checkout/schemas/payos.schema.ts` (+ test) — payload validation
-- `app/api/checkout/payos/webhook/route.ts` — payment confirmation webhook
-- `app/api/checkout/payos/status/route.ts` — payment status check
-- `app/api/checkout/payos/retry/route.ts` — payment retry
-- `features/checkout/services/order.repository.ts` — order persistence
-- `features/checkout/services/checkout.service.ts` — orchestrates stock checks, payment resolution, order-code generation, and fires the order-confirmation email
-- `supabase/migrations/20260722010000_payos_bank_transfer.sql` — PayOS bank-transfer schema
+- `lib/vietqr.ts` — server-only, `buildVietQrImageUrl()` + `getVietQrBankAccount()`; pure string-building (no network call, no SDK), nullable-return pattern (returns `null` if `VIETQR_BANK_ID`/`VIETQR_ACCOUNT_NO` unset) matching `lib/resend.ts`/`lib/supabase.ts`
+- `app/api/staff/orders/[id]/confirm-payment/route.ts` — STAFF-only manual payment-confirmation endpoint (new, 27-08-26)
+- `features/admin-orders/services/admin-orders.repository.ts` (`confirmPayment()`) — sets `payment_status = 'PAID'` only, atomic `WHERE payment_status = 'UNPAID'` guard against double-confirm race; never touches order `status`
+- `features/checkout/services/order.repository.ts` — order persistence; `mapPaymentMethod()` writes the `BANK_TRANSFER` DB enum for the bank-transfer path (not `PAYOS`)
+- `features/checkout/services/checkout.service.ts` — orchestrates stock checks, payment resolution (synchronous, no external call), order-code generation, and fires the order-confirmation email
+- `supabase/migrations/20260722010000_payos_bank_transfer.sql` — legacy migration; ADDs `PAYOS` to the `PaymentMethod` enum plus `payos_order_code`/`payos_payment_link_id` columns. **Left in place, dormant, by design** — no migration was written to remove it (see "VietQR self-hosted payment migration" below)
 - `supabase/migrations/20260724000000_reserve_stock_on_order_create.sql` — stock reservation on order create
-- `app/checkout/success/page.tsx` — post-payment success page
+- `app/checkout/success/page.tsx` + `components/checkout/CheckoutSuccessView.tsx` — post-order success page; renders the QR image + static "awaiting manual confirmation" copy (no live-status polling)
+- `components/admin/orders/AdminOrderDetail.tsx` — staff "Xác nhận đã nhận thanh toán" confirm-payment button
+- `components/admin/orders/AdminOrdersList.tsx` — "Chờ xác nhận CK" badge on unpaid bank-transfer rows
+- `components/account/AccountOrderList.tsx` — customer-facing payment-status badge (PAID/UNPAID) in `/account` order history
 - `features/checkout/services/coupon-validation.service.ts` — single source of truth for coupon
   discount computation and rejection rules (not found / inactive / expired / usage-exhausted /
   below `min_order_value`), called from both the preview route and `checkout.service.ts`
@@ -77,19 +87,68 @@ No deeper docs yet — this entrypoint is the full content for now. Deeper docs 
 
 Update this group when:
 
-- the payment provider changes or a second gateway is added
-- webhook payload shape, signature verification, or retry logic changes
+- the payment method changes again, or a payment gateway is (re-)introduced
+- VietQR param shape, bank details, or the confirm-payment flow changes
 - stock reservation timing or rules change (e.g. reservation TTL, release-on-cancel logic)
-- required PayOS env vars change
+- required `VIETQR_*` env vars change
 - coupon-redemption rules, the coupon/voucher-tier stacking relationship, or the preview-endpoint
   contract change
 
 ## Canonical Notes
 
-- Provider: PayOS (`@payos/node`), a Vietnamese payment gateway — confirmed across 16 files in this scan.
-- `lib/payos.ts` follows the same env-guarded null-safety pattern as other integration clients in this codebase (compare `lib/supabase.ts`, `lib/resend.ts`): the `payos` client is `null` if `PAYOS_CLIENT_ID` / `PAYOS_API_KEY` / `PAYOS_CHECKSUM_KEY` are unset, so callers must null-check before use rather than assuming the client always exists.
-- `checkout.service.ts` is the orchestration hub: it runs stock checks, resolves payment, generates the order code, persists via `order.repository.ts`, and fires the order-confirmation email (best-effort, non-blocking — see `email/` group for the email mechanism).
+- **Payment method (since 27-08-26): self-hosted VietQR bank transfer.** No gateway, no SDK, no
+  webhook. `lib/vietqr.ts` builds a static `img.vietqr.io` QR-code image URL server-side from
+  env-configured merchant bank details + the order's amount/reference — follows the same
+  env-guarded null-safety pattern as other integration clients in this codebase (compare
+  `lib/supabase.ts`, `lib/resend.ts`): returns `null` if `VIETQR_BANK_ID`/`VIETQR_ACCOUNT_NO` are
+  unset, so callers must null-check.
+- **Payment confirmation is manual/staff-driven, not automatic.** There is no webhook and no
+  live-status poll. A bank-transfer order stays `payment_status = UNPAID` indefinitely (no TTL/
+  auto-expiry, by explicit design decision) until a staff member clicks "Xác nhận đã nhận thanh
+  toán" on the order detail page, which calls `confirmPayment()` — an atomic, race-guarded UPDATE
+  scoped to `payment_status` only (never touches order `status`).
+- `checkout.service.ts` is the orchestration hub: it runs stock checks, resolves payment (now pure/
+  synchronous — no `await`, no network call), generates the order code, persists via
+  `order.repository.ts`, and fires the order-confirmation email (best-effort, non-blocking, fires
+  regardless of payment status — see `email/` group for the email mechanism).
 - Stock reservation on order create (migration `20260724000000_reserve_stock_on_order_create.sql`) is coupled to the checkout flow — changes to checkout timing or order-cancellation logic should account for reservation release.
+
+### VietQR self-hosted payment migration (landed 27-08-26)
+
+- **Why:** PayOS could not settle to the merchant's Techcombank business account. SePay and Casso
+  were both evaluated and rejected (neither reliably supports a Techcombank business account).
+  Decision: drop gateways entirely, generate VietQR QR codes directly against the merchant's own
+  bank account, and make payment confirmation a manual staff action.
+- **What changed:** `lib/payos.ts`, `payos.service.ts` (+test), `payos.schema.ts` (+test), and the
+  3 PayOS API routes (`webhook`/`status`/`retry`) were all deleted. `order.repository.ts`'s
+  `mapPaymentMethod()` now writes the `BANK_TRANSFER` DB enum for the bank-transfer path (was
+  `PAYOS`). The `@payos/node` npm dependency was removed from `package.json`.
+- **What was intentionally left dormant, NOT cleaned up:** the `PAYOS` value in the `PaymentMethod`
+  DB enum, and the `orders.payos_order_code`/`orders.payos_payment_link_id` columns (migration
+  `20260722010000_payos_bank_transfer.sql`) — no new migration was written to drop them, so
+  historical pre-migration orders with `payment_method = 'PAYOS'` still read correctly. 3 files
+  deliberately still contain the string `"PAYOS"` in a **read-only** type union / display-label
+  map, each with an explicit code comment marking the read/write asymmetry — do not "clean up"
+  these, they are correct as-is:
+  - `features/checkout/services/order.repository.ts` (`DbPaymentMethod` read-only union)
+  - `features/account/services/account-order.service.ts` (`OrderListRow` read-only union)
+  - `features/admin-orders/services/admin-orders.repository.ts` (`PAYMENT_METHOD_LABEL` display map)
+- **Env vars:** `VIETQR_BANK_ID`, `VIETQR_ACCOUNT_NO`, `VIETQR_ACCOUNT_NAME`, `VIETQR_TEMPLATE`
+  (server-only, no `NEXT_PUBLIC_` prefix) replace the `PAYOS_*` block in `.env.example`.
+- **AC7 gap found via manual (not agent) walkthrough:** the backend correctly computed
+  `order.paymentStatus` (unit-tested, passing) but no UI component actually rendered it in
+  `/account` — `AccountOrderList.tsx` never displayed the field. A narrow service-level automated
+  test passed while the user-visible behavior the acceptance criterion actually cares about was
+  broken. Fixed via the QUICK FIX lane: added a payment-status badge to `AccountOrderList.tsx`
+  (PAID → "Đã thanh toán", UNPAID → "Chưa thanh toán"), matching the existing
+  `AccountOrderStatusBadge` visual pattern. No dedicated test file exists for this component — see
+  `process/context/tests/all-tests.md` Known Gaps.
+- **Why an agent couldn't run the 3 mandatory Agent-Probe walkthroughs itself:** see "OAuth-only
+  auth blocks browser automation" in `process/context/tests/all-tests.md` — this repo has no test
+  credentials or dev-login bypass, so no browser-automation session could authenticate. The user
+  performed all 3 walkthroughs manually instead, and found the AC7 gap above in the process —
+  exactly the kind of gap Agent-Probe walkthroughs exist to catch.
+- Source plan (archived): `process/features/checkout/completed/vietqr-self-hosted-payment_27-08-26/`.
 
 ### Fixes landed 19-08-26 (production-readiness review)
 

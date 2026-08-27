@@ -119,6 +119,20 @@ HTTP-layer route tests instead of assuming one must be invented from scratch.
 
 ## Known Gaps
 
+- **OAuth-only auth blocks ALL Agent-Probe browser walkthroughs for authenticated features.** This
+  repo's auth is Google-OAuth-only (see `process/context/auth/all-auth.md`) — there are no test
+  credentials and no dev-login bypass. Any Agent-Probe manual walkthrough that requires an
+  authenticated session (customer `/account`, staff `/staff/**`, admin `/admin/**`) CANNOT be
+  performed by browser-automation tooling in an agent session; it can only be performed by a human
+  logging in through the real Google OAuth flow. Discovered 27-08-26 during the
+  `vietqr-self-hosted-payment` feature closeout, where all 3 mandatory Agent-Probe walkthroughs
+  (checkout QR render, staff confirm-payment, `/account` PAID-status reflect) had to be performed
+  by the user manually instead of by an agent — and the manual walkthrough found a real gap
+  (missing UI render of an already-correct backend field) that the automated test suite had missed.
+  This will recur for every future auth-gated feature until a test-login bypass or seeded test
+  session exists — treat this as a durable, recurring blocker, not a one-off. See
+  `process/context/payment/all-payment.md` "VietQR self-hosted payment migration" for the concrete
+  incident.
 - `vitest.config.ts`'s `test.env` block hardcodes JWT secrets but is MISSING
   `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`. `lib/useAddresses.test.tsx` fails at
   import time (`@supabase/ssr: Your project's URL and API key are required`) because

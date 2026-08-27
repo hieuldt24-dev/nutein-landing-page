@@ -16,7 +16,8 @@ Start here before loading deeper context files.
 ## Project Overview
 
 Nutein is a Vietnamese nutrition-supplement brand's website: a marketing landing page plus an
-e-commerce shop with checkout (PayOS payment integration), plus internal admin/staff back-office
+e-commerce shop with checkout (self-hosted VietQR bank-transfer payment, staff-confirmed — see
+`process/context/payment/all-payment.md`), plus internal admin/staff back-office
 panels covering products, orders, blog content, coupons, the contact inbox, general site content,
 users, and an audit log.
 
@@ -93,7 +94,7 @@ For most substantial tasks:
 | `process/context/auth/all-auth.md` | Two-layer auth model (Supabase Auth identity + custom app JWT/roles) and proxy.ts role-gating -- the auth group entrypoint/router |
 | `process/context/database/all-database.md` | Supabase Postgres schema, migrations, client setup, and the repository pattern -- the database group entrypoint/router |
 | `process/context/email/all-email.md` | Two independent email mechanisms -- Resend for transactional order emails, Supabase Auth's own signup-confirmation email -- the email group entrypoint/router |
-| `process/context/payment/all-payment.md` | PayOS gateway integration, checkout/order orchestration, webhook and stock-reservation flow -- the payment group entrypoint/router |
+| `process/context/payment/all-payment.md` | Self-hosted VietQR bank-transfer payment (no gateway), staff manual payment confirmation, checkout/order orchestration and stock-reservation flow -- the payment group entrypoint/router |
 | `process/context/planning/all-planning.md` | Plan-shape calibration, planning conventions, and implementation-plan examples -- the planning group entrypoint/router |
 | `process/context/tests/all-tests.md` | Vitest runner, commands, mocking approach, and known test-coverage gaps -- the tests group entrypoint/router |
 | `process/context/uxui/all-uxui.md` | shadcn/ui component conventions, Tailwind v4 CSS-first styling, and the centralized components/ tree -- the uxui group entrypoint/router |
@@ -105,7 +106,7 @@ For most substantial tasks:
 | `auth/` | `process/context/auth/all-auth.md` | Two-layer auth model (Supabase Auth identity + custom app JWT/roles) and proxy.ts role-gating -- the auth group entrypoint/router |
 | `database/` | `process/context/database/all-database.md` | Supabase Postgres schema, migrations, client setup, and the repository pattern -- the database group entrypoint/router |
 | `email/` | `process/context/email/all-email.md` | Two independent email mechanisms -- Resend for transactional order emails, Supabase Auth's own signup-confirmation email -- the email group entrypoint/router |
-| `payment/` | `process/context/payment/all-payment.md` | PayOS gateway integration, checkout/order orchestration, webhook and stock-reservation flow -- the payment group entrypoint/router |
+| `payment/` | `process/context/payment/all-payment.md` | Self-hosted VietQR bank-transfer payment (no gateway), staff manual payment confirmation, checkout/order orchestration and stock-reservation flow -- the payment group entrypoint/router |
 | `planning/` | `process/context/planning/all-planning.md` | Plan-shape calibration, planning conventions, and implementation-plan examples -- the planning group entrypoint/router |
 | `tests/` | `process/context/tests/all-tests.md` | Vitest runner, commands, mocking approach, and known test-coverage gaps -- the tests group entrypoint/router |
 | `uxui/` | `process/context/uxui/all-uxui.md` | shadcn/ui component conventions, Tailwind v4 CSS-first styling, and the centralized components/ tree -- the uxui group entrypoint/router |
@@ -121,7 +122,7 @@ For most substantial tasks:
 | database/schema work | `process/context/database/all-database.md` |
 | auth or session work | `process/context/auth/all-auth.md` |
 | UI/component work | `process/context/uxui/all-uxui.md` |
-| payment/PayOS/checkout work | `process/context/payment/all-payment.md` |
+| payment/VietQR/checkout work | `process/context/payment/all-payment.md` |
 | email/notification work | `process/context/email/all-email.md` |
 
 ## Context Group Lifecycle
@@ -176,7 +177,7 @@ nutein-landing-page/
   app/                    -- Next.js 16 App Router. Route groups: (account), (admin), (marketing) [about/blog/contact/policies/product], (staff); plus app/auth/, app/checkout/, app/api/ (34 route.ts handlers)
   components/             -- Presentational React components, mirrors features/: about, account, admin/*, blog, checkout, contact, layout, policies, product, providers, shared, ui (shadcn primitives)
   features/               -- Domain/business layer, 18 folders (schemas/ + services/ + types/ pattern): about, account, admin-audit, admin-blog, admin-contact, admin-content, admin-coupons, admin-dashboard, admin-orders, admin-products, admin-users, auth, blog, cart, checkout, contact, policies, product
-  lib/                    -- Client/browser-facing utilities: Supabase clients (3 variants), PayOS/Resend clients, SWR-based state hooks (useAuthStore, useCartStore, useAddresses), api-client.ts, env.ts, cloudinary.ts
+  lib/                    -- Client/browser-facing utilities: Supabase clients (3 variants), VietQR/Resend clients, SWR-based state hooks (useAuthStore, useCartStore, useAddresses), api-client.ts, env.ts, cloudinary.ts
   src/                    -- Server-side infra layer (distinct from lib/): api/ (request-context, response envelope), cache/redis.ts (ioredis, optional), components/charts/ (~70-file visx chart library), errors/app.error.ts (AppError hierarchy), logging/logger.ts (pino), middlewares/*.middleware.ts (auth, audit-log, cache, cors, error-handler, rate-limit, validate)
   types/                  -- Single shared types/index.ts
   supabase/               -- migrations/ (14 timestamped SQL files, schema-of-record), email-templates/
@@ -191,7 +192,11 @@ nutein-landing-page/
 - **Runtime:** Node (unpinned -- no `engines` field or `.nvmrc`; `@types/node` ^20 is a dev-only hint, not an enforced runtime version)
 - **Database:** Supabase Postgres via raw SQL migrations (`supabase/migrations/*.sql`, 14 files) -- NOT Prisma despite `@prisma/client`/`@prisma/adapter-pg`/`prisma` being listed as dependencies (dormant/unused: no `schema.prisma` exists anywhere, zero `PrismaClient` usage). The `pg` dependency is also unused directly.
 - **Auth:** hybrid -- Supabase Auth (OAuth/session, via `@supabase/ssr`) + a custom app-level JWT layer (`jsonwebtoken`, cookie `nutein_access_token`), role-gated STAFF/ADMIN via `proxy.ts` + `src/middlewares/authenticate.middlware.ts` (note: repo-wide typo "middlware" is intentionally preserved for consistency with existing code)
-- **Payment:** PayOS (`@payos/node`) -- Vietnamese payment gateway, wired in `lib/payos.ts`
+- **Payment:** self-hosted VietQR bank transfer (no gateway, no SDK) -- `lib/vietqr.ts` builds a
+  static `img.vietqr.io` QR-code image URL from env-configured merchant bank details; payment is
+  confirmed manually by staff (`POST /api/staff/orders/[id]/confirm-payment`), not automatically.
+  Replaced PayOS (removed 27-08-26; `@payos/node` dependency removed) because PayOS could not
+  settle to the merchant's Techcombank business account. See `process/context/payment/all-payment.md`.
 - **Email:** Resend (`lib/resend.ts`) for transactional/order emails; Supabase Auth's own template handles signup confirmation (`supabase/email-templates/confirm-signup.html`)
 - **Validation:** Zod ^4 (env schema + per-feature request/response schemas). Note: `yup` ^1.7.1 is also a dependency but not confirmed used anywhere -- possible dead dependency.
 **Content sanitization (added 19-08-26):** `sanitize-html` (+ `@types/sanitize-html`) is used ONLY for
@@ -228,13 +233,13 @@ feature service -> wrap in the response helper (`src/api/response.ts`).
 top-level `hooks/` directory exists -- likely an unused/aspirational alias.
 
 **"server-only" guard:** consistently imported at the top of server-exclusive modules (`env.ts`,
-`payos.ts`, `resend.ts`, `supabase-server.ts`, `checkout.service.ts`, repositories) to hard-fail if
+`vietqr.ts`, `resend.ts`, `supabase-server.ts`, `checkout.service.ts`, repositories) to hard-fail if
 accidentally bundled client-side.
 
-**Nullable-client defensive pattern:** third-party clients (payos, resend, supabaseAdmin, redis)
-instantiate as `null` when their env vars are missing rather than throwing at import time; callers
-guard explicitly. This is a deliberate repo-wide convention (comments in the code say "Mirror
-lib/supabase.ts").
+**Nullable-client defensive pattern:** third-party clients (vietqr, resend, supabaseAdmin, redis)
+instantiate/resolve as `null` when their env vars are missing rather than throwing at import time;
+callers guard explicitly. This is a deliberate repo-wide convention (comments in the code say
+"Mirror lib/supabase.ts").
 
 **Naming:** kebab-case files (`order-email.service.ts`), camelCase hooks (`useAuthStore.ts`),
 PascalCase components (`CartDrawer`). One known inconsistency: the `authenticate.middlware.ts`
@@ -261,7 +266,7 @@ fallback handling (see the Nullable-client defensive pattern above).
 - Auth (Supabase): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
 - Auth (custom JWT): `ACCESS_TOKEN_SECRET`, `REFRESH_TOKEN_SECRET`, `EXPIRE_ACCESS_TOKEN`, `EXPIRE_REFRESH_TOKEN`
 - Media: `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
-- Payment: `PAYOS_CLIENT_ID`, `PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY`
+- Payment: `VIETQR_BANK_ID`, `VIETQR_ACCOUNT_NO`, `VIETQR_ACCOUNT_NAME`, `VIETQR_TEMPLATE` (legacy/dormant: `PAYOS_CLIENT_ID`, `PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY` — no longer read by any code path, safe to remove from `.env` when convenient)
 - Email: `RESEND_API_KEY`, `ORDER_EMAIL_FROM`
 - Cache (undocumented in `.env.example`): `REDIS_URL`
 - Dead/unused: `DATABASE_URL` (Prisma is unused)
