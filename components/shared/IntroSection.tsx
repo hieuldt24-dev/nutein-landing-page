@@ -1,25 +1,26 @@
 import Image from "next/image";
 import { SectionHeading } from "@/components/ui/SectionHeading";
-import proteinCard from "../../public/media/4 card task 2 tách/size 3_4/protein tv.png";
-import grainsCard from "../../public/media/4 card task 2 tách/size 3_4/ha\u0323t va\u0300 ngu\u0303 co\u0302\u0301c.png";
-import fiberCard from "../../public/media/4 card task 2 tách/size 3_4/cha\u0302\u0301t xo\u031b hoa\u0300 tan.png";
-import vitaminsCard from "../../public/media/4 card task 2 tách/size 3_4/vitamin khoa\u0301ng cha\u0302\u0301t.png";
 
+// Ảnh host trên Cloudinary (cloud của project, xem next.config.ts remotePatterns)
+// — trước đây import tĩnh từ public/media/, nhưng tên file gốc (từ macOS) lưu
+// dạng Unicode NFD trong khi mọi tham chiếu trong code là NFC, khiến Node/trình
+// duyệt không khớp byte và luôn 404. Chuyển hẳn sang Cloudinary để tránh cả lớp
+// bug encoding này.
 const INGREDIENT_CARDS = [
   {
-    src: proteinCard,
+    src: "https://res.cloudinary.com/jfgzg60i/image/upload/v1788257087/nutein/products/intro-70726f746569.png",
     alt: "Protein thực vật từ đậu Hà Lan và đậu Gà",
   },
   {
-    src: grainsCard,
+    src: "https://res.cloudinary.com/jfgzg60i/image/upload/v1788257086/nutein/products/intro-6861cca37420.png",
     alt: "Hạt và ngũ cốc",
   },
   {
-    src: fiberCard,
+    src: "https://res.cloudinary.com/jfgzg60i/image/upload/v1788257131/nutein/products/intro-fiber.png",
     alt: "Chất xơ hoà tan",
   },
   {
-    src: vitaminsCard,
+    src: "https://res.cloudinary.com/jfgzg60i/image/upload/v1788257088/nutein/products/intro-766974616d69.png",
     alt: "Vitamin và khoáng chất",
   },
 ];

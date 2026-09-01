@@ -47,5 +47,5 @@ export const VOUCHER_TIERS: VoucherTier[] = [
   { id: "pack-1", thresholdVnd: 449_000, label: "1 hộp · Freeship", kind: "free_shipping", benefit: "Miễn phí vận chuyển" },
   { id: "pack-2", thresholdVnd: 778_000, label: "2 hộp · Tặng bình", kind: "free_shipping", benefit: "Freeship + tặng 1 bình nước" },
   { id: "pack-3", thresholdVnd: 1_167_000, label: "3 hộp · Tặng 1 hộp", kind: "free_shipping", benefit: "Freeship + tặng 1 hộp + 1 bình nước" },
-  { id: "pack-5", thresholdVnd: 1_945_000, label: "5 hộp · Tặng 2 hộp", kind: "free_shipping", benefit: "Freeship + tặng 2 hộp + 1 bình nước" },
+  { id: "pack-5", thresholdVnd: 1_945_000, label: "5 hộp · Tặng 1 hộp", kind: "free_shipping", benefit: "Freeship + tặng 1 hộp + 1 bình nước" },
 ];

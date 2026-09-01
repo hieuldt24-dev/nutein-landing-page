@@ -68,8 +68,8 @@ export const NUTEIN_PRODUCT_DETAIL: ProductDetail = {
       price: 1_945_000,
       offer: {
         freeShipping: true,
-        giftDescription: "Tặng 2 hộp + 1 bình nước",
-        giftUnits: 2,
+        giftDescription: "Tặng 1 hộp + 1 bình nước",
+        giftUnits: 1,
       },
     },
   ],
