@@ -17,6 +17,7 @@ import {
 } from "@/features/auth/services/jwt.service";
 import { refreshTokenService } from "@/features/auth/services/refresh-token.service";
 import { auditLogService } from "@/features/auth/services/audit-log.service";
+import { authService } from "@/features/auth/services/auth.service";
 
 /**
  * POST /api/auth/refresh
@@ -60,15 +61,33 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   // token của user (không chỉ token đang trình ra) để không còn phiên nào
   // sống sót, rồi mới từ chối request. Đây là lớp phòng vệ thứ hai bên cạnh
   // trigger thu hồi ngay lúc admin khóa (admin-users.repository.setLocked).
-  const { data: lockedProfile } = await requireAdminClient()
+  const { data: profile } = await requireAdminClient()
     .from("users")
-    .select("is_deleted")
+    .select("is_deleted, role")
     .eq("id", payload.sub)
     .maybeSingle();
 
-  if (lockedProfile?.is_deleted === true) {
+  if (profile?.is_deleted === true) {
     await refreshTokenService.revokeAllForUser(payload.sub);
     throw new ForbiddenError("Tài khoản đã bị khóa");
+  }
+
+  // F-role — refresh route không được copy mù `role` từ JWT cũ nữa. Nếu role
+  // trong DB đã đổi so với claim trong token cũ:
+  //  - hạ quyền (downgrade) -> từ chối, mirror hệt path is_deleted ở trên
+  //    (lớp phòng vệ thứ 2 cho khoảng race hẹp trước khi setRole()'s
+  //    revokeAllForUser kịp có hiệu lực).
+  //  - nâng quyền (upgrade) / không phải downgrade -> KHÔNG từ chối, chỉ dùng
+  //    role hiện tại trong DB khi cấp lại token.
+  let effectiveRole = payload.role;
+  if (profile && profile.role !== payload.role) {
+    const oldAuthRole = authService.fromDbRole(payload.role);
+    const newAuthRole = authService.fromDbRole(profile.role);
+    if (authService.isDowngrade(oldAuthRole, newAuthRole)) {
+      await refreshTokenService.revokeAllForUser(payload.sub);
+      throw new ForbiddenError("Vai trò đã thay đổi, vui lòng đăng nhập lại");
+    }
+    effectiveRole = profile.role;
   }
 
   const isActive = await refreshTokenService.isActive(refreshToken);
@@ -83,7 +102,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     throw new UnauthorizedError("Refresh token đã bị thu hồi hoặc không còn hiệu lực");
   }
 
-  const newPayload = { sub: payload.sub, email: payload.email, role: payload.role };
+  const newPayload = { sub: payload.sub, email: payload.email, role: effectiveRole };
   const accessToken = jwtService.signAccessToken(newPayload);
   // Giữ nguyên remember của lần login gốc — không "nâng cấp" 1 phiên
   // session-only (rememberMe=false) thành persistent chỉ vì trình duyệt vẫn

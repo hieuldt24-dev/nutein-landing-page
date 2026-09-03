@@ -3,6 +3,7 @@ import "server-only";
 import { supabaseAdmin } from "@/lib/supabase";
 import { NotFoundError } from "@/src/errors/app.error";
 import { refreshTokenService } from "@/features/auth/services/refresh-token.service";
+import { authService } from "@/features/auth/services/auth.service";
 import type { AuthRole } from "@/features/auth/types";
 import type {
   AdminManagedUser,
@@ -86,6 +87,13 @@ async function list(query: AdminUsersListQuery = {}): Promise<AdminManagedUserLi
 
 async function setRole(id: string, role: AuthRole): Promise<AdminManagedUser> {
   const client = requireAdminClient();
+
+  const { data: currentRow } = await client
+    .from("users")
+    .select("role")
+    .eq("id", id)
+    .maybeSingle();
+
   const { data, error } = await client
     .from("users")
     .update({ role: role.toUpperCase() })
@@ -99,6 +107,16 @@ async function setRole(id: string, role: AuthRole): Promise<AdminManagedUser> {
   if (!data) {
     throw new NotFoundError("User");
   }
+
+  // Hạ quyền -> thu hồi toàn bộ refresh token hiện có (mirrors setLocked's
+  // revoke-on-privilege-reduction pattern). Nâng quyền thì KHÔNG revoke.
+  if (currentRow) {
+    const oldRole = authService.fromDbRole((currentRow as { role: DbRole }).role);
+    if (authService.isDowngrade(oldRole, role)) {
+      await refreshTokenService.revokeAllForUser(id);
+    }
+  }
+
   return toAdminManagedUser(data as UserRow);
 }
 

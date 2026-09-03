@@ -1,0 +1,6 @@
+{
+  "riskClass": "auth or identity",
+  "workDescription": "Role downgrade now revokes outstanding refresh tokens (setRole mirrors setLocked); refresh route re-checks the current DB role instead of copying the stale JWT claim — rejects on downgrade, reissues with current role on upgrade.",
+  "approver": "pending — user review required (manual-first handoff)",
+  "mustStopBeforeFinalize": true
+}

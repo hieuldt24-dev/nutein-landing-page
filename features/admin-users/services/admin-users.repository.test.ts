@@ -162,6 +162,43 @@ describe("adminUsersRepository.setRole / setLocked", () => {
     expect(result.locked).toBe(false);
   });
 
+  // setRole thực hiện HAI lần `.from("users")`: pre-read role cũ, rồi update.
+  // Phải mock tuần tự để hai lần đọc trả về giá trị KHÁC nhau.
+  function mockSetRoleCalls(oldRole: string, newRole: string) {
+    mocks.from
+      .mockReturnValueOnce(makeBuilder({ data: { role: oldRole }, error: null }))
+      .mockReturnValueOnce(makeBuilder({ data: { ...userRow, role: newRole }, error: null }));
+  }
+
+  // AC1 — hạ quyền phải thu hồi toàn bộ refresh token.
+  it("setRole hạ quyền staff -> user: gọi revokeAllForUser(id)", async () => {
+    mockSetRoleCalls("STAFF", "USER");
+    mocks.revokeAllForUser.mockResolvedValue(undefined);
+
+    const result = await adminUsersRepository.setRole("user-1", "user");
+
+    expect(mocks.revokeAllForUser).toHaveBeenCalledWith("user-1");
+    expect(result.role).toBe("user");
+  });
+
+  // AC4 (nửa repository) — nâng quyền KHÔNG buộc đăng nhập lại.
+  it("setRole nâng quyền user -> staff: KHÔNG gọi revokeAllForUser", async () => {
+    mockSetRoleCalls("USER", "STAFF");
+
+    const result = await adminUsersRepository.setRole("user-1", "staff");
+
+    expect(mocks.revokeAllForUser).not.toHaveBeenCalled();
+    expect(result.role).toBe("staff");
+  });
+
+  it("setRole giữ nguyên hạng staff -> staff: KHÔNG gọi revokeAllForUser", async () => {
+    mockSetRoleCalls("STAFF", "STAFF");
+
+    await adminUsersRepository.setRole("user-1", "staff");
+
+    expect(mocks.revokeAllForUser).not.toHaveBeenCalled();
+  });
+
   it("không tìm thấy -> NotFoundError", async () => {
     mocks.from.mockReturnValue(makeBuilder({ data: null, error: null }));
 

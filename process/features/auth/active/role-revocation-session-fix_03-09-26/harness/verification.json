@@ -1,0 +1,40 @@
+{
+  "steps": [
+    {
+      "step": "Helper rank ordering + downgrade classification at every pairwise boundary (up / down / same)",
+      "command": "npx vitest run features/auth/services/auth.service.test.ts",
+      "result": "PASS",
+      "notes": "1 file, 4 tests passed. Covers user<staff<admin ordering, all 3 downgrade pairs, all 3 upgrade pairs, all 3 same-role pairs (same-role is NOT a downgrade)."
+    },
+    {
+      "step": "setRole downgrade revokes / upgrade does not revoke / same-rank does not revoke, plus setLocked + list regression",
+      "command": "npx vitest run features/admin-users/services/admin-users.repository.test.ts",
+      "result": "PASS",
+      "notes": "1 file, 15 tests passed (12 pre-existing unmodified + 3 new). New tests use sequential mocking (mockReturnValueOnce x2) so the pre-read returns the OLD role and the update-select returns the NEW row — per plan checklist step 5 / E1."
+    },
+    {
+      "step": "Refresh route: downgrade mismatch -> 403 + revokeAllForUser + no rotate + no cookies (boundary/failure case); upgrade mismatch -> 200 + rotate + decoded access token carries the NEW DB role; is_deleted and revoked-token paths unchanged",
+      "command": "npx vitest run app/api/auth/refresh/route.test.ts",
+      "result": "PASS",
+      "notes": "1 file, 10 tests passed (8 pre-existing unmodified + 2 new). Downgrade test also asserts isActive() was NOT called, proving the role check runs BEFORE the isActive guard (E2 ordering)."
+    },
+    {
+      "step": "Full regression suite",
+      "command": "npx vitest run",
+      "result": "PASS",
+      "notes": "62 of 63 files passed, 414 tests passed, 0 test failures. The single failing FILE (lib/useAddresses.test.tsx) fails at import time with '@supabase/ssr: Your project's URL and API key are required' — a missing-env-var collection error, not a test failure. Verified PRE-EXISTING: reproduced identically on a clean tree via `git stash -u` before the pop. Zero relation to this change's blast radius."
+    },
+    {
+      "step": "TypeScript typecheck across the whole app",
+      "command": "npx tsc --noEmit",
+      "result": "PASS",
+      "notes": "Clean, zero diagnostics."
+    },
+    {
+      "step": "Real browser cookie-refresh round trip after a live role downgrade",
+      "command": "N/A",
+      "result": "SKIP",
+      "notes": "Known gap, pre-existing and durable: no e2e/Playwright suite exists and the app is Google-OAuth-only with no test-login bypass (process/context/tests/all-tests.md 'Known Gaps'). Accepted per SPEC Constraints; not introduced by this change."
+    }
+  ]
+}

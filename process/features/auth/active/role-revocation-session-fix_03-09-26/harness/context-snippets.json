@@ -1,0 +1,22 @@
+{
+  "snippets": [
+    {
+      "file": "features/auth/services/auth.service.ts",
+      "lines": "3-13",
+      "description": "New ROLE_RANK total order (user=0 < staff=1 < admin=2) + roleRank/isDowngrade pure helpers, exposed on the existing authService object. Single source of truth for 'is this a downgrade' shared by both call sites.",
+      "content": "const ROLE_RANK: Record<AuthRole, number> = { user: 0, staff: 1, admin: 2 };\nfunction roleRank(role: AuthRole): number { return ROLE_RANK[role]; }\nfunction isDowngrade(oldRole: AuthRole, newRole: AuthRole): boolean { return roleRank(newRole) < roleRank(oldRole); }"
+    },
+    {
+      "file": "features/admin-users/services/admin-users.repository.ts",
+      "lines": "88-121",
+      "description": "setRole() pre-reads the current DB role, then after a successful UPDATE revokes all refresh tokens ONLY on a downgrade. Mirrors setLocked()'s existing post-update revoke pattern. currentRow null -> revoke check skipped; the pre-existing NotFoundError throw still fires.",
+      "content": "const { data: currentRow } = await client.from(\"users\").select(\"role\").eq(\"id\", id).maybeSingle();\n// ... existing UPDATE + error/NotFound guards unchanged ...\nif (currentRow) {\n  const oldRole = authService.fromDbRole((currentRow as { role: DbRole }).role);\n  if (authService.isDowngrade(oldRole, role)) {\n    await refreshTokenService.revokeAllForUser(id);\n  }\n}"
+    },
+    {
+      "file": "app/api/auth/refresh/route.ts",
+      "lines": "64-97",
+      "description": "The existing single DB lookup now selects `role` alongside `is_deleted` (no extra round trip). Role-mismatch block sits AFTER the is_deleted guard and BEFORE the isActive() check (E2 binding ordering) — downgrade rejects + revokes exactly like the is_deleted path; upgrade sets effectiveRole from the DB and continues. effectiveRole replaces payload.role in newPayload.",
+      "content": "const { data: profile } = await requireAdminClient().from(\"users\").select(\"is_deleted, role\").eq(\"id\", payload.sub).maybeSingle();\n// is_deleted guard unchanged\nlet effectiveRole = payload.role;\nif (profile && profile.role !== payload.role) {\n  const oldAuthRole = authService.fromDbRole(payload.role);\n  const newAuthRole = authService.fromDbRole(profile.role);\n  if (authService.isDowngrade(oldAuthRole, newAuthRole)) {\n    await refreshTokenService.revokeAllForUser(payload.sub);\n    throw new ForbiddenError(\"Vai trò đã thay đổi, vui lòng đăng nhập lại\");\n  }\n  effectiveRole = profile.role;\n}\nconst isActive = await refreshTokenService.isActive(refreshToken);\n// ...\nconst newPayload = { sub: payload.sub, email: payload.email, role: effectiveRole };"
+    }
+  ]
+}

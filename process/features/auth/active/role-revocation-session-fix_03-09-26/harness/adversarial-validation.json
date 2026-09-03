@@ -1,0 +1,34 @@
+{
+  "scenarios": [
+    {
+      "scenario": "Downgraded staff user replays their old refresh token to mint a fresh access token still carrying STAFF",
+      "ruled_out": true,
+      "rationale": "Two independent layers. (1) setRole() revokes all refresh tokens on downgrade, so isActive() returns false -> 401. (2) Even if the revoke did not land (crash between UPDATE and revoke), the refresh route compares the JWT's role claim against the live DB role and rejects with 403 before reaching isActive(). Proven by the new 403 test which asserts isActive() was never called."
+    },
+    {
+      "scenario": "Attacker exploits the race window between the users UPDATE and the revokeAllForUser call in setRole()",
+      "ruled_out": true,
+      "rationale": "The refresh-route role recheck closes it: once the DB role is written (the first of the two operations), any refresh carrying the old higher claim is rejected regardless of revocation state. The window in which an elevated token can be reissued is therefore zero, not 'until the revoke lands'. Residual: an already-issued access token stays valid up to EXPIRE_ACCESS_TOKEN (default 15m) — explicitly out of scope per SPEC, unchanged architectural tradeoff."
+    },
+    {
+      "scenario": "Privilege escalation via the new upgrade-reissue branch — user forges a low-role token to obtain a higher-role one",
+      "ruled_out": true,
+      "rationale": "effectiveRole is taken from the DB row (profile.role), never from attacker-controlled input. The reissued token can only ever carry the role the database already grants that user. The refresh token itself is still signature-verified and DB-active-checked first."
+    },
+    {
+      "scenario": "Downgrade misclassified as an upgrade, silently skipping revocation",
+      "ruled_out": true,
+      "rationale": "Both sides of every comparison are normalized through authService.fromDbRole() before ranking, so the uppercase DB/JWT casing ('STAFF') and the lowercase AuthRole domain casing ('staff') can never be compared raw. isDowngrade uses a strict `<` on a total order, so same-role is correctly NOT a downgrade. All 9 pairwise combinations are asserted in auth.service.test.ts."
+    },
+    {
+      "scenario": "Unknown or malformed role value in the DB (data corruption / new enum member) silently grants elevated access",
+      "ruled_out": true,
+      "rationale": "fromDbRole() defaults any unrecognized value to 'user' (rank 0, the LOWEST privilege). An unknown DB role therefore fails safe: a STAFF/ADMIN token against it is classified as a downgrade and rejected, rather than being trusted."
+    },
+    {
+      "scenario": "Denial of service — legitimate upgraded users force-logged-out repeatedly",
+      "ruled_out": true,
+      "rationale": "Intentional asymmetry (matching the existing setLocked precedent): revoke/reject fires only on privilege REDUCTION. Upgrades neither revoke nor reject; they silently reissue with the new role. Asserted by both the setRole upgrade test and the refresh-route upgrade-reissue test."
+    }
+  ]
+}

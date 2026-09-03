@@ -43,9 +43,9 @@ import { POST } from "./route";
 const payload: JwtPayload = { sub: "user-1", email: "user@example.com", role: "USER" };
 
 /** Query-builder giả cho `.from("users").select(...).eq(...).maybeSingle()`. */
-function setLockedFlag(isDeleted: boolean | null) {
+function setLockedFlag(isDeleted: boolean | null, role: string = "USER") {
   mocks.maybeSingle.mockResolvedValue({
-    data: isDeleted === null ? null : { is_deleted: isDeleted },
+    data: isDeleted === null ? null : { is_deleted: isDeleted, role },
     error: null,
   });
   const builder: Record<string, unknown> = {
@@ -161,6 +161,37 @@ describe("POST /api/auth/refresh", () => {
     expect(response.status).toBe(200);
     expect(mocks.revokeAllForUser).not.toHaveBeenCalled();
     expect(mocks.rotate).toHaveBeenCalled();
+  });
+
+  // AC2 + AC3 — token claim STAFF nhưng DB đã hạ xuống USER -> từ chối + thu hồi.
+  it("role trong token là hạ quyền so với DB -> 403, thu hồi toàn bộ token, không rotate", async () => {
+    setLockedFlag(false, "USER");
+    const staffPayload: JwtPayload = { ...payload, role: "STAFF" };
+    const refreshToken = jwtService.signRefreshToken(staffPayload);
+
+    const response = await POST(requestWithCookie(`${REFRESH_TOKEN_COOKIE}=${refreshToken}`));
+
+    expect(response.status).toBe(403);
+    expect(mocks.revokeAllForUser).toHaveBeenCalledWith(payload.sub);
+    expect(mocks.rotate).not.toHaveBeenCalled();
+    expect(mocks.isActive).not.toHaveBeenCalled();
+    expect(response.cookies.get(ACCESS_TOKEN_COOKIE)).toBeUndefined();
+    expect(response.cookies.get(REFRESH_TOKEN_COOKIE)).toBeUndefined();
+  });
+
+  // AC4 — token claim USER nhưng DB đã nâng lên STAFF -> vẫn 200, cấp lại theo role MỚI.
+  it("role trong token là nâng quyền so với DB -> 200, cấp lại token với role hiện tại trong DB", async () => {
+    setLockedFlag(false, "STAFF");
+    const refreshToken = jwtService.signRefreshToken(payload);
+
+    const response = await POST(requestWithCookie(`${REFRESH_TOKEN_COOKIE}=${refreshToken}`));
+
+    expect(response.status).toBe(200);
+    expect(mocks.revokeAllForUser).not.toHaveBeenCalled();
+    expect(mocks.rotate).toHaveBeenCalled();
+
+    const newAccessToken = response.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
+    expect(jwtService.verifyAccessToken(newAccessToken!)).toMatchObject({ role: "STAFF" });
   });
 
   // F4 / AC9 — throttle cùng tier với session route, là guard-clause đầu tiên.
