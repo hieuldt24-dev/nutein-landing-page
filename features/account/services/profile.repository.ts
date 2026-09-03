@@ -1,6 +1,10 @@
 import "server-only";
 
-import { ConflictError, NotFoundError } from "@/src/errors/app.error";
+import {
+  ConflictError,
+  InternalServerError,
+  NotFoundError,
+} from "@/src/errors/app.error";
 import { supabaseAdmin } from "@/lib/supabase";
 import type { UpdateProfileInput } from "../schemas/profile.schema";
 import type { AccountProfile } from "../types";
@@ -13,7 +17,9 @@ interface UserRow {
 
 function requireAdminClient() {
   if (!supabaseAdmin) {
-    throw new Error("Thiếu SUPABASE_SERVICE_ROLE_KEY — kiểm tra lại file .env");
+    throw new InternalServerError(
+      "Thiếu SUPABASE_SERVICE_ROLE_KEY — kiểm tra lại file .env",
+    );
   }
   return supabaseAdmin;
 }
@@ -39,7 +45,7 @@ export const profileRepository = {
       .maybeSingle();
 
     if (error) {
-      throw new Error(`Không tải được hồ sơ: ${error.message}`);
+      throw new InternalServerError(`Không tải được hồ sơ: ${error.message}`);
     }
     if (!data) throw new NotFoundError("Hồ sơ");
     return toProfile(data as UserRow);
@@ -52,8 +58,8 @@ export const profileRepository = {
     const { data, error } = await requireAdminClient()
       .from("users")
       .update({
-        name: input.fullName.trim(),
-        phone: input.phone.trim(),
+        ...(input.fullName !== undefined && { name: input.fullName.trim() }),
+        ...(input.phone !== undefined && { phone: input.phone.trim() }),
         updated_at: new Date().toISOString(),
       })
       .eq("id", userId)
@@ -67,7 +73,9 @@ export const profileRepository = {
           "PHONE_TAKEN",
         );
       }
-      throw new Error(`Không cập nhật được hồ sơ: ${error.message}`);
+      throw new InternalServerError(
+        `Không cập nhật được hồ sơ: ${error.message}`,
+      );
     }
     return toProfile(data as UserRow);
   },

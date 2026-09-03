@@ -6,8 +6,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Pencil } from "lucide-react";
 import { notify } from "@/lib/toast";
 import {
-  updateProfileSchema,
-  type UpdateProfileInput,
+  profileFormSchema,
+  type ProfileFormInput,
 } from "@/features/account/schemas/profile.schema";
 import {
   CheckoutField,
@@ -27,9 +27,9 @@ export function AccountProfileForm() {
     register,
     handleSubmit,
     reset,
-    formState: { errors },
-  } = useForm<UpdateProfileInput>({
-    resolver: zodResolver(updateProfileSchema),
+    formState: { errors, dirtyFields },
+  } = useForm<ProfileFormInput>({
+    resolver: zodResolver(profileFormSchema),
     defaultValues: { fullName: "", phone: "" },
   });
 
@@ -46,9 +46,17 @@ export function AccountProfileForm() {
 
   const onSubmit = handleSubmit(async (values) => {
     if (!isEditing || isSubmitting) return;
+    const payload = {
+      ...(dirtyFields.fullName && { fullName: values.fullName }),
+      ...(dirtyFields.phone && { phone: values.phone }),
+    };
+    if (Object.keys(payload).length === 0) {
+      setIsEditing(false);
+      return;
+    }
     setIsSubmitting(true);
     try {
-      await updateProfile(values);
+      await updateProfile(payload);
       notify.success("Đã cập nhật thông tin cá nhân.");
       setIsEditing(false);
     } catch (err) {
