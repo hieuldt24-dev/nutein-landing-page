@@ -17,7 +17,7 @@ import { FillButton } from "@/components/ui/FillButton";
 import { useAccountProfile } from "@/lib/useAccountProfile";
 
 export function AccountProfileForm() {
-  const { profile, email, isLoading, updateProfile } = useAccountProfile();
+  const { profile, email, isLoading, hasFetchedProfile, updateProfile } = useAccountProfile();
   const [isSubmitting, setIsSubmitting] = useState(false);
   /** false = xem (khóa form); true = đang chỉnh sửa */
   const [isEditing, setIsEditing] = useState(false);
@@ -34,7 +34,9 @@ export function AccountProfileForm() {
   });
 
   useEffect(() => {
-    if (!profile || hydrated) return;
+    // Chỉ hydrate từ dữ liệu thật (API) — bỏ qua fallback tạm từ Supabase Auth
+    // (vốn không đồng bộ với public.users), tránh ghi đè form bằng giá trị rỗng.
+    if (!profile || !hasFetchedProfile || hydrated) return;
     reset({
       fullName: profile.fullName ?? "",
       phone: profile.phone ?? "",
@@ -42,7 +44,7 @@ export function AccountProfileForm() {
     // Đã có dữ liệu → khóa; lần đầu trống → mở chỉnh sửa
     setIsEditing(!(profile.fullName && profile.phone));
     setHydrated(true);
-  }, [profile, reset, hydrated]);
+  }, [profile, hasFetchedProfile, reset, hydrated]);
 
   const onSubmit = handleSubmit(async (values) => {
     if (!isEditing || isSubmitting) return;

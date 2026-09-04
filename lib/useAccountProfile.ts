@@ -62,6 +62,8 @@ export function useAccountProfile() {
     isLoggedIn,
     data: profile ? { profile } : null,
     profile,
+    /** true chỉ khi `profile` đến từ API thật — false khi là fallback tạm từ Supabase Auth. */
+    hasFetchedProfile: Boolean(data),
     error,
     isLoading: Boolean(isLoggedIn) && isLoading,
     isValidating,
