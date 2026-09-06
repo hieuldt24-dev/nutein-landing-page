@@ -1,5 +1,8 @@
 import { z } from "zod";
-import { MAX_CART_QUANTITY, MIN_CART_QUANTITY } from "@/features/cart/constants";
+import {
+  MAX_CART_QUANTITY,
+  MIN_CART_QUANTITY,
+} from "@/features/cart/constants";
 
 const phoneSchema = z
   .string()
@@ -43,7 +46,11 @@ export const createOrderRequestSchema = z.object({
     street: z.string().trim().min(3, "Vui lòng nhập số nhà, đường"),
   }),
 
-  note: z.string().trim().max(500, "Ghi chú không được vượt quá 500 ký tự").optional(),
+  note: z
+    .string()
+    .trim()
+    .max(500, "Ghi chú không được vượt quá 500 ký tự")
+    .optional(),
 
   shippingMethod: z.enum(["standard", "express"]),
   paymentMethod: z.enum(["cod", "bank_transfer"]),
@@ -60,6 +67,24 @@ export const createOrderRequestSchema = z.object({
 });
 
 export type CreateOrderRequest = z.infer<typeof createOrderRequestSchema>;
+
+/**
+ * Giá trị header `Idempotency-Key` — UUID do BROWSER sinh khi bắt đầu một lần
+ * submit, giữ nguyên qua mọi retry mạng / refresh token / reload.
+ *
+ * KHÔNG nằm trong `createOrderRequestSchema`: đây là header, không phải business
+ * payload, và nó bị LOẠI khỏi canonical hash một cách có chủ đích — key là thứ
+ * ĐỊNH DANH request, không phải một phần nội dung request.
+ *
+ * RFC-2 chỉ định nghĩa kiểu; việc bắt buộc header ở route thuộc RFC-3 và phải
+ * theo cửa sổ tương thích (client ship trước, server warn+log, enforce sau).
+ */
+export const idempotencyKeySchema = z
+  .string()
+  .trim()
+  .uuid("Idempotency-Key phải là UUID");
+
+export type IdempotencyKey = z.infer<typeof idempotencyKeySchema>;
 
 /**
  * Form checkout = request trừ `lines` (lấy từ cart store) và `couponCode`

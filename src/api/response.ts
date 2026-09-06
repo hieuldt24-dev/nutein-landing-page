@@ -24,11 +24,11 @@ export interface ApiResponse<T = null> {
 export function successResponse<T>(
   data: T,
   meta?: Record<string, unknown>,
-  status: number = 200
+  status: number = 200,
 ): NextResponse<ApiResponse<T>> {
   return NextResponse.json(
     { success: true, data, error: null, ...(meta && { meta }) },
-    { status }
+    { status },
   );
 }
 
@@ -48,11 +48,16 @@ export function createdResponse<T>(data: T): NextResponse<ApiResponse<T>> {
 export function errorResponse(
   message: string,
   code: string = "INTERNAL_SERVER_ERROR",
-  status: number = 500
+  status: number = 500,
+  /**
+   * Header phụ. Cần cho 429 `CHECKOUT_RATE_LIMITED` — `Retry-After` là một
+   * header HTTP chuẩn, không thể nhét vào body và vẫn đúng contract.
+   */
+  headers?: Record<string, string>,
 ): NextResponse<ApiResponse<null>> {
   return NextResponse.json(
     { success: false, data: null, error: { message, code } },
-    { status }
+    { status, ...(headers && { headers }) },
   );
 }
 

@@ -57,7 +57,53 @@ describe("POST /api/staff/orders/[id]/confirm-payment", () => {
 
     expect(response.status).toBe(200);
     expect(body.data.paymentStatus).toBe("paid");
-    expect(mocks.confirmPayment).toHaveBeenCalledWith(ORDER_ID, "staff-1");
+    // RFC-4: body là TÙY CHỌN. POST rỗng (client cũ) vẫn 200 và
+    // `expectedVersion` là null -> repository tự đọc version hiện tại.
+    expect(mocks.confirmPayment).toHaveBeenCalledWith(
+      ORDER_ID,
+      "staff-1",
+      null,
+    );
+  });
+
+  it("RFC-4: body có expectedVersion -> chuyển thẳng xuống repository", async () => {
+    mocks.confirmPayment.mockResolvedValue({
+      id: ORDER_ID,
+      paymentMethod: "BANK_TRANSFER",
+      paymentStatus: "paid",
+    });
+
+    const response = await POST(
+      new NextRequest(
+        `http://localhost:3000/api/staff/orders/${ORDER_ID}/confirm-payment`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ expectedVersion: 7 }),
+        },
+      ),
+      { params: Promise.resolve({ id: ORDER_ID }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.confirmPayment).toHaveBeenCalledWith(ORDER_ID, "staff-1", 7);
+  });
+
+  it("RFC-4: field lạ trong body bị TỪ CHỐI (strict) -> 400, không đụng repository", async () => {
+    const response = await POST(
+      new NextRequest(
+        `http://localhost:3000/api/staff/orders/${ORDER_ID}/confirm-payment`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paymentStatus: "PAID" }),
+        },
+      ),
+      { params: Promise.resolve({ id: ORDER_ID }) },
+    );
+
+    expect(response.status).toBe(400);
+    expect(mocks.confirmPayment).not.toHaveBeenCalled();
   });
 
   it("không phải STAFF -> 403, không đụng repository", async () => {

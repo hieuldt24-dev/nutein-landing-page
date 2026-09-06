@@ -18,10 +18,16 @@ import type {
   AdminOrderStatusFilter,
 } from "@/features/admin-orders/types";
 import {
+  REVIEW_QUEUE_BUCKET_LABEL,
+  filterNeedsReview,
+  reviewQueueBucket,
+  sortByReviewPriority,
+} from "@/features/admin-orders/review-queue";
+import {
   ADMIN_LIST_PAGE_SIZE,
   defaultLast7DaysRange,
 } from "@/lib/admin-list-query";
-import { formatCurrencyVnd, formatDate } from "@/lib/utils";
+import { cn, formatCurrencyVnd, formatDate } from "@/lib/utils";
 
 const STATUS_FILTERS: AdminOrderStatusFilter[] = [
   "all",
@@ -61,6 +67,7 @@ export function AdminOrdersList() {
   const [to, setTo] = useState(defaultRange.to);
   const [q, setQ] = useState("");
   const [page, setPage] = useState(0);
+  const [reviewOnly, setReviewOnly] = useState(false);
 
   const swrKey = useMemo(
     () =>
@@ -85,7 +92,19 @@ export function AdminOrdersList() {
     },
   );
 
-  const items = data?.items ?? [];
+  const rawItems = useMemo(() => data?.items ?? [], [data]);
+
+  /**
+   * Hàng đợi đối soát: quá hạn trước, rồi tới đơn khách báo đã chuyển.
+   * Sắp xếp/lọc chạy trên trang HIỆN TẠI (server phân trang theo created_at) —
+   * đây là trợ giúp thị giác cho nhân viên, KHÔNG phải bộ đếm toàn hệ thống.
+   */
+  const items = useMemo(() => {
+    const now = new Date();
+    const sorted = sortByReviewPriority(rawItems, now);
+    return reviewOnly ? filterNeedsReview(sorted, now) : sorted;
+  }, [rawItems, reviewOnly]);
+
   const total = data?.total ?? 0;
   const isDefaultRange = from === defaultRange.from && to === defaultRange.to;
 
@@ -95,12 +114,11 @@ export function AdminOrdersList() {
     setTo(defaultRange.to);
     setQ("");
     setPage(0);
+    setReviewOnly(false);
   };
 
   const hasActiveFilters =
-    status !== "all" ||
-    !isDefaultRange ||
-    Boolean(q.trim());
+    status !== "all" || !isDefaultRange || reviewOnly || Boolean(q.trim());
 
   return (
     <div className="mx-auto flex max-w-[1100px] flex-col gap-5">
@@ -124,6 +142,15 @@ export function AdminOrdersList() {
                 {filterLabel(value)}
               </AdminFilterChip>
             ))}
+            {/* Hàng đợi đối soát — chỉ lọc trên trang đang xem, không phải
+                bộ đếm toàn hệ thống. */}
+            <AdminFilterChip
+              active={reviewOnly}
+              onClick={() => setReviewOnly((prev) => !prev)}
+              className="h-9 text-[12.5px]"
+            >
+              Cần đối soát
+            </AdminFilterChip>
           </div>
           <label className="relative flex h-[38px] w-full items-center gap-2 rounded-full border border-ink/12 bg-surface px-3.5 sm:ml-auto sm:max-w-[280px]">
             <Search
@@ -204,51 +231,66 @@ export function AdminOrdersList() {
       {!isLoading && !error && items.length > 0 ? (
         <>
           <ul className="m-0 flex list-none flex-col gap-3 p-0">
-            {items.map((order) => (
-              <li key={order.id}>
-                <Link
-                  href={`/staff/orders/${order.id}`}
-                  className="flex items-center gap-3 rounded-[20px] border border-ink/15 bg-surface px-3.5 py-3.5 transition-colors hover:border-ink/30 hover:bg-ink/[0.02] sm:gap-4 sm:px-4 sm:py-4 md:px-5"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                      <p className="flex items-center gap-2 text-[15px] font-bold text-ink">
-                        {order.orderCode}
-                        {/* Đơn chuyển khoản chưa xác nhận — nhân viên cần đối
+            {items.map((order) => {
+              const bucket = reviewQueueBucket(order, new Date());
+              return (
+                <li key={order.id}>
+                  <Link
+                    href={`/staff/orders/${order.id}`}
+                    className="flex items-center gap-3 rounded-[20px] border border-ink/15 bg-surface px-3.5 py-3.5 transition-colors hover:border-ink/30 hover:bg-ink/[0.02] sm:gap-4 sm:px-4 sm:py-4 md:px-5"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+                        <p className="flex items-center gap-2 text-[15px] font-bold text-ink">
+                          {order.orderCode}
+                          {/* Đơn chuyển khoản chưa xác nhận — nhân viên cần đối
                             chiếu sao kê rồi bấm xác nhận trong trang chi tiết. */}
-                        {order.paymentMethod === "BANK_TRANSFER" &&
-                        order.paymentStatus === "unpaid" ? (
-                          <span className="inline-flex items-center rounded-full bg-ink/10 px-2.5 py-[3px] text-[10px] font-extrabold uppercase tracking-[0.02em] text-text-muted">
-                            Chờ xác nhận CK
-                          </span>
-                        ) : null}
-                      </p>
-                      <p className="text-[14px] font-bold text-ink sm:hidden">
-                        {formatCurrencyVnd(order.total)}
+                          {order.paymentMethod === "BANK_TRANSFER" &&
+                          order.paymentStatus === "unpaid" ? (
+                            <span className="inline-flex items-center rounded-full bg-ink/10 px-2.5 py-[3px] text-[10px] font-extrabold uppercase tracking-[0.02em] text-text-muted">
+                              Chờ xác nhận CK
+                            </span>
+                          ) : null}
+                          {bucket !== "none" ? (
+                            <span
+                              className={cn(
+                                "inline-flex items-center rounded-full px-2.5 py-[3px] text-[10px] font-extrabold tracking-[0.02em] uppercase",
+                                bucket === "overdue"
+                                  ? "bg-danger/15 text-danger"
+                                  : "bg-lime/50 text-forest",
+                              )}
+                            >
+                              {REVIEW_QUEUE_BUCKET_LABEL[bucket]}
+                            </span>
+                          ) : null}
+                        </p>
+                        <p className="text-[14px] font-bold text-ink sm:hidden">
+                          {formatCurrencyVnd(order.total)}
+                        </p>
+                      </div>
+                      <p className="mt-1 truncate text-[13px] font-medium text-text-muted">
+                        {order.customerName} · {formatDate(order.createdAt)}
+                        {order.lines[0]
+                          ? ` · ${order.lines[0].variantLabel} × ${order.lines[0].quantity}`
+                          : ""}
                       </p>
                     </div>
-                    <p className="mt-1 truncate text-[13px] font-medium text-text-muted">
-                      {order.customerName} · {formatDate(order.createdAt)}
-                      {order.lines[0]
-                        ? ` · ${order.lines[0].variantLabel} × ${order.lines[0].quantity}`
-                        : ""}
+                    <AdminOrderStatusBadge
+                      status={order.status as AdminOrderStatus}
+                    />
+                    <p className="hidden w-[110px] shrink-0 text-right text-[15px] font-bold text-ink sm:block">
+                      {formatCurrencyVnd(order.total)}
                     </p>
-                  </div>
-                  <AdminOrderStatusBadge
-                    status={order.status as AdminOrderStatus}
-                  />
-                  <p className="hidden w-[110px] shrink-0 text-right text-[15px] font-bold text-ink sm:block">
-                    {formatCurrencyVnd(order.total)}
-                  </p>
-                  <ChevronRight
-                    size={16}
-                    strokeWidth={2.2}
-                    className="shrink-0 text-text-faint"
-                    aria-hidden
-                  />
-                </Link>
-              </li>
-            ))}
+                    <ChevronRight
+                      size={16}
+                      strokeWidth={2.2}
+                      className="shrink-0 text-text-faint"
+                      aria-hidden
+                    />
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
           <AdminListPagination
             page={page}

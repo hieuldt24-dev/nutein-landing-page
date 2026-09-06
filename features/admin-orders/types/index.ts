@@ -4,12 +4,7 @@
  */
 
 export type AdminOrderStatus =
-  | "pending"
-  | "processing"
-  | "shipped"
-  | "delivered"
-  | "cancelled"
-  | "returned";
+  "pending" | "processing" | "shipped" | "delivered" | "cancelled" | "returned";
 
 export interface AdminOrderStatusLog {
   id: string;
@@ -48,6 +43,30 @@ export interface AdminOrder {
   total: number;
   lines: AdminOrderLine[];
   statusHistory: AdminOrderStatusLog[];
+  /**
+   * Bốn field dưới đây đến từ các cột RFC-2 (`payment_review_state`,
+   * `payment_expires_at`, `review_due_at`, `state_version`).
+   *
+   * TẤT CẢ đều OPTIONAL có chủ đích: migration RFC-2 CHƯA được apply. Trên
+   * database hiện tại các cột này không tồn tại và repository trả `undefined`
+   * — UI phải chạy đúng ở cả hai trạng thái. Đừng biến chúng thành bắt buộc
+   * trước khi cutover xong.
+   */
+  paymentReviewState?: string | null;
+  paymentExpiresAt?: string | null;
+  reviewDueAt?: string | null;
+  /** `expectedVersion` cho confirm-payment / resolve-payment-review. */
+  stateVersion?: number | null;
+}
+
+/** Kết quả `POST /api/staff/orders/[id]/resolve-payment-review`. */
+export interface ResolvePaymentReviewResult {
+  orderId: string;
+  changed: boolean;
+  status: string;
+  paymentStatus: string;
+  reviewState: string | null;
+  stateVersion: number;
 }
 
 /**

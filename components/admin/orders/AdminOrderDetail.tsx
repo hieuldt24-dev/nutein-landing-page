@@ -13,6 +13,11 @@ import {
 } from "@/features/admin-orders/constants";
 import { adminOrdersService } from "@/features/admin-orders/services/admin-orders.service";
 import type { AdminOrderStatus } from "@/features/admin-orders/types";
+import {
+  AdminPaymentReviewPanel,
+  type AdminPaymentReviewSubmit,
+} from "@/components/admin/orders/AdminPaymentReviewPanel";
+import type { FetchError } from "@/lib/api-client";
 import { notify } from "@/lib/toast";
 import { revalidateAfterOrderMutation } from "@/lib/admin-swr-revalidate";
 import { cn, formatCurrencyVnd, formatDate } from "@/lib/utils";
@@ -33,14 +38,15 @@ export function AdminOrderDetail({ orderId }: AdminOrderDetailProps) {
   const { mutate: globalMutate } = useSWRConfig();
   const detailKey = adminOrderDetailSwrKey(orderId);
 
-  const { data: order, error, isLoading, mutate } = useSWR(
-    detailKey,
-    () => adminOrdersService.getById(orderId),
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-    },
-  );
+  const {
+    data: order,
+    error,
+    isLoading,
+    mutate,
+  } = useSWR(detailKey, () => adminOrdersService.getById(orderId), {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+  });
 
   const [nextStatus, setNextStatus] = useState<AdminOrderStatus | "">("");
   const [note, setNote] = useState("");
@@ -86,9 +92,13 @@ export function AdminOrderDetail({ orderId }: AdminOrderDetailProps) {
     }
     setIsSubmitting(true);
     try {
-      const updated = await adminOrdersService.updateStatus(order.id, nextStatus, {
-        note,
-      });
+      const updated = await adminOrdersService.updateStatus(
+        order.id,
+        nextStatus,
+        {
+          note,
+        },
+      );
       await mutate(updated, { revalidate: false });
       await revalidateAfterOrderMutation(globalMutate);
       notify.success(`Đã chuyển sang ${ADMIN_ORDER_STATUS_LABEL[nextStatus]}.`);
@@ -106,17 +116,47 @@ export function AdminOrderDetail({ orderId }: AdminOrderDetailProps) {
   const canConfirmPayment =
     order.paymentMethod === "BANK_TRANSFER" && order.paymentStatus === "unpaid";
 
+  /**
+   * 409 `ORDER_STATE_CONFLICT` = đơn đã đổi kể từ lúc màn hình này được tải.
+   * Bắt buộc đọc lại từ server rồi vẽ lại — KHÔNG được ghi đè bằng dữ liệu cũ
+   * đang nằm trên màn hình.
+   */
+  const handleMutationError = async (err: unknown, fallback: string) => {
+    if ((err as FetchError)?.code === "ORDER_STATE_CONFLICT") {
+      notify.error("Đơn đã thay đổi, đang tải lại dữ liệu mới nhất.");
+    } else {
+      notify.error(err instanceof Error ? err.message : fallback);
+    }
+    await mutate();
+  };
+
   const handleConfirmPayment = async () => {
     setIsSubmitting(true);
     try {
-      const updated = await adminOrdersService.confirmPayment(order.id);
+      // `expectedVersion` là version của đơn ĐANG hiển thị.
+      const updated = await adminOrdersService.confirmPayment(
+        order.id,
+        order.stateVersion ?? null,
+      );
       await mutate(updated, { revalidate: false });
       await revalidateAfterOrderMutation(globalMutate);
       notify.success("Đã xác nhận nhận được thanh toán.");
     } catch (err) {
-      notify.error(
-        err instanceof Error ? err.message : "Xác nhận thanh toán thất bại.",
-      );
+      await handleMutationError(err, "Xác nhận thanh toán thất bại.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResolveReview = async (input: AdminPaymentReviewSubmit) => {
+    setIsSubmitting(true);
+    try {
+      await adminOrdersService.resolvePaymentReview(order.id, input);
+      await mutate();
+      await revalidateAfterOrderMutation(globalMutate);
+      notify.success("Đã lưu kết luận đối soát.");
+    } catch (err) {
+      await handleMutationError(err, "Lưu kết luận đối soát thất bại.");
     } finally {
       setIsSubmitting(false);
     }
@@ -142,14 +182,30 @@ export function AdminOrderDetail({ orderId }: AdminOrderDetailProps) {
                   : "bg-ink/10 text-text-muted",
               )}
             >
-              {order.paymentStatus === "paid" ? "Đã thanh toán" : "Chưa thanh toán"}
+              {order.paymentStatus === "paid"
+                ? "Đã thanh toán"
+                : "Chưa thanh toán"}
             </span>
+            {/* Giá trị thô của `payment_review_state` — nhân viên cần biết
+                chính xác đơn đang ở đâu trong vòng đời đối soát. */}
+            {order.paymentReviewState ? (
+              <span className="inline-flex items-center rounded-full border border-ink/20 px-3 py-[5px] text-[11px] font-extrabold tracking-[0.02em] text-ink uppercase">
+                {order.paymentReviewState}
+              </span>
+            ) : null}
           </div>
           <p className="mt-2 text-[13px] font-medium text-text-muted">
-            Tạo {formatDate(order.createdAt, { hour: "2-digit", minute: "2-digit" })} ·
-            Cập nhật{" "}
-            {formatDate(order.updatedAt, { hour: "2-digit", minute: "2-digit" })} ·{" "}
-            {order.paymentMethodLabel}
+            Tạo{" "}
+            {formatDate(order.createdAt, {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}{" "}
+            · Cập nhật{" "}
+            {formatDate(order.updatedAt, {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}{" "}
+            · {order.paymentMethodLabel}
           </p>
         </div>
         <p className="font-display text-[clamp(22px,4vw,28px)] font-bold tracking-[-0.03em] text-ink">
@@ -167,7 +223,11 @@ export function AdminOrderDetail({ orderId }: AdminOrderDetailProps) {
             <dl className="mt-3.5 grid gap-3.5 sm:grid-cols-2">
               <Meta label="Họ tên" value={order.customerName} />
               <Meta label="SĐT" value={order.customerPhone} />
-              <Meta label="Email" value={order.customerEmail} className="sm:col-span-2" />
+              <Meta
+                label="Email"
+                value={order.customerEmail}
+                className="sm:col-span-2"
+              />
               <Meta
                 label="Địa chỉ giao"
                 value={order.shippingAddressLabel}
@@ -189,10 +249,11 @@ export function AdminOrderDetail({ orderId }: AdminOrderDetailProps) {
                 Thanh toán chuyển khoản
               </h3>
               <p className="mt-1.5 text-[13px] font-medium text-text-muted">
-                Đơn chuyển khoản chưa được xác nhận. Kiểm tra sao kê ngân hàng với
-                nội dung <span className="font-bold text-ink">{order.orderCode}</span>{" "}
-                rồi xác nhận. Thao tác này chỉ đổi trạng thái thanh toán, không đổi
-                trạng thái đơn.
+                Đơn chuyển khoản chưa được xác nhận. Kiểm tra sao kê ngân hàng
+                với nội dung{" "}
+                <span className="font-bold text-ink">{order.orderCode}</span>{" "}
+                rồi xác nhận. Thao tác này chỉ đổi trạng thái thanh toán, không
+                đổi trạng thái đơn.
               </p>
               <FillButton
                 type="button"
@@ -203,10 +264,23 @@ export function AdminOrderDetail({ orderId }: AdminOrderDetailProps) {
                 }}
                 className="mt-3.5 h-11 justify-center px-[22px] text-[13px] font-bold"
               >
-                {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : null}
+                {isSubmitting ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : null}
                 Xác nhận đã nhận thanh toán
               </FillButton>
             </section>
+          ) : null}
+
+          {/* Đối soát chỉ có nghĩa với đơn chuyển khoản chưa thu được tiền. */}
+          {canConfirmPayment ? (
+            <AdminPaymentReviewPanel
+              order={order}
+              isSubmitting={isSubmitting}
+              onSubmit={(input) => {
+                void handleResolveReview(input);
+              }}
+            />
           ) : null}
 
           <section className="rounded-[20px] border border-ink/10 bg-surface px-5 py-[22px] shadow-sm md:px-6">
@@ -240,11 +314,7 @@ export function AdminOrderDetail({ orderId }: AdminOrderDetailProps) {
                         )}
                       >
                         {selected && !isCancel ? (
-                          <Check
-                            size={14}
-                            strokeWidth={2.4}
-                            aria-hidden
-                          />
+                          <Check size={14} strokeWidth={2.4} aria-hidden />
                         ) : null}
                         {transitionLabel(s)}
                       </button>
@@ -270,7 +340,9 @@ export function AdminOrderDetail({ orderId }: AdminOrderDetailProps) {
                   }}
                   className="mt-3.5 h-11 justify-center px-[22px] text-[13px] font-bold"
                 >
-                  {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : null}
+                  {isSubmitting ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : null}
                   Cập nhật trạng thái
                 </FillButton>
               </>

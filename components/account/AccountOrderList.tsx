@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import useSWR from "swr";
 import {
@@ -149,6 +150,17 @@ export function AccountOrderList() {
                   <p className="font-display text-lg font-bold text-ink">
                     {formatCurrencyVnd(order.total)}
                   </p>
+                  {/* Đơn chưa thanh toán mới cần thao tác (chuyển khoản lại,
+                      báo đã chuyển, yêu cầu hủy) — trạng thái thật và các
+                      hành động hợp lệ đều do trang chi tiết đọc từ server. */}
+                  <Link
+                    href={`/account/orders/${order.id}`}
+                    className="text-[12px] font-bold text-primary-deep underline-offset-2 hover:underline"
+                  >
+                    {order.paymentStatus === "PAID"
+                      ? "Xem chi tiết"
+                      : "Xem & thanh toán"}
+                  </Link>
                 </div>
               </div>
             </li>

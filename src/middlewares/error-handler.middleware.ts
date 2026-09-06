@@ -16,8 +16,28 @@ type RouteContext<T extends Record<string, string> = Record<string, string>> = {
 
 type RouteHandler<T extends Record<string, string> = Record<string, string>> = (
   req: NextRequest,
-  context: RouteContext<T>
+  context: RouteContext<T>,
 ) => Promise<NextResponse>;
+
+/**
+ * 429 phải kèm `Retry-After` (plan §Public Contracts). Nguồn duy nhất là
+ * `details.retryAfterSeconds` do `CheckoutRateLimitedError` đặt — đọc theo
+ * hình dạng dữ liệu, không import ngược từ middleware để tránh vòng phụ thuộc.
+ */
+function retryAfterHeader(error: AppError): Record<string, string> | undefined {
+  const details = error.details;
+  if (!details || typeof details !== "object") return undefined;
+  const seconds = (details as { retryAfterSeconds?: unknown })
+    .retryAfterSeconds;
+  if (
+    typeof seconds !== "number" ||
+    !Number.isFinite(seconds) ||
+    seconds <= 0
+  ) {
+    return undefined;
+  }
+  return { "Retry-After": String(Math.ceil(seconds)) };
+}
 
 /**
  * withErrorHandler - Higher-Order Function bọc quanh API route handlers.
@@ -31,8 +51,10 @@ type RouteHandler<T extends Record<string, string> = Record<string, string>> = (
  *     return successResponse(data);
  *   });
  */
-export function withErrorHandler<T extends Record<string, string> = Record<string, string>>(
-  handler: RouteHandler<T>
+export function withErrorHandler<
+  T extends Record<string, string> = Record<string, string>,
+>(
+  handler: RouteHandler<T>,
 ): (req: NextRequest, context?: RouteContext<T>) => Promise<NextResponse> {
   return async (req: NextRequest, context?: RouteContext<T>) => {
     try {
@@ -41,22 +63,45 @@ export function withErrorHandler<T extends Record<string, string> = Record<strin
       // Lỗi do validate dữ liệu (Zod)
       if (error instanceof ZodError) {
         const messages = error.issues.map((e) => e.message).join(", ");
-        logger.warn({ path: req.nextUrl.pathname, issues: error.issues }, "Validation error");
-        return errorResponse(`Dữ liệu không hợp lệ: ${messages}`, "VALIDATION_ERROR", 400);
+        logger.warn(
+          { path: req.nextUrl.pathname, issues: error.issues },
+          "Validation error",
+        );
+        return errorResponse(
+          `Dữ liệu không hợp lệ: ${messages}`,
+          "VALIDATION_ERROR",
+          400,
+        );
       }
 
       // Lỗi nghiệp vụ đã được định nghĩa (AppError)
       if (error instanceof AppError) {
         logger.warn(
-          { path: req.nextUrl.pathname, code: error.code, details: error.details },
-          error.message
+          {
+            path: req.nextUrl.pathname,
+            code: error.code,
+            details: error.details,
+          },
+          error.message,
         );
-        return errorResponse(error.message, error.code, error.statusCode);
+        return errorResponse(
+          error.message,
+          error.code,
+          error.statusCode,
+          retryAfterHeader(error),
+        );
       }
 
       // Lỗi không mong muốn
-      logger.error({ path: req.nextUrl.pathname, err: error }, "Unexpected error in API route");
-      return errorResponse("Đã xảy ra lỗi máy chủ nội bộ", "INTERNAL_SERVER_ERROR", 500);
+      logger.error(
+        { path: req.nextUrl.pathname, err: error },
+        "Unexpected error in API route",
+      );
+      return errorResponse(
+        "Đã xảy ra lỗi máy chủ nội bộ",
+        "INTERNAL_SERVER_ERROR",
+        500,
+      );
     }
   };
 }

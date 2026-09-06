@@ -29,7 +29,11 @@ import { CheckoutShippingSection } from "@/components/checkout/CheckoutShippingS
 import {
   CheckoutSubmitBlock,
   CheckoutSubmittingOverlay,
+  type CheckoutBlockedState,
 } from "@/components/checkout/CheckoutSubmitBlock";
+import { classifyCheckoutSubmitError } from "@/features/checkout/checkout-error";
+import { accountOrderClient } from "@/features/account/services/account-order.client";
+import type { AccountOrder } from "@/features/account/types";
 import { isCheckoutContactComplete } from "@/features/checkout/contact-complete";
 import { openAuthModal } from "@/lib/openAuthModal";
 import { useAccountProfile } from "@/lib/useAccountProfile";
@@ -49,18 +53,34 @@ export default function CheckoutForm() {
   const { mutate } = useSWRConfig();
   const { user, isLoggedIn, signOut } = useAuthStore();
   const { updateProfile, profile } = useAccountProfile();
-  const { addresses, defaultAddress, isLoading: addressesLoading, saveAsDefaultFromCheckout } =
-    useAddresses();
+  const {
+    addresses,
+    defaultAddress,
+    isLoading: addressesLoading,
+    saveAsDefaultFromCheckout,
+  } = useAddresses();
   const [selectedSavedAddressId, setSelectedSavedAddressId] = useState("");
-  const { lines, summary, isEmpty, isReady: cartReady, removeFromCart } = useCartStore();
+  const [blocked, setBlocked] = useState<CheckoutBlockedState | null>(null);
+  const {
+    lines,
+    summary,
+    isEmpty,
+    isReady: cartReady,
+    removeFromCart,
+  } = useCartStore();
   const { submitOrder, isSubmitting } = useCheckoutSubmit();
-  const { coupon, apply: applyCoupon, remove: removeCoupon } = useCheckoutCoupon();
+  const {
+    coupon,
+    apply: applyCoupon,
+    remove: removeCoupon,
+  } = useCheckoutCoupon();
 
   /**
    * Chỉ gửi mã khi đã "applied" — không bao giờ gửi mã vừa bị từ chối. Số tiền
    * giảm hiển thị bên dưới thuần preview; server luôn tự tính lại lúc tạo đơn.
    */
-  const appliedCouponCode = coupon.status === "applied" ? coupon.code : undefined;
+  const appliedCouponCode =
+    coupon.status === "applied" ? coupon.code : undefined;
   const appliedCouponDiscount =
     coupon.status === "applied" ? (coupon.discountAmount ?? 0) : 0;
 
@@ -170,8 +190,12 @@ export default function CheckoutForm() {
     setValue("address.provinceCode", defaultAddress.provinceCode, {
       shouldDirty: false,
     });
-    setValue("address.province", defaultAddress.province, { shouldDirty: false });
-    setValue("address.wardCode", defaultAddress.wardCode, { shouldDirty: false });
+    setValue("address.province", defaultAddress.province, {
+      shouldDirty: false,
+    });
+    setValue("address.wardCode", defaultAddress.wardCode, {
+      shouldDirty: false,
+    });
     setValue("address.ward", defaultAddress.ward, { shouldDirty: false });
     setValue("address.street", defaultAddress.street, { shouldDirty: false });
     setSelectedSavedAddressId(defaultAddress.id);
@@ -237,12 +261,36 @@ export default function CheckoutForm() {
         router.push(
           `/checkout/success?orderCode=${encodeURIComponent(result.orderCode)}`,
         );
+        setBlocked(null);
       } catch (err) {
-        notify.error(
-          err instanceof Error
-            ? err.message
-            : "Đặt hàng thất bại — vui lòng thử lại",
-        );
+        // Giỏ hàng KHÔNG bị đụng tới ở đây: `removeFromCart()` chỉ chạy sau
+        // khi đã có đơn thật. Và không sinh idempotency key mới —
+        // `resolveIdempotencyKey` neo theo payload, nên bấm lại là replay.
+        const classified = classifyCheckoutSubmitError(err);
+
+        if (classified.kind === "cap") {
+          // Response 409 chỉ mang message + code (contract `ApiResponse` không
+          // có `details`), nên danh sách đơn cũ được đọc lại từ endpoint đã
+          // auth-scoped sẵn — không bao giờ hiện đơn của người khác.
+          let unpaidOrders: AccountOrder[] = [];
+          try {
+            const all = await accountOrderClient.listOrders();
+            unpaidOrders = all.filter(
+              (o) => o.paymentStatus === "UNPAID" && o.status !== "cancelled",
+            );
+          } catch {
+            /* Không lấy được danh sách -> vẫn hiện thông báo + link chung. */
+          }
+          setBlocked({ error: classified, unpaidOrders });
+        } else {
+          setBlocked(
+            classified.kind === "retryable"
+              ? { error: classified, unpaidOrders: [] }
+              : null,
+          );
+        }
+
+        notify.error(classified.message);
       }
     },
     (formErrors) => {
@@ -330,7 +378,7 @@ export default function CheckoutForm() {
             onApply={(code) => void applyCoupon(code, summary.subtotal)}
             onRemove={removeCoupon}
           />
-          <CheckoutSubmitBlock isSubmitting={isSubmitting} />
+          <CheckoutSubmitBlock isSubmitting={isSubmitting} blocked={blocked} />
         </div>
       </div>
 

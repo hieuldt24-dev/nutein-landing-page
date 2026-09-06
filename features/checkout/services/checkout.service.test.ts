@@ -5,6 +5,7 @@ import type { CreateOrderRequest } from "@/features/checkout/schemas/checkout.sc
 
 const mocks = vi.hoisted(() => ({
   createOrder: vi.fn(),
+  findReplay: vi.fn(),
   getAvailableStock: vi.fn(),
   buildVietQrImageUrl: vi.fn(),
   sendOrderConfirmation: vi.fn(),
@@ -33,7 +34,8 @@ async function flushAfterCallbacks() {
 vi.mock("./order.repository", () => ({
   buildOrderCode: () => "NT-20260722-AB12",
   orderRepository: {
-    create: mocks.createOrder,
+    createAtomic: mocks.createOrder,
+    findReplay: mocks.findReplay,
     getAvailableStock: mocks.getAvailableStock,
   },
 }));
@@ -62,23 +64,31 @@ vi.mock("@/features/product/services/product-catalog.server", () => ({
   refreshProductCatalogServer: mocks.refreshProductCatalogServer,
 }));
 
-vi.mock("@/features/product/services/product.service", async (importOriginal) => {
-  const actual = await importOriginal<
-    typeof import("@/features/product/services/product.service")
-  >();
-  return {
-    productService: {
-      ...actual.productService,
-    },
-  };
-});
+vi.mock(
+  "@/features/product/services/product.service",
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import("@/features/product/services/product.service")
+      >();
+    return {
+      productService: {
+        ...actual.productService,
+      },
+    };
+  },
+);
 
 import { checkoutService } from "./checkout.service";
 import { BadRequestError } from "@/src/errors/app.error";
 
 const baseInput: CreateOrderRequest = {
   lines: [{ variantId: "pack-1", quantity: 1 }],
-  buyer: { fullName: "Nguyễn Văn A", phone: "0912345678", email: "a@example.com" },
+  buyer: {
+    fullName: "Nguyễn Văn A",
+    phone: "0912345678",
+    email: "a@example.com",
+  },
   address: {
     provinceCode: "01",
     province: "Hà Nội",
@@ -90,20 +100,17 @@ const baseInput: CreateOrderRequest = {
   paymentMethod: "cod",
 };
 
+/** Kết quả RPC `checkout_create_order_atomic` cho một đơn MỚI. */
 const orderRow = {
-  id: "order-1",
-  order_code: "NT-20260722-AB12",
+  replayed: false,
+  orderId: "order-1",
+  orderCode: "NT-20260722-AB12",
   status: "PENDING",
-  payment_method: "COD",
-  payment_status: "UNPAID",
-  shipping_method: "STANDARD",
-  total_price: 199000,
-  shipping_fee: 25000,
-  discount_amount: 0,
-  final_price: 224000,
-  shipping_address: {},
-  note: null,
-  created_at: "2026-07-22T00:00:00.000Z",
+  paymentStatus: "UNPAID",
+  reviewState: null,
+  paymentExpiresAt: null,
+  stateVersion: 0,
+  createdAt: "2026-07-22T00:00:00.000Z",
 };
 
 describe("checkoutService.createOrder", () => {
@@ -115,6 +122,7 @@ describe("checkoutService.createOrder", () => {
     mocks.refreshProductCatalogServer.mockResolvedValue(null);
     mocks.getAvailableStock.mockResolvedValue(9999);
     mocks.sendOrderConfirmation.mockResolvedValue(undefined);
+    mocks.findReplay.mockResolvedValue(null);
     mocks.buildVietQrImageUrl.mockReturnValue(
       "https://img.vietqr.io/image/970407-19001234567890-compact2.png?amount=224000&addInfo=NT-20260722-AB12",
     );
@@ -157,7 +165,7 @@ describe("checkoutService.createOrder", () => {
     expect(result.qrImageUrl).toContain("img.vietqr.io");
 
     // meta truyền xuống repository không còn field payOS nào.
-    const createOrderMetaArg = mocks.createOrder.mock.calls[0][3];
+    const createOrderMetaArg = mocks.createOrder.mock.calls[0][0].meta;
     expect(createOrderMetaArg).toEqual({
       orderCode: "NT-20260722-AB12",
       status: "PENDING",
@@ -187,7 +195,10 @@ describe("checkoutService.createOrder", () => {
     mocks.createOrder.mockRejectedValue(createError);
 
     await expect(
-      checkoutService.createOrder("user-1", { ...baseInput, paymentMethod: "bank_transfer" }),
+      checkoutService.createOrder("user-1", {
+        ...baseInput,
+        paymentMethod: "bank_transfer",
+      }),
     ).rejects.toBe(createError);
   });
 
@@ -195,7 +206,10 @@ describe("checkoutService.createOrder", () => {
     mocks.getAvailableStock.mockResolvedValue(0); // 1 gói pack-1 = 1 hũ > 0 còn lại
 
     await expect(
-      checkoutService.createOrder("user-1", { ...baseInput, paymentMethod: "bank_transfer" }),
+      checkoutService.createOrder("user-1", {
+        ...baseInput,
+        paymentMethod: "bank_transfer",
+      }),
     ).rejects.toMatchObject({ statusCode: 400 });
 
     expect(mocks.createOrder).not.toHaveBeenCalled();
@@ -228,7 +242,10 @@ describe("checkoutService.createOrder", () => {
     mocks.getAvailableStock.mockResolvedValue(0);
 
     await expect(
-      checkoutService.createOrder("user-1", { ...baseInput, paymentMethod: "bank_transfer" }),
+      checkoutService.createOrder("user-1", {
+        ...baseInput,
+        paymentMethod: "bank_transfer",
+      }),
     ).rejects.toMatchObject({ statusCode: 400 });
 
     expect(mocks.getAvailableStock).toHaveBeenCalled();
@@ -240,7 +257,9 @@ describe("checkoutService.createOrder", () => {
     const dbError = new Error("stock query failed");
     mocks.getAvailableStock.mockRejectedValue(dbError);
 
-    await expect(checkoutService.createOrder("user-1", baseInput)).rejects.toBe(dbError);
+    await expect(checkoutService.createOrder("user-1", baseInput)).rejects.toBe(
+      dbError,
+    );
 
     expect(mocks.createOrder).not.toHaveBeenCalled();
   });
@@ -249,7 +268,10 @@ describe("checkoutService.createOrder", () => {
     mocks.refreshProductCatalogServer.mockResolvedValue({ stock: 0 });
 
     await expect(
-      checkoutService.createOrder("user-1", { ...baseInput, paymentMethod: "bank_transfer" }),
+      checkoutService.createOrder("user-1", {
+        ...baseInput,
+        paymentMethod: "bank_transfer",
+      }),
     ).rejects.toMatchObject({ statusCode: 400 });
 
     expect(mocks.getAvailableStock).not.toHaveBeenCalled();
@@ -263,6 +285,7 @@ describe("checkoutService.createOrder — mã giảm giá", () => {
     mocks.refreshProductCatalogServer.mockResolvedValue(null);
     mocks.getAvailableStock.mockResolvedValue(9999);
     mocks.sendOrderConfirmation.mockResolvedValue(undefined);
+    mocks.findReplay.mockResolvedValue(null);
     mocks.createOrder.mockResolvedValue(orderRow);
   });
 
@@ -273,7 +296,7 @@ describe("checkoutService.createOrder — mã giảm giá", () => {
   };
 
   function moneyArg() {
-    return mocks.createOrder.mock.calls[0][2] as {
+    return mocks.createOrder.mock.calls[0][0].money as {
       subtotal: number;
       discountAmount: number;
       shippingFee: number;
@@ -285,7 +308,7 @@ describe("checkoutService.createOrder — mã giảm giá", () => {
     await checkoutService.createOrder("user-1", baseInput);
 
     expect(mocks.validateAndComputeDiscount).not.toHaveBeenCalled();
-    expect(mocks.createOrder.mock.calls[0][4]).toBeUndefined();
+    expect(mocks.createOrder.mock.calls[0][0].coupon).toBeUndefined();
   });
 
   // AC2 / Mitigation 3 — luôn tra lại từ DB, không nhận số tiền giảm từ client.
@@ -306,7 +329,9 @@ describe("checkoutService.createOrder — mã giảm giá", () => {
     // subtotal truyền vào phải khớp `subtotal` (tạm tính gốc), KHÔNG phải
     // `total` (đã trừ giảm giá theo mốc voucher).
     expect(call.subtotal).toBe(moneyArg().subtotal);
-    expect(call.subtotal).toBeGreaterThan(moneyArg().subtotal - moneyArg().discountAmount);
+    expect(call.subtotal).toBeGreaterThan(
+      moneyArg().subtotal - moneyArg().discountAmount,
+    );
   });
 
   // AC1 + AC8 — cộng dồn, không cái nào ghi đè cái nào.
@@ -317,6 +342,7 @@ describe("checkoutService.createOrder — mã giảm giá", () => {
     mocks.refreshProductCatalogServer.mockResolvedValue(null);
     mocks.getAvailableStock.mockResolvedValue(9999);
     mocks.sendOrderConfirmation.mockResolvedValue(undefined);
+    mocks.findReplay.mockResolvedValue(null);
     mocks.createOrder.mockResolvedValue(orderRow);
     mocks.validateAndComputeDiscount.mockResolvedValue({
       couponId: "coupon-1",
@@ -331,7 +357,9 @@ describe("checkoutService.createOrder — mã giảm giá", () => {
     const couponMoney = moneyArg();
 
     // discount_amount ghi DB = giảm voucher + giảm coupon (cộng dồn).
-    expect(couponMoney.discountAmount).toBe(baselineMoney.discountAmount + 20_000);
+    expect(couponMoney.discountAmount).toBe(
+      baselineMoney.discountAmount + 20_000,
+    );
     expect(baselineMoney.discountAmount).toBeGreaterThan(0);
     // Tổng phải trả giảm đúng 20.000 so với khi không có coupon.
     expect(couponMoney.total).toBe(baselineMoney.total - 20_000);
@@ -339,11 +367,15 @@ describe("checkoutService.createOrder — mã giảm giá", () => {
     expect(couponMoney.subtotal).toBe(baselineMoney.subtotal);
     // final_price khớp công thức CHECK: subtotal − discount + ship.
     expect(couponMoney.total).toBe(
-      couponMoney.subtotal - couponMoney.discountAmount + couponMoney.shippingFee,
+      couponMoney.subtotal -
+        couponMoney.discountAmount +
+        couponMoney.shippingFee,
     );
 
     // summary tách 2 dòng: giảm theo voucher giữ nguyên, coupon là dòng riêng.
-    expect(withCoupon.summary.discountAmount).toBe(noCoupon.summary.discountAmount);
+    expect(withCoupon.summary.discountAmount).toBe(
+      noCoupon.summary.discountAmount,
+    );
     expect(withCoupon.summary.couponCode).toBe("SALE10");
     expect(withCoupon.summary.couponDiscountAmount).toBe(20_000);
     expect(noCoupon.summary.couponCode).toBeUndefined();
@@ -361,7 +393,7 @@ describe("checkoutService.createOrder — mã giảm giá", () => {
       couponCode: "SALE10",
     });
 
-    expect(mocks.createOrder.mock.calls[0][4]).toEqual({
+    expect(mocks.createOrder.mock.calls[0][0].coupon).toEqual({
       couponId: "coupon-1",
       couponCode: "SALE10",
       couponDiscountAmount: 20_000,
@@ -375,7 +407,10 @@ describe("checkoutService.createOrder — mã giảm giá", () => {
     );
 
     await expect(
-      checkoutService.createOrder("user-1", { ...bundledInput, couponCode: "SALE10" }),
+      checkoutService.createOrder("user-1", {
+        ...bundledInput,
+        couponCode: "SALE10",
+      }),
     ).rejects.toMatchObject({ statusCode: 400 });
 
     expect(mocks.createOrder).not.toHaveBeenCalled();
