@@ -1,0 +1,41 @@
+{
+  "task": "unpaid-order-abuse-protection — RFC-1..RFC-5 (chống spam đơn BANK_TRANSFER chưa chuyển khoản)",
+  "blockingFindings": [
+    "Không có người duyệt: lớp rủi ro cao yêu cầu owner ký duyệt; phiên này chỉ có agent.",
+    "Migration 20260906000000_checkout_abuse_protection.sql chưa từng apply lên Supabase đã deploy.",
+    "ACL probe RFC-1 chưa chạy; policy \"Users create own orders\" (init_schema.sql:271) vẫn là đường bypass sống của mọi bảo vệ tầng ứng dụng.",
+    "AC14 KHÔNG đạt: trần reserve toàn cửa hàng và hạn units chưa trả theo user chưa có giá trị nào.",
+    "Chưa có người thật đi thử UI (Google-OAuth-only; agent không làm được).",
+    "Redis production chưa provision — không được bật limiter fail-closed.",
+    "Hành vi ghi đè header IP của ingress chưa probe — limiter IP hiện chỉ là tín hiệu mềm.",
+    "Chưa có scheduler host -> đơn quá hạn KHÔNG tự vào review; route review-expired cố ý chưa viết."
+  ],
+  "nonBlockingFindings": [
+    "3 lỗi react-hooks có sẵn (app/checkout/success/page.tsx:34; components/checkout/CheckoutForm.tsx:201,220) trên các dòng KHÔNG bị sửa — việc theo dõi, không phải hồi quy.",
+    "npm run check vẫn không dùng làm gate được vì nợ prettier toàn repo (RFC-1 F5) — ngoài phạm vi.",
+    "F4: .gitignore:34 là `.env*` không có negation nên .env.example bị ignore; các biến env mới không commit được cho tới khi owner quyết định.",
+    "Đơn BANK_TRANSFER DELIVERED-nhưng-UNPAID sẽ giữ chỗ cap vĩnh viễn (§8 chỉ set released_at cho CANCELLED/RETURNED). Truy vấn đối soát R6 liệt kê cho owner; cố ý không tự sửa dữ liệu.",
+    "Guard §5.2 vẫn miễn trừ service_role, nên service-role key bị lộ vẫn flip được payment_status. TODO(RFC-3) siết tiếp chưa làm."
+  ],
+  "notes": "Quyết định REJECT áp cho FINALIZE/CUTOVER, không phải cho chất lượng code. Mọi gate chạy được cục bộ đều xanh: build exit 0, tsc 0 lỗi, 610/610 unit, 64/64 integration trên Postgres + Redis thật, rà quét log sạch. RFC-5 phát hiện và sửa 3 khiếm khuyết chặn mà 4 phiên trước bỏ lọt — trong đó có một lỗi làm ABORT migration trên bất kỳ database nào có đơn CANCELLED. Đúng một artifact evidence pack đầy đủ được yêu cầu bởi execute-instruction E6; artifact này thoả mãn nó, nhưng KHÔNG cấp phép triển khai.",
+  "reviewer": "vc-execute-agent (RFC-5, phiên 06-09-26) — tự đánh giá phạm vi EXECUTE. KHÔNG phải owner review, KHÔNG phải người duyệt độc lập.",
+  "decision": "rejected",
+  "decisionSkillFormat": "REJECT",
+  "decisionScope": "REJECT nghĩa là: KHÔNG được finalize, KHÔNG được apply migration, KHÔNG được bật enforcement. KHÔNG có nghĩa là code sai — bằng chứng cấp cục bộ đều xanh.",
+  "rationale": "Ba lý do, không lý do nào sửa được bằng cách viết thêm code trong phiên này. (1) Không có approver: lớp rủi ro cao (migration schema, auth/authorization, thanh toán, kế toán kho + coupon) yêu cầu người duyệt, mà phiên này chỉ có agent; agent không được tự đóng vai owner. (2) Bằng chứng quan trọng nhất vẫn thiếu: migration chưa từng chạy trên database đã deploy, ACL probe RFC-1 chưa chạy, và policy \"Users create own orders\" (init_schema.sql:271) vẫn là đường bypass sống của mọi bảo vệ tầng ứng dụng — bật cap trước khi đóng nó sẽ tạo cảm giác an toàn giả. (3) Sáu quyết định chính sách của owner còn treo (scheduler host, COD cap, trần reserve + units/user, review SLA + người trực, chính sách lưu audit, .gitignore !.env.example); AC14 hiển nhiên KHÔNG đạt vì chưa có ngưỡng nào tồn tại. Ngoài ra RFC-5 vừa phát hiện ba khiếm khuyết chặn mà bốn phiên trước không thấy — trong đó có một lỗi làm ABORT migration trên bất kỳ database nào có đơn CANCELLED — điều này cho thấy chính xác vì sao bằng chứng cấp cục bộ không thay thế được diễn tập staging.",
+  "whatWouldChangeThisDecision": [
+    "Owner (hoặc người duyệt có tên) chạy ACL probe RUNBOOK §5 và lưu kết quả sạch.",
+    "Diễn tập cutover trên Supabase staging thành công, kèm đối soát R1-R6.",
+    "Sáu quyết định chính sách được chốt thành văn bản.",
+    "Có người đi thử UI thật, có tên người xác nhận và ảnh chụp màn hình.",
+    "Redis production được provision và hành vi ghi đè header IP của ingress được probe."
+  ],
+  "positiveFindings": [
+    "npm run build xanh exit 0 — lần đầu tiên gate này được chạy trong cả chương trình.",
+    "npx tsc --noEmit 0 lỗi — cũng là lần đầu tiên kiểm tra type ngữ nghĩa thực sự chạy được.",
+    "610/610 unit test, 64/64 integration test trên hạ tầng thật (Postgres + Redis dùng-rồi-bỏ).",
+    "Rà quét log/secret sạch: không rò rỉ IP thô, JWT, địa chỉ, chứng từ ngân hàng hay secret; lỗi 500 không lộ SQL/stack.",
+    "Ba khiếm khuyết chặn được phát hiện và sửa TRƯỚC khi chạm database thật."
+  ],
+  "timestamp": "2026-09-06T15:35:00Z"
+}

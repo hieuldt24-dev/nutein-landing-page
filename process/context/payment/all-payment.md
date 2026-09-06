@@ -1,9 +1,9 @@
 ---
 name: context:all-payment
 description: "Self-hosted VietQR bank-transfer payment (no gateway), staff manual payment confirmation, checkout/order orchestration and stock-reservation flow -- the payment group entrypoint/router"
-keywords: payment, vietqr, bank transfer, checkout, order, gateway, confirm payment, stock reservation, order code, transaction, refund, coupon, discount, voucher, payos, legacy
-related: [context:all-database, context:all-email]
-date: 27-08-26
+keywords: payment, vietqr, bank transfer, checkout, order, gateway, confirm payment, stock reservation, order code, transaction, refund, coupon, discount, voucher, payos, legacy, idempotency, atomic, reservation ledger, payment review, abuse protection, checkout rpc
+related: [context:all-database, context:all-email, context:all-tests]
+date: 06-09-26
 ---
 
 # Payment Context
@@ -211,3 +211,61 @@ Update this group when:
   Two Agent-Probe UI walkthroughs (checkout-page live flow, `/account` order-history coupon
   display) were explicitly deferred by user decision at closeout — see
   `process/features/checkout/backlog/coupon-checkout-agent-probe-followups_20-08-26.md`.
+
+### Unpaid-order abuse protection (in progress, 06-09-26) — atomic checkout RPC replaces two-write path
+
+**Status: CODE DONE + EVL-confirmed for RFC-2/3/4/5, NOT VERIFIED.** Plan (still in `active/`, not
+archived — testing/owner sign-off pending):
+`process/features/checkout/active/unpaid-order-abuse-protection_06-09-26/unpaid-order-abuse-protection_PLAN_06-09-26.md`.
+`CHECKOUT_PROTECTION_ENFORCED` defaults `false` — the mechanism is built but not live; no customer
+is currently affected by any of this.
+
+- **Why:** the old create path was two separate Supabase writes (`orders` insert, then
+  `order_items` insert, with a compensating `orders.delete()` on item-insert failure) plus
+  DB-side triggers for stock/coupon. This had two confirmed real bugs (not hypothetical): a failed
+  create after the `orders` row landed permanently leaked one coupon `used_count` (no decrement
+  path existed anywhere), and multi-line orders sharing one `product_id` under-restocked on cancel
+  (the old restock `UPDATE ... FROM order_items` matched exactly one row instead of summing). It
+  also had zero idempotency and no atomic account-level cap.
+- **What's replacing it (per RFC-2 report):** a single atomic RPC transaction —
+  `checkout_create_order_atomic` (create), `checkout_transition_order_state` (confirm/cancel/claim
+  transitions with `expected_version` optimistic locking), `checkout_release_reservation` (stock/
+  coupon release) — backed by a reservation ledger (`order_resource_reservations`, one row per
+  order), an idempotency table (`checkout_requests`, unique on `(user_id, key)`), and an
+  append-only audit table (`order_payment_events`). Lock order is user → idempotency/order →
+  coupon → product IDs ascending. This does NOT change the VietQR/manual-confirm model above — it
+  only hardens the surrounding create/cap/idempotency/lifecycle machinery. Staff confirmation
+  (`confirm-payment`) is still the only way an order becomes PAID.
+- **New payment-review lifecycle states** (on top of the existing `payment_status`
+  UNPAID/PAID, unchanged): `AWAITING_TRANSFER → PAYMENT_CLAIMED → REVIEW_REQUIRED →
+  SETTLED/RELEASED/LATE_TRANSFER_REVIEW`. A customer "I paid" claim (new
+  `POST /api/account/orders/[id]/payment-claim`) never sets PAID, never extends the deadline, and
+  never releases the reservation slot by itself — it is only a claim; staff still make the actual
+  PAID/no-transfer call via bank-statement reconciliation, exactly as before.
+- **Second RLS/policy bypass closed alongside the previously-documented one:** RFC-1 discovered
+  `"Users insert own order items"` (`supabase/migrations/20260721000000_..._cart_variant.sql:69`)
+  as a second Supabase policy letting any logged-in customer insert `order_items` directly via the
+  Supabase REST API, bypassing app JWT/limiter/cap entirely — same class of bug as the
+  `"Users create own orders"` policy on `orders` (see database group for both). The new migration
+  drops both policies and REVOKEs INSERT/UPDATE/DELETE from `anon`/`authenticated` on
+  `orders`/`order_items`/the new ledger tables.
+- **CURRENTLY OPEN OPERATIONAL FACT — production migration applied, code not deployed.** The
+  owner manually applied
+  `supabase/migrations/20260906000000_checkout_abuse_protection.sql` to the real production
+  Supabase project mid-session, before the corresponding RFC-2/3/4 application code was committed
+  or deployed (see `results.tsv` cycle 9 in the task folder). Owner-verified: the applied migration
+  does NOT have the `pg_catalog.current_user` bug (see database group), 0 orders fell into a
+  gap window, and the app has no deploy path yet (runs local only) so no live customer is currently
+  affected — but this is a real, currently-unresolved schema/code mismatch window on production
+  until the code is committed and deployed. Reconciliation SQL (queries R5/R6, for two real
+  pre-existing data discrepancies left by the old trigger) is in
+  `unpaid-order-abuse-protection_RUNBOOK_06-09-26.md` §4. Do not treat this feature as shipped,
+  safe, or done anywhere — per RFC5 report §9, no RFC is VERIFIED until the migration is applied
+  (done, but code isn't), the ACL probe is clean (pending), and a named human confirms a UI
+  walkthrough (pending — Google-OAuth-only blocks agent browser automation, see tests group).
+- **Owner decisions still outstanding** (per RFC5-REPORT §9, not agent-decidable): scheduler host
+  for the expiry-review route, COD active cap, AC14 global-reserve/per-user-unit thresholds
+  (rollout guard stays OFF until set), review SLA + named on-duty actor, `order_payment_events`
+  audit-retention policy, and a `.gitignore` `!.env.example` negation decision. Infra still
+  needed: deployed-DB ACL probe, production Redis + TLS, ingress `x-forwarded-for` override
+  behavior probe, a Supabase staging environment.

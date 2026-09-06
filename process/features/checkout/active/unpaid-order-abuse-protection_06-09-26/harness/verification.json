@@ -1,0 +1,176 @@
+{
+  "task": "unpaid-order-abuse-protection — RFC-5 cutover, regression và runbook",
+  "result": "PARTIAL — 12 PASS / 0 FAIL / 5 SKIP. Mọi gate chạy được cục bộ đều xanh và 3 khiếm khuyết chặn đã được phát hiện + sửa. 5 mục SKIP đều cần staging, credentials database đã deploy, scheduler host, hoặc người thật — không mục nào agent làm được trong phiên này.",
+  "commands": [
+    "npm run build",
+    "npx tsc --noEmit",
+    "npm test",
+    "TEST_DATABASE_URL=postgres://postgres:postgres@localhost:55432/nutein_test TEST_REDIS_URL=redis://localhost:56379 npm run test:integration",
+    "npm run test:integration   (không set env -> phải SKIP sạch)",
+    "npx eslint features/admin-orders/services/admin-orders.repository.ts tests/integration/ --max-warnings=0"
+  ],
+  "manualChecks": [
+    "Rà quét log/secret/audit bằng grep có mục tiêu trên toàn bộ bề mặt RFC-2/3/4 — tìm IP thô, JWT/cookie, địa chỉ giao hàng đầy đủ, chứng từ ngân hàng, secret cron/HMAC, và lỗi làm lộ SQL/stack ra client. Kết quả: không có rò rỉ (xem V11).",
+    "Đọc tay đường trả lỗi: error-handler.middleware.ts:92-101 xác nhận lỗi ngoài dự kiến trả message cố định, không echo error.message.",
+    "PENDING (owner) — ACL probe P1-P7 trên Supabase đã deploy, thủ tục ở RUNBOOK §5.",
+    "PENDING (owner) — diễn tập cutover trên staging + đối soát R1-R6.",
+    "PENDING (người có tên) — đi thử UI khách + staff trên desktop và mobile, đối chiếu UI với database sau từng thao tác, kèm ảnh chụp màn hình.",
+    "PENDING (owner) — chốt 6 quyết định chính sách ở RUNBOOK §7."
+  ],
+  "note": "Mỗi bước ghi rõ chạy Ở ĐÂU. 'local-disposable' = container Postgres/Redis dùng-rồi-bỏ trên máy dev, KHÔNG phải staging và KHÔNG phải database đã deploy. Không có bước nào chạm staging/production trong phiên này.",
+  "environment": {
+    "postgres": "nutein-rfc2-pg — postgres:16-alpine, localhost:55432, schema dựng từ tests/integration/fixtures/bootstrap-schema.sql (bản DỰNG LẠI bằng tay của init_schema, KHÔNG phải schema deployed)",
+    "redis": "nutein-rfc3-redis — redis:7-alpine, localhost:56379",
+    "staging": "KHÔNG TỒN TẠI trong phiên này",
+    "production": "KHÔNG được chạm"
+  },
+  "steps": [
+    {
+      "id": "V1",
+      "step": "npm run build — gate thật, chưa từng chạy suốt RFC-2/3/4",
+      "command": "npm run build",
+      "environment": "local",
+      "result": "PASS",
+      "notes": "Lần chạy ĐẦU TIÊN FAIL ở .next/dev/types/validator.ts:242 'Cannot find name handler' — file GENERATED bị cắt cụt (kết thúc bằng mảnh `<typeof handler>` lơ lửng) do dev server để lại, và tsconfig include .next/dev/types/**/*.ts. Xoá artifact stale rồi build lại. Lần chạy CUỐI: exit 0, 'Compiled successfully', 52 trang tĩnh, và cả 4 route API mới (/api/account/orders/[id], /payment-claim, /cancel, /api/staff/orders/[id]/resolve-payment-review) cùng trang /account/orders/[id] đều compile."
+    },
+    {
+      "id": "V2",
+      "step": "PHÁT HIỆN CHẶN: file generated hỏng đã che giấu TOÀN BỘ lỗi type ngữ nghĩa của repo",
+      "command": "npx tsc --noEmit",
+      "environment": "local",
+      "result": "PASS (sau khi sửa)",
+      "notes": "Mảnh `<typeof handler>` là lỗi CÚ PHÁP, mà TypeScript thì bỏ qua kiểm tra ngữ nghĩa khi còn lỗi cú pháp. Vì vậy 'baseline 2 lỗi trong validator.ts' của RFC-1 thực chất là 'chưa từng có kiểm tra type nào chạy'. Sau khi dọn artifact: lộ ra 11 lỗi thật, TẤT CẢ nằm trong file do RFC-3/4 chạm — 3 lỗi TS2352 ở admin-orders.repository.ts (selectClause động làm mất row type -> ép qua `unknown`), 8 lỗi TS18047/TS2339 ở tests/integration/checkout-rate-limit.test.ts (`.catch(e => e as X)` tạo union với giá trị resolve -> thay bằng helper expectRateLimited()). Sau khi sửa: tsc --noEmit exit 0, KHÔNG còn lỗi nào, kể cả 2 lỗi 'baseline'."
+    },
+    {
+      "id": "V3",
+      "step": "Bộ test unit — kiểm tra không hồi quy sau các sửa đổi trên",
+      "command": "npm test",
+      "environment": "local",
+      "result": "PASS",
+      "notes": "Test Files 1 failed | 79 passed (80); Tests 610 passed (610). Đúng một suite đỏ của baseline (lib/useAddresses.test.tsx, fail ở import do thiếu env Supabase). Trùng khớp chính xác con số sau RFC-4 -> 0 hồi quy."
+    },
+    {
+      "id": "V4",
+      "step": "PHÁT HIỆN CHẶN: migration ABORT khi database có đơn CANCELLED (lỗi biên)",
+      "command": "TEST_DATABASE_URL=... npx vitest run --project integration tests/integration/checkout-cutover-rehearsal.db.test.ts",
+      "environment": "local-disposable",
+      "result": "PASS (sau khi sửa)",
+      "notes": "Lần chạy đầu FAIL: 'missing FROM-clause entry for table pg_catalog'. Nguyên nhân: guard_sensitive_order_columns() viết `pg_catalog.current_user`, nhưng current_user là TỪ KHOÁ SQL chứ không phải đối tượng schema, nên bị parse thành cột current_user của bảng pg_catalog. Trigger này chạy BEFORE UPDATE ON orders, và §8 backfill có câu UPDATE orders SET released_at ... WHERE status IN ('CANCELLED','RETURNED'). Test RFC-2 không bắt được vì nó apply migration lên database RỖNG -> câu UPDATE khớp 0 dòng -> trigger không bao giờ chạy. Database thật chắc chắn có đơn CANCELLED, nên migration sẽ ABORT toàn bộ (một transaction -> rollback sạch, không hỏng dữ liệu, nhưng cutover thất bại). Sửa: bỏ tiền tố -> `current_user`."
+    },
+    {
+      "id": "V5",
+      "step": "Diễn tập cutover + backfill trên dataset legacy 'khó chịu' có chủ đích",
+      "command": "TEST_DATABASE_URL=... npm run test:integration",
+      "environment": "local-disposable",
+      "result": "PASS",
+      "notes": "31/31 test. Dataset: đơn 2 dòng cùng product_id (3+7), coupon ở lượt cuối (usage_limit=1), đơn PAID, đơn CANCELLED (tạo sống rồi UPDATE để trigger restock cũ chạy thật), đơn DELIVERED, và mọi đơn đều protection_version NULL. Kết quả: (a) stock/used_count/số đơn/số dòng KHÔNG đổi một con số; (b) mỗi đơn đúng 1 dòng ledger, state đúng theo trạng thái; (c) CANCELLED có released_at, PAID/DELIVERED thì không (đúng như migration viết); cap đếm đúng 2; (d) 3 trigger cũ + 2 policy bypass đã biến mất, insert order_items KHÔNG còn tự trừ kho; (e) 2 RPC tồn tại, EXECUTE bị REVOKE khỏi public/anon/authenticated, anon/authenticated không ghi được 4 bảng."
+    },
+    {
+      "id": "V6",
+      "step": "PHÁT HIỆN: migration không chạy lại được lần hai (thiếu guard idempotent)",
+      "command": "(trong cùng file diễn tập, mục (f))",
+      "environment": "local-disposable",
+      "result": "PASS (sau khi sửa)",
+      "notes": "FAIL: 'policy \"Staff/Admin update non-sensitive order fields\" for table orders already exists' (42710). Mọi object khác trong file đều idempotent (IF NOT EXISTS / DROP IF EXISTS) — riêng CREATE POLICY này thiếu. Thêm DROP POLICY IF EXISTS ngay trước. Sau khi sửa: apply migration lần hai thành công, snapshot số liệu không đổi."
+    },
+    {
+      "id": "V7",
+      "step": "Diễn tập ROLLBACK theo đúng định nghĩa của plan (§Rollout 8-9): forward-fix + kill-switch, KHÔNG drop bảng, KHÔNG hồi sinh trigger cũ",
+      "command": "(trong cùng file diễn tập, mục (f))",
+      "environment": "local-disposable",
+      "result": "PASS",
+      "notes": "Chạy lại câu INSERT backfill của §8 -> số dòng ledger không đổi (WHERE NOT EXISTS giữ đúng lời hứa idempotent). Apply lại toàn bộ migration -> số liệu không đổi. Đường đọc đơn + đường đối soát staff vẫn chạy khi ngừng nhận đơn mới (kill-switch). trg_restock_on_cancel_or_return KHÔNG được dựng lại -> không có nguy cơ hoàn kho hai lần."
+    },
+    {
+      "id": "V8",
+      "step": "Truy vấn đối soát mà operator sẽ chạy sau cutover (R1-R5, bản chạy được)",
+      "command": "(trong cùng file diễn tập, mục (g))",
+      "environment": "local-disposable",
+      "result": "PASS",
+      "notes": "R1 không đơn nào thiếu ledger; R2 không ledger mồ côi; R3 không ledger mâu thuẫn trạng thái; R4 không coupon âm/vượt hạn mức. R5 CHỦ ĐỘNG PHÁT HIỆN chênh lệch: đơn CANCELLED [4,6] đáng lẽ hoàn 10 nhưng trigger cũ chỉ hoàn 4 hoặc 6 (UPDATE ... FROM chỉ khớp một dòng). Migration cố ý không tự sửa; đây là việc đối soát của owner. Runbook §4 thêm R6 cho nhóm BANK_TRANSFER DELIVERED-nhưng-UNPAID sẽ giữ chỗ vĩnh viễn."
+    },
+    {
+      "id": "V9",
+      "step": "Không hồi quy trên bộ integration của RFC-2 và RFC-3 sau khi sửa migration",
+      "command": "TEST_DATABASE_URL=... TEST_REDIS_URL=... npm run test:integration",
+      "environment": "local-disposable",
+      "result": "PASS",
+      "notes": "Test Files 3 passed (3); Tests 64 passed (64) = 25 (RFC-2 DB) + 8 (RFC-3 Redis) + 31 (RFC-5 diễn tập). Hai sửa đổi migration không phá bất biến nào của RFC-2."
+    },
+    {
+      "id": "V10",
+      "step": "Test biên: không có biến môi trường thì integration phải SKIP sạch, không làm đỏ npm test mặc định",
+      "command": "npm run test:integration    (không set TEST_DATABASE_URL / TEST_REDIS_URL)",
+      "environment": "local",
+      "result": "PASS",
+      "notes": "Test Files 3 skipped (3); Tests 64 skipped (64); exit 0. File diễn tập mới tuân thủ đúng cơ chế gate của E4."
+    },
+    {
+      "id": "V11",
+      "step": "Rà quét log/secret/audit — tìm IP thô, JWT/cookie, địa chỉ giao hàng đầy đủ, chứng từ ngân hàng, secret cron/HMAC, và lỗi làm lộ SQL/stack",
+      "command": "grep có mục tiêu trên features/checkout, features/account, features/admin-orders, app/api/checkout, app/api/account, app/api/staff, src/middlewares/checkout-rate-limit.middleware.ts, src/security/trusted-client-ip.ts",
+      "environment": "local",
+      "result": "PASS",
+      "notes": "KHÔNG tìm thấy rò rỉ nào; không cần sửa gì. Chi tiết: toàn bộ bề mặt chỉ có 4 điểm gọi log (app/api/checkout/route.ts:59; checkout-rate-limit.middleware.ts:127,142,160) và không điểm nào ghi identifier, IP, token hay địa chỉ — chỉ ghi route/scope/hits/max. resolveHashedClientIp() chỉ trả ipHash, không nhánh nào trả IP thô. Không có trường shipping_address/reference/bank nào nằm trong một lời gọi log. Secret chỉ được đọc từ process.env và so sánh, không bao giờ được ghi ra; thông báo thiếu env chỉ nêu TÊN biến. Lỗi ngoài dự kiến trả message cố định 'Đã xảy ra lỗi máy chủ nội bộ' (error-handler.middleware.ts:92-101) nên error.message của Postgres KHÔNG ra tới client; chỉ SQLSTATE nằm trong allowlist CHECKOUT_DB_ERROR_MAP mới thành message hiển thị."
+    },
+    {
+      "id": "V12",
+      "step": "ESLint trên các file đã sửa",
+      "command": "npx eslint features/admin-orders/services/admin-orders.repository.ts tests/integration/ --max-warnings=0",
+      "environment": "local",
+      "result": "PASS",
+      "notes": "exit 0, 0 lỗi 0 cảnh báo. 3 lỗi react-hooks có sẵn ở app/checkout/success/page.tsx:34 và components/checkout/CheckoutForm.tsx:201,220 nằm trên các dòng KHÔNG bị sửa — có từ trước, ghi nhận làm việc theo dõi, không sửa ở RFC-5."
+    },
+    {
+      "id": "V13",
+      "step": "EXPLAIN truy vấn đếm cap (CỤC BỘ — KHÔNG phải gate AC13)",
+      "command": "EXPLAIN SELECT COUNT(*) FROM orders WHERE <cap predicate>",
+      "environment": "local-disposable",
+      "result": "SKIP",
+      "notes": "Đã chạy và ghi lại plan: 'Aggregate -> Seq Scan on orders (cost=0.00..1.10 rows=1)'. Với 5 dòng dữ liệu, planner chọn seq scan là ĐÚNG — index đắt hơn. Vì vậy KHÔNG assert index được dùng: assert như thế sẽ là bằng chứng giả. Chỉ khẳng định partial index idx_orders_active_unpaid_bank tồn tại. Đánh dấu SKIP vì đây KHÔNG phải gate AC13. Gate AC13 thật (EXPLAIN trên 100k dòng, p95 < 1s ở 20 rps, lock wait p95 < 200ms) là PENDING — cần staging."
+    },
+    {
+      "id": "V14",
+      "step": "ACL probe trên database đã deploy (AC08)",
+      "command": "curl P1-P7 — xem RUNBOOK §5",
+      "environment": "deployed Supabase",
+      "result": "SKIP",
+      "notes": "PENDING — không có credentials Supabase trong phiên này (.env bị privacy guard chặn, không bypass). Thủ tục đã viết sẵn thành 7 lệnh curl chạy được kèm mã trạng thái kỳ vọng trong RUNBOOK §5. Owner chạy. Đây là cổng làm cho cap trở thành thật; không được bật enforcement trước khi probe sạch."
+    },
+    {
+      "id": "V15",
+      "step": "Diễn tập cutover trên staging (gate AC12 thật)",
+      "command": "supabase db push trên project staging + đối soát",
+      "environment": "staging",
+      "result": "SKIP",
+      "notes": "PENDING — không có Supabase staging. V5-V8 là bằng chứng THAY THẾ cấp cục bộ trên schema dựng lại bằng tay, KHÔNG phải bằng chứng staging."
+    },
+    {
+      "id": "V16",
+      "step": "Diễn tập worker chạy chồng lấn (overlapping execution)",
+      "command": "—",
+      "environment": "—",
+      "result": "SKIP",
+      "notes": "PENDING và KHÔNG THỰC HIỆN ĐƯỢC: không có worker nào tồn tại. POST /api/internal/orders/review-expired bị hoãn có chủ đích ở RFC-3 (execute-instruction E5) vì owner chưa chọn scheduler host. Điều kiện tiên quyết: owner đặt tên scheduler host -> implement route theo E5 -> khi đó mới diễn tập được. RFC-5 KHÔNG viết worker (bị goal block cấm)."
+    },
+    {
+      "id": "V17",
+      "step": "Người thật đi thử UI khách + staff (AC10)",
+      "command": "—",
+      "environment": "browser thật, tài khoản thật",
+      "result": "SKIP",
+      "notes": "PENDING — chỉ con người làm được, cần người xác nhận có tên. Auth là Google-OAuth-only, không có dev-login bypass và không RFC nào thêm bypass. Agent KHÔNG thực hiện được."
+    }
+  ],
+  "summary": {
+    "pass": 12,
+    "fail": 0,
+    "skip": 5,
+    "blockingDefectsFoundAndFixed": 3,
+    "blockingDefectsDescription": [
+      "V2 — file generated hỏng che giấu toàn bộ kiểm tra type ngữ nghĩa của repo; 11 lỗi type thật lộ ra và đã sửa.",
+      "V4 — migration ABORT trên bất kỳ database nào có đơn CANCELLED (pg_catalog.current_user).",
+      "V6 — migration không chạy lại được lần hai (thiếu DROP POLICY IF EXISTS)."
+    ]
+  }
+}

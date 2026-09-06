@@ -1,0 +1,111 @@
+{
+  "task": "unpaid-order-abuse-protection — RFC-1..RFC-5 (chống spam đơn BANK_TRANSFER chưa chuyển khoản)",
+  "note": "ruled_out = true CHỈ khi có bằng chứng chạy được trong repo hoặc trên hạ tầng cục bộ. Mọi kịch bản phụ thuộc database đã deploy đều ruled_out = false, kể cả khi biện pháp đã được viết trong code — vì migration chưa apply.",
+  "scenarios": [
+    {
+      "scenario": "Khách đã đăng nhập gọi thẳng Supabase REST API bằng OAuth session + anon key để INSERT orders, bỏ qua app JWT, limiter, cap và idempotency (F1 — init_schema.sql:271).",
+      "ruled_out": false,
+      "rationale": "CHƯA ĐÓNG trên database đã deploy. Migration RFC-2 §5 có DROP cả hai policy và REVOKE INSERT/UPDATE khỏi anon+authenticated, đã chứng minh trên Postgres cục bộ (verification V5(d),(e)) — nhưng migration CHƯA apply. Cho tới lúc đó, lỗ hổng vẫn sống và cap chỉ là bảo vệ trên giấy. Đây là lý do E2 cấm bật enforcement trước ACL probe."
+    },
+    {
+      "scenario": "Bypass thứ hai qua order_items (F3 — seed_product_order_code_cart_variant.sql:69).",
+      "ruled_out": false,
+      "rationale": "Cùng lý do như trên. Migration drop CẢ HAI policy, đã test cục bộ, chưa apply."
+    },
+    {
+      "scenario": "Tài khoản STAFF dùng session PostgREST của chính mình đặt payment_status='PAID' trực tiếp, bỏ qua allowlist ở tầng TypeScript.",
+      "ruled_out": false,
+      "rationale": "Migration §5.2 thêm trigger guard_sensitive_order_columns() chặn đúng việc này, và §5.1 thay policy 'Staff/Admin update orders' rộng bằng bản hẹp hơn. Chưa apply. Ghi chú: guard vẫn MIỄN TRỪ service_role vì đường ghi hợp lệ hiện tại đi qua service-role client; TODO(RFC-3) siết tiếp chưa làm, nên service-role key bị lộ vẫn flip được payment_status."
+    },
+    {
+      "scenario": "Chạy đua nhiều tab / nhiều request song song để vượt cap 2 đơn giữ chỗ.",
+      "ruled_out": true,
+      "rationale": "Đã chứng minh trên Postgres THẬT với 50 request đồng thời, mỗi request một connection độc lập: COUNT(*) = 2, 48 lỗi đều là NTCAP (RFC-2, 25 test DB). Cap được cưỡng chế trong RPC dưới user row lock, không phải SELECT-rồi-INSERT tách rời. GIỚI HẠN: chứng minh trên schema dựng lại cục bộ; PgBouncer transaction-mode và pooling của production chưa kiểm chứng."
+    },
+    {
+      "scenario": "Replay/duplicate submit tạo đơn trùng hoặc tiêu hai lượt coupon.",
+      "ruled_out": true,
+      "rationale": "20 request đồng thời cùng Idempotency-Key -> đúng 1 order, đúng 1 lần non-replay (RFC-2). Unique(user_id, key) ở cấp database; kiểm idempotency chạy TRƯỚC cap nên replay không tiêu slot."
+    },
+    {
+      "scenario": "Rò rỉ lượt coupon: create hỏng giữa chừng sau khi row orders đã insert.",
+      "ruled_out": true,
+      "rationale": "Đường bù trừ orders.delete() đã bị XOÁ HẲN, toàn bộ nằm trong một RPC transaction. Có test kèm red-before chứng minh đường HAI-WRITE cũ thực sự làm mất vĩnh viễn một lượt (RFC-2)."
+    },
+    {
+      "scenario": "Đơn nhiều dòng cùng product_id bị hoàn kho THIẾU khi huỷ.",
+      "ruled_out": true,
+      "rationale": "RPC dùng aggregate SUM(quantity) GROUP BY product_id. Test: đơn 3+7 hoàn đủ 10, kèm red-before chứng minh trigger cũ chỉ hoàn 3 hoặc 7 (RFC-2). LƯU Ý: dữ liệu LỊCH SỬ đã bị trigger cũ hoàn thiếu thì migration cố ý KHÔNG tự sửa — truy vấn đối soát R5 trong runbook liệt kê cho owner."
+    },
+    {
+      "scenario": "Xác nhận thanh toán cho đơn đã CANCELLED (biến đơn đã huỷ thành PAID).",
+      "ruled_out": true,
+      "rationale": "Guard nằm TRONG câu UPDATE chứ không chỉ là pre-check (admin-orders.repository.ts:417,491), kèm regression test có red-before chứng minh guard CŨ chấp nhận đơn CANCELLED (RFC-3). Cũng được cưỡng chế ở cấp DB trong RPC transition (test RFC-2: confirm trên CANCELLED -> NTSTA)."
+    },
+    {
+      "scenario": "IDOR — xem hoặc thao tác đơn của người khác.",
+      "ruled_out": true,
+      "rationale": "Truy vấn theo id AND user_id trong CÙNG một câu; không khớp -> 404 thống nhất (account-order.service.ts:246,258), có test route (RFC-3). GIỚI HẠN: chứng minh trên Supabase client đã mock — đây là bằng chứng tầng ứng dụng, không phải RLS."
+    },
+    {
+      "scenario": "CSRF qua cookie từ origin lạ.",
+      "ruled_out": true,
+      "rationale": "Exact-Origin allowlist theo APP_BASE_URL; thiếu Origin cũng bị từ chối; subdomain KHÔNG được suy diễn là hợp lệ (src/security/csrf.ts, có test). GIỚI HẠN: APP_BASE_URL phải được set đúng khi deploy — chưa xác nhận."
+    },
+    {
+      "scenario": "Giả mạo x-forwarded-for để nhảy bucket rate limit sau mỗi request.",
+      "ruled_out": false,
+      "rationale": "Giảm nhẹ một phần: chỉ tin header ingress đã KHAI BÁO và lấy hop CUỐI, nên hop đầu do client gửi bị bỏ qua (trusted-client-ip.ts, 13 test). Nhưng hành vi ghi đè header của ingress THẬT chưa probe, nên hiện code chỉ ĐO chứ không CHẶN theo IP. Cho tới khi probe xong, limiter IP là tín hiệu mềm; cap theo account mới là cơ chế chính."
+    },
+    {
+      "scenario": "Redis chết -> mở toang mọi bảo vệ (fail-open).",
+      "ruled_out": true,
+      "rationale": "Limiter riêng cho checkout fail-CLOSED 503 khi Redis chết và enforcement bật; đã chứng minh trên Redis thật (8 test RFC-3). KHÔNG đụng fail-open của limiter cũ (E2). CẢNH BÁO VẬN HÀNH: chính vì fail-closed nên Redis chết = checkout chết -> không được bật khi chưa provision Redis production."
+    },
+    {
+      "scenario": "Bot phân tán nhiều tài khoản / IPv6 rotation vét sạch kho bằng đơn giữ chỗ.",
+      "ruled_out": false,
+      "rationale": "KHÔNG ĐƯỢC XỬ LÝ. Đây chính là AC14 và nó KHÔNG đạt: trần reserve toàn cửa hàng và hạn units chưa trả theo user chưa có giá trị nào — owner phải đặt dựa trên snapshot tồn thật. Cap theo account MỘT MÌNH không chặn được bot nhiều tài khoản, và plan cấm tuyên bố ngược lại."
+    },
+    {
+      "scenario": "Gọi route cron từ bên ngoài mà không có secret.",
+      "ruled_out": false,
+      "rationale": "KHÔNG ÁP DỤNG được ở thời điểm này: route POST /api/internal/orders/review-expired KHÔNG TỒN TẠI (hoãn có chủ đích ở RFC-3 theo E5). Không có bề mặt để tấn công, nhưng cũng không có gì chuyển đơn quá hạn vào review. Khi owner chọn scheduler host và route được viết, kịch bản này phải được đánh giá lại."
+    },
+    {
+      "scenario": "Rò rỉ metadata nhạy cảm qua log (IP thô, JWT, địa chỉ đầy đủ, chứng từ ngân hàng, secret).",
+      "ruled_out": true,
+      "rationale": "Rà quét toàn bộ bề mặt RFC-2/3/4 ở RFC-5 (verification V11): chỉ có 4 điểm gọi log, không điểm nào ghi identifier/IP/token/địa chỉ. IP luôn được HMAC trước khi rời trusted-client-ip.ts. Secret chỉ đọc từ process.env, thông báo lỗi chỉ nêu TÊN biến."
+    },
+    {
+      "scenario": "Lỗi máy chủ làm lộ SQL, stack trace hoặc secret ra client.",
+      "ruled_out": true,
+      "rationale": "error-handler.middleware.ts:92-101 trả message cố định 'Đã xảy ra lỗi máy chủ nội bộ' cho mọi lỗi ngoài dự kiến; error.message của Postgres chỉ đi vào log phía server. Chỉ SQLSTATE nằm trong allowlist CHECKOUT_DB_ERROR_MAP mới trở thành message hiển thị, và đó là chuỗi tiếng Việt do chính RPC raise."
+    },
+    {
+      "scenario": "Cutover làm hỏng kế toán kho/coupon vì code và migration lệch nhau (rolling deploy).",
+      "ruled_out": false,
+      "rationale": "Chỉ được giảm nhẹ bằng THỦ TỤC, không bằng cơ chế. Không có khoá kỹ thuật nào ngăn deploy cuốn chiếu. Runbook §2 và §3 bước 5 nêu rõ yêu cầu cửa sổ bảo trì và hậu quả (đơn tạo được nhưng không trừ kho). Rủi ro còn lại thuộc về người vận hành."
+    },
+    {
+      "scenario": "Migration chạy nửa chừng rồi hỏng, để database ở trạng thái lai.",
+      "ruled_out": true,
+      "rationale": "Toàn bộ file nằm trong một BEGIN...COMMIT, đã khẳng định bằng test (V5(a)). Thực tế đã CHỨNG KIẾN điều này: lỗi pg_catalog.current_user làm abort và database quay về nguyên trạng, không hỏng dữ liệu. Migration cũng đã được làm idempotent để chạy lại an toàn sau khi sửa (V6)."
+    },
+    {
+      "scenario": "Backfill hoàn kho hoặc trả lượt coupon hai lần.",
+      "ruled_out": true,
+      "rationale": "§8 chỉ INSERT dòng ledger mô tả trạng thái, không UPDATE stock/used_count — đã khẳng định bằng snapshot trước/sau (V5(a)). INSERT có WHERE NOT EXISTS nên chạy lại không sinh dòng trùng (V7). Trigger restock cũ bị drop và KHÔNG được dựng lại khi rollback."
+    },
+    {
+      "scenario": "Đơn giữ chỗ vĩnh viễn làm kẹt slot cap của khách.",
+      "ruled_out": false,
+      "rationale": "PHÁT HIỆN MỚI ở RFC-5: §8 chỉ set orders.released_at cho CANCELLED/RETURNED. Đơn BANK_TRANSFER ở trạng thái DELIVERED mà vẫn payment_status='UNPAID' sẽ có released_at NULL và LỌT VÀO predicate cap vĩnh viễn. Chưa sửa trong migration (sẽ là thay đổi dữ liệu ngoài phạm vi cam kết 'không đụng số liệu' của §8). Truy vấn đối soát R6 trong runbook liệt kê đúng nhóm này để owner quyết định."
+    }
+  ],
+  "summary": {
+    "ruled_out": 11,
+    "not_ruled_out": 9,
+    "headline": "Mọi bất biến cấp database (cap, idempotency, ledger, guard trạng thái) đã được chứng minh trên Postgres thật. Mọi kịch bản còn treo đều treo vì cùng một lý do: migration chưa apply lên database đã deploy và ACL probe chưa chạy — cộng thêm AC14 chưa có ngưỡng."
+  }
+}

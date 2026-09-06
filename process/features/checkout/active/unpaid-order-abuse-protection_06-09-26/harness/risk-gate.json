@@ -1,0 +1,33 @@
+{
+  "task": "unpaid-order-abuse-protection — RFC-1..RFC-5 (chống spam đơn BANK_TRANSFER chưa chuyển khoản)",
+  "planPath": "process/features/checkout/active/unpaid-order-abuse-protection_06-09-26/unpaid-order-abuse-protection_PLAN_06-09-26.md",
+  "riskLevel": "high",
+  "riskClasses": [
+    "schema/data migration or destructive data mutation",
+    "auth or identity",
+    "billing or credits",
+    "permission, secret, or trust-boundary logic",
+    "public API or external contract changes"
+  ],
+  "humanApprovalRequired": true,
+  "why": "Migration chuyển quyền trừ kho và tăng coupons.used_count từ trigger sang RPC trên database production, drop 3 trigger ghi dữ liệu và 2 RLS policy, đồng thời siết ACL của anon/authenticated. Sai sót làm hỏng kế toán kho và coupon một cách âm thầm. Cộng thêm: policy bypass F1/F2/F3 chưa được đóng trên database đã deploy, và 6 quyết định chính sách của owner còn treo.",
+  "riskClass": "schema/data migration or destructive data mutation",
+  "additionalRiskClasses": [
+    "auth or identity",
+    "billing or credits",
+    "permission, secret, or trust-boundary logic",
+    "public API or external contract changes"
+  ],
+  "workDescription": "Chống spam đơn BANK_TRANSFER chưa chuyển khoản: cap đơn giữ chỗ, idempotency bền vững, reservation ledger atomic thay 3 trigger cũ, checkout limiter fail-closed, và đường đối soát thanh toán cho staff. RFC-1..RFC-5 của plan unpaid-order-abuse-protection_PLAN_06-09-26.md.",
+  "approver": "PENDING — chưa có owner ký duyệt. Phiên 06-09-26 chỉ có vc-execute-agent; agent KHÔNG được tự đóng vai approver cho lớp rủi ro này.",
+  "mustStopBeforeFinalize": true,
+  "stopReasons": [
+    "Migration chưa từng apply lên Supabase đã deploy — mọi bằng chứng DB đều từ Postgres cục bộ dựng lại schema bằng tay.",
+    "ACL probe (RFC-1) chưa chạy. Policy \"Users create own orders\" (init_schema.sql:271) vẫn là đường bypass sống của mọi bảo vệ tầng ứng dụng.",
+    "Chưa có người thật đi thử UI; auth là Google-OAuth-only nên không agent nào làm được.",
+    "6 quyết định chính sách của owner còn thiếu (scheduler host, COD cap, trần reserve + units/user, review SLA + người trực, lưu audit, .gitignore !.env.example).",
+    "Redis production chưa provision; hành vi ghi đè header IP của ingress chưa probe."
+  ],
+  "enforcementState": "OFF — CHECKOUT_PROTECTION_ENFORCED mặc định false. Không enforcement nào được bật trong phiên này.",
+  "date": "2026-09-06"
+}

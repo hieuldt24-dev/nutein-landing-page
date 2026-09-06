@@ -1,9 +1,9 @@
 ---
 name: context:all-tests
 description: "Vitest runner, commands, mocking approach, and known test-coverage gaps -- the tests group entrypoint/router"
-keywords: test, tests, testing, vitest, coverage, mock, vi.mock, jsdom, lint, type-check, ci
-related: []
-date: 20-08-26
+keywords: test, tests, testing, vitest, coverage, mock, vi.mock, jsdom, lint, type-check, ci, integration test, disposable container, postgres, redis, tsc, build
+related: [context:all-payment, context:all-database]
+date: 06-09-26
 ---
 
 # nutein-landing-page - All Tests
@@ -68,6 +68,62 @@ Use this file when you need to:
 - No coverage thresholds are configured — `@vitest/coverage-v8` runs with library defaults; treat coverage output as informational only.
 - Unit + integration-style service/repository tests with a mocked Supabase client cover the whole current suite; there is no separate e2e runner to choose between.
 
+### Vitest project split: `unit` vs `integration` (added 06-09-26, checkout abuse-protection work)
+
+`vitest.config.ts` now declares `test.projects` with two projects instead of one flat config:
+
+- `unit` — excludes `tests/integration/**`; this is what `npm test` (`vitest run --project unit`)
+  and `npm run check` run. Fast, no external services, runs anywhere.
+- `integration` — includes ONLY `tests/integration/**`, `fileParallelism: false`. Run via
+  `npm run test:integration` (`vitest run --project integration --maxWorkers=1`).
+
+**Integration tests require real infra and skip cleanly without it — never fail a machine that
+doesn't have Postgres/Redis:**
+- DB tests (`tests/integration/checkout-protection.db.test.ts`,
+  `tests/integration/checkout-cutover-rehearsal.db.test.ts`) read `TEST_DATABASE_URL`; absent → the
+  whole suite is skipped (not failed), exit 0.
+- Redis tests (`tests/integration/checkout-rate-limit.test.ts`) read `TEST_REDIS_URL`; same
+  skip-not-fail pattern.
+- Running `npm run test:integration` with neither var set is the expected default-dev-machine case
+  — it must report `N skipped`, not error.
+
+**Disposable-container pattern for local integration testing** (per RFC-2/RFC-3/RFC-5 reports —
+this is the durable convention for any future DB/Redis-backed test, not just checkout): spin up a
+throwaway `postgres:16-alpine` and/or `redis:7-alpine` container on a non-default port, point
+`TEST_DATABASE_URL`/`TEST_REDIS_URL` at it, run the integration project, then `docker rm -f` the
+container. Example from this work: `docker run -d --name nutein-rfc2-pg -e
+POSTGRES_PASSWORD=postgres -e POSTGRES_DB=nutein_test -p 55432:5432 postgres:16-alpine`, then
+`TEST_DATABASE_URL=postgres://postgres:postgres@localhost:55432/nutein_test npx vitest run
+--project integration --maxWorkers=1`. **Never** `docker exec` into or point these vars at the
+shared dev container or a real Supabase project — always disposable, always local.
+
+**IMPORTANT caveat on what these integration tests actually prove:** the DB integration tests build
+their schema from `tests/integration/fixtures/bootstrap-schema.sql`, a hand-reconstructed
+approximation of `supabase/migrations/20260718000000_init_schema.sql` plus the new migration — it
+is NOT a replay of the real migration chain and is NOT the real deployed schema. A green
+integration-test run proves the logic is correct against that reconstructed schema; it does not
+prove parity with what is actually live on Supabase. See `process/context/database/all-database.md`
+"Checkout abuse-protection migration" for a concrete, currently-open case of this gap (a migration
+bug found and fixed locally after an earlier version was already applied to production).
+
+### `npm run build` vs `tsc --noEmit` — a corrupted generated file can silently disable ALL type-checking (found 06-09-26)
+
+During the checkout abuse-protection work, `npm run build` was run for the first time in that whole
+program (after 3 prior RFCs relied on `tsc --noEmit` alone) and immediately found 11 real type
+errors that `tsc --noEmit` had been reporting as "0 new errors" the whole time. Root cause: a
+generated file, `.next/dev/types/validator.ts`, was corrupted with a **syntax** error (not a
+semantic one). TypeScript stops semantic checking entirely once it hits a syntax error in ANY
+included file — so what looked like "2 stable baseline errors, always the same 2, nothing new" was
+actually TypeScript silently skipping all real type-checking for the whole run. Once the corrupted
+`.next/dev` artifact was cleared, `tsc --noEmit` dropped to 0 errors and `npm run build` (a
+previously never-run gate in this program) surfaced 11 genuine type errors from unrelated prior
+work. **Durable rule for this repo:** `npx tsc --noEmit` alone is not a reliable full type-check gate
+when a `.next/dev` directory exists from a prior dev-server run — a corrupted generated file there
+can mask real errors indefinitely while looking like a stable, unchanging baseline. `npm run build`
+is the gate that actually exercises full type-checking in that situation. If `tsc --noEmit`'s error
+count looks suspiciously static across multiple unrelated changes, check `.next/dev/types/` for a
+syntax-broken generated file before trusting the "baseline unchanged" read.
+
 ## Default Verification Order
 
 Unless the task clearly needs a different path:
@@ -82,7 +138,8 @@ This is a single-app repo (no monorepo workspaces) — one command set covers ev
 
 | Command | What it does | When to use it |
 |---|---|---|
-| `npm test` | `vitest run` — single-pass full suite (44 files), no watch | CI-equivalent local run before pushing/committing |
+| `npm test` | `vitest run --project unit` — single-pass unit suite, no watch | CI-equivalent local run before pushing/committing |
+| `npm run test:integration` | `vitest run --project integration --maxWorkers=1` — DB/Redis-backed tests under `tests/integration/**`; skips cleanly (exit 0) with no `TEST_DATABASE_URL`/`TEST_REDIS_URL` set | Verifying atomic-transaction/lock/race behavior against real Postgres/Redis (mocks can't prove locks); see "Vitest project split" below |
 | `npm run test:watch` | `vitest` watch mode | Active TDD/development loop |
 | `npm run test:coverage` | `vitest run --coverage` (v8 provider, no enforced thresholds) | Checking coverage gaps informationally |
 | `npm run lint` | `eslint . --max-warnings=0` | Zero-warning lint check |

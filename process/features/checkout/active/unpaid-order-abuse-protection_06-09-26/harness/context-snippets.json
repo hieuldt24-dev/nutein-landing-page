@@ -1,0 +1,111 @@
+{
+  "task": "unpaid-order-abuse-protection — RFC-1..RFC-5 (chống spam đơn BANK_TRANSFER chưa chuyển khoản)",
+  "note": "Trích dẫn file:line cho mọi bề mặt thuộc lớp rủi ro cao mà RFC-1..RFC-5 chạm vào. Nội dung là mô tả có trích dẫn, không sao chép nguyên khối mã.",
+  "snippets": [
+    {
+      "file": "supabase/migrations/20260718000000_init_schema.sql",
+      "lines": "271",
+      "riskClass": "permission, secret, or trust-boundary logic",
+      "description": "F1 — policy \"Users create own orders\" ON orders FOR INSERT WITH CHECK (auth.uid() = user_id). Cho phép mọi khách đã đăng nhập INSERT order thẳng qua PostgREST bằng OAuth session + anon key, bỏ qua app JWT, limiter, cap và idempotency. Đây là mục tiêu chính của phần ACL trong RFC-2.",
+      "status": "Đã DROP trong migration RFC-2 §5 — nhưng migration CHƯA apply lên database deployed."
+    },
+    {
+      "file": "supabase/migrations/20260721000000_seed_product_order_code_cart_variant.sql",
+      "lines": "69",
+      "riskClass": "permission, secret, or trust-boundary logic",
+      "description": "F3 — policy bypass thứ hai \"Users insert own order items\". RFC-1 phát hiện thêm; phải drop CẢ HAI, không chỉ F1.",
+      "status": "Đã DROP trong migration RFC-2 §5. CHƯA apply."
+    },
+    {
+      "file": "supabase/migrations/20260906000000_checkout_abuse_protection.sql",
+      "lines": "1-21",
+      "riskClass": "schema/data migration",
+      "description": "Header cutover: migration chuyển quyền trừ kho + tăng coupons.used_count từ trigger sang RPC. Code ứng dụng phải deploy CÙNG LÚC; rolling deploy làm sai tồn kho và coupon một cách âm thầm.",
+      "status": "CHƯA apply lên Supabase. Owner apply thủ công."
+    },
+    {
+      "file": "supabase/migrations/20260906000000_checkout_abuse_protection.sql",
+      "lines": "266-296",
+      "riskClass": "permission, secret, or trust-boundary logic",
+      "description": "guard_sensitive_order_columns() — chặn session PostgREST (kể cả tài khoản STAFF/ADMIN) đổi payment_status/status/coupon_id/released_at/state_version/user_id/final_price. Miễn trừ service_role vì đường ghi hợp lệ hiện tại đi qua service-role client.",
+      "status": "SỬA Ở RFC-5: `pg_catalog.current_user` -> `current_user`. Bản cũ ném lỗi 'missing FROM-clause entry for table pg_catalog' ở lần UPDATE orders đầu tiên, làm ABORT toàn bộ migration khi database có đơn CANCELLED. Xem verification.json V4."
+    },
+    {
+      "file": "supabase/migrations/20260906000000_checkout_abuse_protection.sql",
+      "lines": "953-999",
+      "riskClass": "schema/data migration",
+      "description": "§8 backfill ledger cho đơn lịch sử. Cam kết: KHÔNG đổi một con số stock/used_count nào; chỉ ghi lại trạng thái đang có. Đơn CANCELLED/RETURNED được set orders.released_at; đơn PAID/DELIVERED thì KHÔNG.",
+      "status": "Đã diễn tập cục bộ, cam kết được giữ đúng (verification.json V5). Rủi ro còn lại: đơn BANK_TRANSFER DELIVERED mà vẫn UNPAID giữ chỗ vĩnh viễn — truy vấn R6 trong runbook."
+    },
+    {
+      "file": "features/checkout/services/order.repository.ts",
+      "lines": "149-180",
+      "riskClass": "public API or external contract changes",
+      "description": "translateRpcError() — chỉ SQLSTATE nằm trong CHECKOUT_DB_ERROR_MAP mới được chuyển thành AppError có message hiển thị cho khách. Mọi lỗi khác trở thành Error thường -> 500 với message chung. Đây là lý do error.message của Postgres KHÔNG lọt ra client.",
+      "status": "Đã rà quét ở RFC-5, không có rò rỉ."
+    },
+    {
+      "file": "features/checkout/services/order.repository.ts",
+      "lines": "184",
+      "riskClass": "permission, secret, or trust-boundary logic",
+      "description": "requireAdminClient() — chỉ nêu TÊN biến môi trường thiếu (SUPABASE_SERVICE_ROLE_KEY), không bao giờ nêu giá trị.",
+      "status": "Sạch."
+    },
+    {
+      "file": "src/security/trusted-client-ip.ts",
+      "lines": "78-125",
+      "riskClass": "permission, secret, or trust-boundary logic",
+      "description": "Chỉ tin header ingress đã khai báo; lấy hop CUỐI (hop đầu là giá trị client tự gửi được); canonical hoá IPv4/IPv6(/64); HMAC bằng CLIENT_IP_HASH_SECRET. resolveHashedClientIp() chỉ trả ipHash — không nhánh nào trả IP thô ra ngoài.",
+      "status": "Sạch. Hành vi ghi đè header của ingress thật CHƯA probe -> limiter IP chỉ là tín hiệu mềm."
+    },
+    {
+      "file": "src/middlewares/checkout-rate-limit.middleware.ts",
+      "lines": "118-168",
+      "riskClass": "deploy/runtime behavior",
+      "description": "Limiter riêng cho checkout: script Lua INCR+PEXPIRE+PTTL atomic, fail-CLOSED 503 khi Redis chết và enforcement bật, Retry-After = PTTL thật làm tròn lên. KHÔNG đụng fail-open của rate-limit.middleware.ts (E2). Log chỉ ghi scope/hits/max — không ghi identifier (userId hoặc IP hash).",
+      "status": "Sạch. Redis production CHƯA provision -> không được bật fail-closed."
+    },
+    {
+      "file": "src/middlewares/error-handler.middleware.ts",
+      "lines": "92-101",
+      "riskClass": "public API or external contract changes",
+      "description": "Nhánh lỗi không lường trước trả message cố định 'Đã xảy ra lỗi máy chủ nội bộ' + code INTERNAL_SERVER_ERROR + 500. Không echo error.message, không stack, không SQL. Chi tiết chỉ đi vào log phía server qua logger.error.",
+      "status": "Sạch — đây là cơ chế đóng đường rò rỉ SQL/stack ra client."
+    },
+    {
+      "file": "features/admin-orders/services/admin-orders.repository.ts",
+      "lines": "280, 309-312",
+      "riskClass": "public API or external contract changes",
+      "description": "list()/getById() dùng selectClause ĐỘNG để fallback khi cột RFC-2 chưa tồn tại (SQLSTATE 42703). supabase-js mất khả năng suy luận row type nên trả GenericStringError.",
+      "status": "SỬA Ở RFC-5: ép kiểu qua `unknown`. Đây là 3 trong 11 lỗi type bị che giấu suốt RFC-2/3/4 — xem verification.json V2."
+    },
+    {
+      "file": "features/admin-orders/services/admin-orders.repository.ts",
+      "lines": "375, 417, 425, 484-491",
+      "riskClass": "billing or credits",
+      "description": "confirmPayment() — TERMINAL_ORDER_STATUSES + guard TS trả 409 ORDER_STATE_CONFLICT, chuyển sang orderRepository.transition() với expectedVersion. Đường tương thích (khi RPC chưa apply) có guard .not(status,in,(CANCELLED,RETURNED)) NẰM TRONG câu UPDATE, không chỉ pre-check.",
+      "status": "Đã sửa ở RFC-3 kèm red-before test. Lỗi gốc: đơn CANCELLED vẫn confirm được thành PAID."
+    },
+    {
+      "file": "features/checkout/services/checkout.service.ts",
+      "lines": "205",
+      "riskClass": "public API or external contract changes",
+      "description": "Cửa sổ tương thích E3: thiếu Idempotency-Key vẫn trả 201, chỉ logger.warn. Đây là nơi phát ra log dùng làm tiêu chí đóng cửa sổ (≥24h không có log nào).",
+      "status": "Cố ý. Chỉ siết thành 400/409 sau ≥24h sạch trên traffic thật."
+    },
+    {
+      "file": "app/api/checkout/route.ts",
+      "lines": "46-63",
+      "riskClass": "auth or identity",
+      "description": "Thứ tự: resolveHashedClientIp -> throttle IP (chỉ enforce khi header đáng tin) -> authenticate(req) -> throttle account. Khi IP không đáng tin chỉ logger.warn kèm route name, KHÔNG kèm IP.",
+      "status": "Sạch."
+    },
+    {
+      "file": ".gitignore",
+      "lines": "34",
+      "riskClass": "permission, secret, or trust-boundary logic",
+      "description": "F4 — pattern `.env*` không có negation `!.env.example`, nên .env.example bị git ignore và các biến mới (APP_BASE_URL, REDIS_URL, CLIENT_IP_HASH_SECRET) không commit được.",
+      "status": "PENDING — quyết định của owner, ngoài scope RFC-1..RFC-5."
+    }
+  ]
+}
